@@ -1,0 +1,17 @@
+{
+  "browserId": "REPLACE_WITH_ENVIRONMENT_ID",
+  "sysMallId": "REPLACE_WITH_STORE_ID",
+  "accessToken": "REPLACE_FROM_AUTHENTICATED_DESKTOP_SESSION",
+  "websocketPort": 12679,
+  "proxyInfo": { "proxyAuthUrl": "socks5://127.0.0.1:7897@:" },
+  "staticProxy": { "exchange": "socks5://127.0.0.1:7897@:" },
+  "launchURL": "about:blank",
+  "cookie": "",
+  "appVersion": "5.3.17",
+  "isdebug": false,
+  "language": "zh-CN",
+  "language_setPlugin": "zh",
+  "version": { "ver": "5.3.17", "isBlackWhite": true },
+  "privateMode": { "isPrivateMode": 0, "isLoadPlugins": 1, "isLoadCookie": 1, "autoOpenMallHome": 0 },
+  "installPlugins": []
+}

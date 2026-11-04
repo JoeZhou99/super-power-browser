@@ -1,0 +1,14 @@
+/* SuperPower application chrome. The existing blue navigation is retained. */
+:root{--desktop-titlebar-height:0px}
+:root.is-desktop{--desktop-titlebar-height:44px}
+.is-desktop #app{padding-top:var(--desktop-titlebar-height)}
+.is-desktop .shell{min-height:calc(100vh - var(--desktop-titlebar-height))}
+.shell{border-top:0}
+.sidebar{top:var(--desktop-titlebar-height)}
+.is-desktop .workspace-header{top:var(--desktop-titlebar-height)}
+.is-desktop .workspace-main{min-height:calc(100vh - var(--desktop-titlebar-height) - 44px)}
+.is-desktop .workspace-main>.panel,.is-desktop .page-list{min-height:calc(100vh - var(--desktop-titlebar-height) - 54px)}
+.app-mark img{display:block;width:100%;height:100%;border-radius:8px}
+.guide-grid .guide-art{position:absolute;right:18px;bottom:18px;width:44px;height:44px;color:#7ea0f5;opacity:.8}
+.guide-grid .guide-art svg{width:100%;height:100%}
+.desktop-titlebar img{pointer-events:none}

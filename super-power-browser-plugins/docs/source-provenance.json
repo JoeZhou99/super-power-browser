@@ -1,0 +1,600 @@
+{
+  "sourceVersions": {
+    "RXMallHelper": "5.1.78",
+    "RXAccountManage": "1.0.12"
+  },
+  "excludedRuntimeFiles": [
+    "config.dat",
+    "init.json"
+  ],
+  "files": [
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/avatar_extracted-BsUeCeNq.png",
+      "recoveredFile": "src/mall/assets/avatar_extracted-BsUeCeNq.png",
+      "sourceSha256": "b87e80f486427d61317810f1d7ba067168b03564779f386ee4041e6ca8fd9d0d",
+      "recoveredSha256": "b87e80f486427d61317810f1d7ba067168b03564779f386ee4041e6ca8fd9d0d"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/bgCheck-eVhq9yDi.png",
+      "recoveredFile": "src/mall/assets/bgCheck-eVhq9yDi.png",
+      "sourceSha256": "d6c5e0fc6a9d4af055e9b9162092a0a162926793b50145ae5504ce043cc317a0",
+      "recoveredSha256": "d6c5e0fc6a9d4af055e9b9162092a0a162926793b50145ae5504ce043cc317a0"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/china-BKPdZLOY.png",
+      "recoveredFile": "src/mall/assets/china-BKPdZLOY.png",
+      "sourceSha256": "07b7a83ff9c40b1297ed0005ba3ef2b76825bde1d0518b8708a5f944fa87cae2",
+      "recoveredSha256": "07b7a83ff9c40b1297ed0005ba3ef2b76825bde1d0518b8708a5f944fa87cae2"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/contentPage-B99IICC6.css",
+      "recoveredFile": "src/mall/assets/contentPage-B99IICC6.css",
+      "sourceSha256": "16890a5cc75c14f66c5c79d722c1904711b45c9d9e39077a405b4aa8f0f9c9e6",
+      "recoveredSha256": "49081a378c038b0ea6cb0dce459647b99a1abc29462b360701d28cfafcc808bd"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/cookieTool-DPB18h0-.css",
+      "recoveredFile": "src/mall/assets/cookieTool-DPB18h0-.css",
+      "sourceSha256": "4b8e6a803025059f915e019286c770222081bb7b792ed0c6130b624401a42d09",
+      "recoveredSha256": "ae1ffc281891b15e4af5ec5f4f2baf980312b34bd10f304ac47207f3d851d14a"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/favicon-DLMzPxpA.ico",
+      "recoveredFile": "src/mall/assets/favicon-DLMzPxpA.ico",
+      "sourceSha256": "60eeac573d2bf5742b96efe32c0bcf39000452b70ae8cc3821c29ac20cef2037",
+      "recoveredSha256": "60eeac573d2bf5742b96efe32c0bcf39000452b70ae8cc3821c29ac20cef2037"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/imageLogoHelp-DBeOKbnV.png",
+      "recoveredFile": "src/mall/assets/imageLogoHelp-DBeOKbnV.png",
+      "sourceSha256": "f9fbddf1d2800f176e951d222d31d292cd6b1d37b207c73e4d423f02c3d884ac",
+      "recoveredSha256": "f9fbddf1d2800f176e951d222d31d292cd6b1d37b207c73e4d423f02c3d884ac"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/index-CQbTeKEe.css",
+      "recoveredFile": "src/mall/assets/index-CQbTeKEe.css",
+      "sourceSha256": "4609013b35030896c5ba1cfb4728ca4ceb35b89bd7c852b2f33d459ccb3e63c8",
+      "recoveredSha256": "ff3850abe2c8f7607c04bf8017dc302e9bd4839a186ab27ca7ef3eea8a4b9e85"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/loading-CB8X-BI1.css",
+      "recoveredFile": "src/mall/assets/loading-CB8X-BI1.css",
+      "sourceSha256": "efb649f27b82e5c254f234ebd74d191e7901100e165b3c50801f54abfeebd63e",
+      "recoveredSha256": "c685197da81f1c5e6e807a7f9ceeefebab52b952c7cbc6cec9c8bc274b58dd75"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/popup-D6m9WDyY.css",
+      "recoveredFile": "src/mall/assets/popup-D6m9WDyY.css",
+      "sourceSha256": "65e8f2e9d51409a579f7c997afc9dd2ec6b56f50212fcdb38ebc9299df404c42",
+      "recoveredSha256": "650290ac50b85e8df0b963875f444259c2b3bc60364d9fc35c5a21de8f0a15ac"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/rz-B_nyHGUT.png",
+      "recoveredFile": "src/mall/assets/rz-B_nyHGUT.png",
+      "sourceSha256": "59cdaade0216cbb833e944b62e2e7ec2fd6e180f4acc30ebacd0e18e399471a1",
+      "recoveredSha256": "59cdaade0216cbb833e944b62e2e7ec2fd6e180f4acc30ebacd0e18e399471a1"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/visitRules-BFxzzTOM.css",
+      "recoveredFile": "src/mall/assets/visitRules-BFxzzTOM.css",
+      "sourceSha256": "72ffa31eff578c8f7d7e280de64f75935d32d4ee5f9ea98e3fd7647ec7c83b82",
+      "recoveredSha256": "6631fcd292010359a0123e57c2317509b4ba80c1bef46f328032b9f49f49259a"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "assets/warning-CCZc5Fll.css",
+      "recoveredFile": "src/mall/assets/warning-CCZc5Fll.css",
+      "sourceSha256": "a4afce9fd48164df5edc6e1fd60948b81c7dce562c32a1656cf71e60645b2fce",
+      "recoveredSha256": "d5c76999e8e4e1fad3910517aff4245fcb59a25e62890757aa049af0df5dfffd"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "background/service-worker.js",
+      "recoveredFile": "src/mall/background/service-worker.js",
+      "sourceSha256": "2e24bd2d16982616862e184875fe5349f2a119fffd1ee3c2bd60afd687a66555",
+      "recoveredSha256": "bdb5f107f1162c23bef136cf7e89145bf1c58b20b2d4b33c3dff0b26bf7ba2c5"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/amazon_intercept.js",
+      "recoveredFile": "src/mall/content/amazon_intercept.js",
+      "sourceSha256": "617f68691add24f018dc0534fce729ed501be8dc821d48b9ca1f8b6621a2f547",
+      "recoveredSha256": "227492b9eb4177a640477712c3f8df5de66bb5282f1513cac72624f440a35ee3"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/amazon_passkey_page.js",
+      "recoveredFile": "src/mall/content/amazon_passkey_page.js",
+      "sourceSha256": "69eaa98b2a26064c34d9132f4a5e6569d238191a1a5d47a34cb23c10630940da",
+      "recoveredSha256": "1b34d4e835dc5fa0a7e5df84267cf015f04e2d7eacfbaa98c102522915300125"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/amazon_signin.js",
+      "recoveredFile": "src/mall/content/amazon_signin.js",
+      "sourceSha256": "ad42d12163eb69649beb3eb07b944febaf638f12c7bc8a7edc1d162ebc8c20b2",
+      "recoveredSha256": "775479e31638ae63d3e7d731f24108d309239124f85be1ca3acf9e500683b97d"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/Collection.js",
+      "recoveredFile": "src/mall/content/Collection.js",
+      "sourceSha256": "0981c243e8dbc4c099026ea199c3f744a8311ea99564fa31917b56e14858a9a0",
+      "recoveredSha256": "1ea8efd15ef0256766899bad8d5d6347aa760890d0c3ca6d2c7f9c0d36c796e8"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/content.js",
+      "recoveredFile": "src/mall/content/content.js",
+      "sourceSha256": "4d95c2819e1ec2e0aefc8a5ca7eb2c683674d0c0fd74e0daf4248af3e5430f89",
+      "recoveredSha256": "dacbb52c0fca3d40856bbc558bdb9a20166c18161aff468ef12fe20b7e57a025"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/dynamicIpWarning.js",
+      "recoveredFile": "src/mall/content/dynamicIpWarning.js",
+      "sourceSha256": "a7e0e946dc9f0e57e582aaf537b3d3e822a5319dc8a81cf8e46fb52e4ba0d2fb",
+      "recoveredSha256": "348f5090ef277b557f6bc96f8058968de9117ca5c06e82f6700289a286d80f25"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/element.js",
+      "recoveredFile": "src/mall/content/element.js",
+      "sourceSha256": "f200d570f7256caa583796fc87905233269a23832e2cddfcf0494ed8daea1cb7",
+      "recoveredSha256": "a162e8ca2e952c95b3351cba64723a1e3e22139bc235b0d94477fcea9393a64a"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/message.js",
+      "recoveredFile": "src/mall/content/message.js",
+      "sourceSha256": "bc87fbdfdf62ce8b2791df64a766e6aae54b74300785b8130c66f6e05c798133",
+      "recoveredSha256": "71807c3989ee40397cdc7fbdd3cb68eeb86613f1debf58ae753e5d2a153b0c46"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/platform/siteCookieAutomation.js",
+      "recoveredFile": "src/mall/content/platform/siteCookieAutomation.js",
+      "sourceSha256": "c4796e7a20fd2842b8bfcbbabc1d54a0d246521402dd03f9840da40b4942efd7",
+      "recoveredSha256": "6f771b22afc41ec5efc5a31d5ffc7aff7c6678993814249b0d9fb49fe4c479d7"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/platform/siteLoginAutomation.js",
+      "recoveredFile": "src/mall/content/platform/siteLoginAutomation.js",
+      "sourceSha256": "73c087fa61e3d369c4f7c75a0c7fc7897b5807a583e5791abca4fff82f13d2af",
+      "recoveredSha256": "5b12d49b76b195f66167922bef0e657827e12ea1aaee58558194ddf09dd7bf2b"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/translate.js",
+      "recoveredFile": "src/mall/content/translate.js",
+      "sourceSha256": "c21e4d421d24a0474bad8063e045a10e36165410ed97b6ca5c6638cb33bb0b88",
+      "recoveredSha256": "cf2d0519958c2bdcfbc0c0a95662704a1b9f632cca717ac16d14bdfba7202964"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "content/twoStep.js",
+      "recoveredFile": "src/mall/content/twoStep.js",
+      "sourceSha256": "0e8af308934689380b7348c34e3268fa3f3faffde5f81b73e1bd84015d206fef",
+      "recoveredSha256": "459f75f6dcca8f441e64f350f5da18be6c8534c3cbe9c0c04a047d944e3837e7"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "contentPage/check.html",
+      "recoveredFile": "src/mall/contentPage/check.html",
+      "sourceSha256": "45c89b7f795f8cd952dced5b145be2fd1524f3b321a64452086d347e7f7654fb",
+      "recoveredSha256": "fb72ebe9979c9df8b364c66ec0ac5ea824bca0497dfc9260b5ec7f858023d884"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "contentPage/contentPage.js",
+      "recoveredFile": "src/mall/contentPage/contentPage.js",
+      "sourceSha256": "5b2bf195da91638f246b57b53db136e851c525de24ce2fa8c4ca6f709fbc4463",
+      "recoveredSha256": "f738118b010afc7e3a43a7fba69881fda84159dd6dd43445fae9503b247c95fa"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "cookieTool/cookieTool.js",
+      "recoveredFile": "src/mall/cookieTool/cookieTool.js",
+      "sourceSha256": "b6ef17354522bc23537f6e6be286905ff1b830bbf185950b3bb294b1092a33c1",
+      "recoveredSha256": "3a1d194e46e7a05f87c6d8110735a9dbeb884bd072310a584669967e6adb6ecc"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "cookieTool/index.html",
+      "recoveredFile": "src/mall/cookieTool/index.html",
+      "sourceSha256": "39fba105cea7471a0efeea46ba64818e047bcb5800eced7637dd4ad2878a7c90",
+      "recoveredSha256": "a1d6610e5d833d79c9c556bf1de60670bc3c4997527a38094bf6050319a8a011"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/avatar_extracted.png",
+      "recoveredFile": "src/mall/icons/avatar_extracted.png",
+      "sourceSha256": "b87e80f486427d61317810f1d7ba067168b03564779f386ee4041e6ca8fd9d0d",
+      "recoveredSha256": "b87e80f486427d61317810f1d7ba067168b03564779f386ee4041e6ca8fd9d0d"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/bgCheck.png",
+      "recoveredFile": "src/mall/icons/bgCheck.png",
+      "sourceSha256": "d6c5e0fc6a9d4af055e9b9162092a0a162926793b50145ae5504ce043cc317a0",
+      "recoveredSha256": "d6c5e0fc6a9d4af055e9b9162092a0a162926793b50145ae5504ce043cc317a0"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/copy.png",
+      "recoveredFile": "src/mall/icons/copy.png",
+      "sourceSha256": "1c9861cbe94cad93660c31149b7d37ad3e650c01b6923ea11e7d2a0c0b02467b",
+      "recoveredSha256": "1c9861cbe94cad93660c31149b7d37ad3e650c01b6923ea11e7d2a0c0b02467b"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/dynamic-ip-arrow.png",
+      "recoveredFile": "src/mall/icons/dynamic-ip-arrow.png",
+      "sourceSha256": "e78781a4b0ed59ac07b174d89819b62afca7b1c93ee5a4dacb0a3fe3ecb34e33",
+      "recoveredSha256": "e78781a4b0ed59ac07b174d89819b62afca7b1c93ee5a4dacb0a3fe3ecb34e33"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/dynamic-ip-warning.png",
+      "recoveredFile": "src/mall/icons/dynamic-ip-warning.png",
+      "sourceSha256": "9d7c404a88e776fd8ea7a485c63e1416af7d757c01e636461ff02ff6691bbfb1",
+      "recoveredSha256": "9d7c404a88e776fd8ea7a485c63e1416af7d757c01e636461ff02ff6691bbfb1"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/favicon.ico",
+      "recoveredFile": "src/mall/icons/favicon.ico",
+      "sourceSha256": "60eeac573d2bf5742b96efe32c0bcf39000452b70ae8cc3821c29ac20cef2037",
+      "recoveredSha256": "60eeac573d2bf5742b96efe32c0bcf39000452b70ae8cc3821c29ac20cef2037"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/guide-decoration.png",
+      "recoveredFile": "src/mall/icons/guide-decoration.png",
+      "sourceSha256": "2e8e1e5f1138ffcf4b3835c0f0aad93e8d9a9dee3f75a70d2d7b6949d346e6e9",
+      "recoveredSha256": "2e8e1e5f1138ffcf4b3835c0f0aad93e8d9a9dee3f75a70d2d7b6949d346e6e9"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/hard-drive-2-fill.png",
+      "recoveredFile": "src/mall/icons/hard-drive-2-fill.png",
+      "sourceSha256": "a4b33424d903cbb868e33c7f5557d346c7c6ccbda3f51827e756802fa25e28e4",
+      "recoveredSha256": "a4b33424d903cbb868e33c7f5557d346c7c6ccbda3f51827e756802fa25e28e4"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/icon.png",
+      "recoveredFile": "src/mall/icons/icon.png",
+      "sourceSha256": "f815983f7d49aa81d93fe41152ecdd508fb58e1f8a3e6172a4a450d83a6856e8",
+      "recoveredSha256": "f815983f7d49aa81d93fe41152ecdd508fb58e1f8a3e6172a4a450d83a6856e8"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/icon.xcf",
+      "recoveredFile": "src/mall/icons/icon.xcf",
+      "sourceSha256": "5d743ce4921f82b8767189205ab249828a75e2fd05b319576ac4313e13ce9596",
+      "recoveredSha256": "5d743ce4921f82b8767189205ab249828a75e2fd05b319576ac4313e13ce9596"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/icon128.png",
+      "recoveredFile": "src/mall/icons/icon128.png",
+      "sourceSha256": "9d94237003cff6dbf5c7a09f4ac7d50556e7ea9a699bf57661d52e349a7481a9",
+      "recoveredSha256": "9d94237003cff6dbf5c7a09f4ac7d50556e7ea9a699bf57661d52e349a7481a9"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/icon16.png",
+      "recoveredFile": "src/mall/icons/icon16.png",
+      "sourceSha256": "5a08b6b099a0919bf0eb9a3378aad191396f0e1ab6c9c359fa3b8e313261a352",
+      "recoveredSha256": "5a08b6b099a0919bf0eb9a3378aad191396f0e1ab6c9c359fa3b8e313261a352"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/icon19.png",
+      "recoveredFile": "src/mall/icons/icon19.png",
+      "sourceSha256": "0410baacd498c3b22b64147ed9c494810db4f5d8c9c5803e61fc08418c4e167e",
+      "recoveredSha256": "0410baacd498c3b22b64147ed9c494810db4f5d8c9c5803e61fc08418c4e167e"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/icon48.png",
+      "recoveredFile": "src/mall/icons/icon48.png",
+      "sourceSha256": "b60961ca6afcaf9e4a4a33ca8355090b61b7c54d207739dd910f476e7c8e05d5",
+      "recoveredSha256": "b60961ca6afcaf9e4a4a33ca8355090b61b7c54d207739dd910f476e7c8e05d5"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/imageLogoHelp.png",
+      "recoveredFile": "src/mall/icons/imageLogoHelp.png",
+      "sourceSha256": "f9fbddf1d2800f176e951d222d31d292cd6b1d37b207c73e4d423f02c3d884ac",
+      "recoveredSha256": "f9fbddf1d2800f176e951d222d31d292cd6b1d37b207c73e4d423f02c3d884ac"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/load.png",
+      "recoveredFile": "src/mall/icons/load.png",
+      "sourceSha256": "164f55b7d0a9126ca1ddfaa80cd04345feed86e97a4a4f87f373bcaeeb68afe8",
+      "recoveredSha256": "164f55b7d0a9126ca1ddfaa80cd04345feed86e97a4a4f87f373bcaeeb68afe8"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/network-line.png",
+      "recoveredFile": "src/mall/icons/network-line.png",
+      "sourceSha256": "49576f5d863f92aeebba60c68d2f7cff9824eebc3942d4505dd77815a325dfcd",
+      "recoveredSha256": "49576f5d863f92aeebba60c68d2f7cff9824eebc3942d4505dd77815a325dfcd"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/remind.mp3",
+      "recoveredFile": "src/mall/icons/remind.mp3",
+      "sourceSha256": "64cccf76a1a9e1a5a8a9a16cb4716bed0d4f534aef6f168523f73ffd09e9f386",
+      "recoveredSha256": "64cccf76a1a9e1a5a8a9a16cb4716bed0d4f534aef6f168523f73ffd09e9f386"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/rz.png",
+      "recoveredFile": "src/mall/icons/rz.png",
+      "sourceSha256": "59cdaade0216cbb833e944b62e2e7ec2fd6e180f4acc30ebacd0e18e399471a1",
+      "recoveredSha256": "59cdaade0216cbb833e944b62e2e7ec2fd6e180f4acc30ebacd0e18e399471a1"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/update.png",
+      "recoveredFile": "src/mall/icons/update.png",
+      "sourceSha256": "6c96b309e2ee089f992f1b31033f5b94e8762eb8166d3aee9e0ea88c8e0d24a6",
+      "recoveredSha256": "6c96b309e2ee089f992f1b31033f5b94e8762eb8166d3aee9e0ea88c8e0d24a6"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "icons/warn.png",
+      "recoveredFile": "src/mall/icons/warn.png",
+      "sourceSha256": "d4436b33dc2995cd238b3cf0ebc8c779a7f5b6b5510cb16cc2b407b411f4fce7",
+      "recoveredSha256": "d4436b33dc2995cd238b3cf0ebc8c779a7f5b6b5510cb16cc2b407b411f4fce7"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "js/auth-TBKa1yhD.js",
+      "recoveredFile": "src/mall/js/auth.js",
+      "sourceSha256": "34babf1ccbaf656d4e8e619269a53717c70134db11666769c243748a14a51f16",
+      "recoveredSha256": "371174a4f1f129880ccbfadf6c38605b8b2da8ad7969fbb07d527d33a01bb1fa"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "js/formats-BxPX_GIp.js",
+      "recoveredFile": "src/mall/js/cookies.js",
+      "sourceSha256": "15d35355115bf50947e471fcde08df428f014aa8cccd4f37cf5c36ededb92e45",
+      "recoveredSha256": "3fc9c204392fb09efee63d3bf8bf87d628c9cf12232574f0ec9a794b4711b8a1"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "js/index-C5P80t1N.js",
+      "recoveredFile": "src/mall/js/locales.js",
+      "sourceSha256": "3eaed657f2de313ae270d0f335173443b363c61555a29bd53fdecc79597fcd2e",
+      "recoveredSha256": "7ee390b7e09643163193aa7680432b9877dcc3a9de510e7c89482665f118c093"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "js/index-CfgXxGjE.js",
+      "recoveredFile": "src/mall/js/vendor-elements.js",
+      "sourceSha256": "2ca3fe942706d3447bf455fb8bbdbd3d2ca54582bbae39dbf08ef085b11640bf",
+      "recoveredSha256": "4a20eaff19e372c81aaa74b5945d9f11925ab25f51396d37c1f10dcea64bb167"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "js/index-D7ByUBjl.js",
+      "recoveredFile": "src/mall/js/common.js",
+      "sourceSha256": "11ac6b04cfea4b36bb4eec3f59bc4243b1f571f421c0d11929a88860df909c8c",
+      "recoveredSha256": "bc58d03f9726f39756bf0a8b941f22bc21e8583d65c6c8d8b089b2d3bcf9200f"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "js/index-Kn6dqNm_.js",
+      "recoveredFile": "src/mall/js/api.js",
+      "sourceSha256": "56cfcf6ef39f32973ea070e37d3cc8f58a1c6eb4e3f65e0e9ae0eae0fcc9ba9e",
+      "recoveredSha256": "dc6da580b86586beb1d4198a83a5076fbe1f97a15f4e66a6b990cd0d3074fafb"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "js/pinia-BOBfy-LH.js",
+      "recoveredFile": "src/mall/js/vendor-pinia.js",
+      "sourceSha256": "9c409e654edb60e6eda78e4e2d95b79a2d6cefae7ecbd80b765c721df8a09387",
+      "recoveredSha256": "134875db910835d75090d8fad684a99e81697836976a39990f5cd98c6314762b"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "js/superbrowserIpc-CLuB0WvM.js",
+      "recoveredFile": "src/mall/js/desktop-bridge.js",
+      "sourceSha256": "edaadd0cd4a73524fd312ea293bec5f5890b8c088bf0844ef943c0b4e3112445",
+      "recoveredSha256": "c7e4e524b883943eb801566da85af350e19f285fbd5d3d037b459668a6bd120d"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "js/_commonjsHelpers-BosuxZz1.js",
+      "recoveredFile": "src/mall/js/vendor-commonjs.js",
+      "sourceSha256": "e64e15372af890da288ae5d1661661822ab8d9a199360d2c24cbc38ed14ffffb",
+      "recoveredSha256": "3f116f00627a05f04d99aa225e5b2eaccbeedc1fe2f3a0406677a9814a26078c"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "js/_plugin-vue_export-helper-KCNtZOGz.js",
+      "recoveredFile": "src/mall/js/vendor-vue.js",
+      "sourceSha256": "5946ed0177288452228c46031f7ee21e032466381828e1e4e917442a6aa797a0",
+      "recoveredSha256": "d72c397eeef58fe0c17603bbdb85f45d8509694f0b4b712efd24b99c13a81e85"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "loading/loading.html",
+      "recoveredFile": "src/mall/loading/loading.html",
+      "sourceSha256": "4db2f6057b137cbe82b097a6d739cee59dea5449f47072d7cbedb4ce7626bfe7",
+      "recoveredSha256": "6e1fef719098133c725cd8ebe042aa24ebf86b3d03fd91bea3cfe3e07135e654"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "loading/loading.js",
+      "recoveredFile": "src/mall/loading/loading.js",
+      "sourceSha256": "5755a61c50e2a74a9b78e8f2cb316bdaee12b589fd495475d37b8bb12bab86e7",
+      "recoveredSha256": "6fb0461cb0c66e49df26052430129fb0025af0007cb73f4683afe177737a5a98"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "manifest.json",
+      "recoveredFile": "src/mall/manifest.json",
+      "sourceSha256": "57dcdb0182cf0cbdb187a4cfe10c014e9de9272cb918d175aa8b39f795ad6f75",
+      "recoveredSha256": "75fe073b2e644099e68d3d8989684f23bd0a4b14cf9e4e7fed6276c02c15b3ad"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "newtab/newtab.html",
+      "recoveredFile": "src/mall/newtab/newtab.html",
+      "sourceSha256": "6c0a35d6e876d0af3f7e015b2b58fd2b2d1cfd41189e91b1f41754ec6a550ad4",
+      "recoveredSha256": "3ce4c1817a7cc787acc2bdf19fabdcf341b785820d1adbe06650dc2f413e9f54"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "newtab/newtab.js",
+      "recoveredFile": "src/mall/newtab/newtab.js",
+      "sourceSha256": "0baee21997b4d37ea6c77b0e621b5c2e6cbbcb47868d4ef8eb65af45e9990af8",
+      "recoveredSha256": "4435eb49d334c5471374131e6961dd4e91be38ee361baf9a99e57a2e658c370e"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "popup/index.html",
+      "recoveredFile": "src/mall/popup/index.html",
+      "sourceSha256": "2d437cba10b1acf90eafbe7eb988a22c06a8b472d220e7c4c52b13b2410f4d5f",
+      "recoveredSha256": "a6aa5d0aa6310ed63e772b1e80262cf8b20d22b5d7b41f0cc85614a299086e27"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "popup/popup.js",
+      "recoveredFile": "src/mall/popup/popup.js",
+      "sourceSha256": "ee39dd632a30e4da5b7759842735dd1c78596e4567b8a53a49e6fc2c17420d4f",
+      "recoveredSha256": "dd1b43917a251cfcd791f86a0db65a40ac6b7daa36a1b7e77f7ca6041fbd9b1b"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "visitRules/visitRules.js",
+      "recoveredFile": "src/mall/visitRules/visitRules.js",
+      "sourceSha256": "7bf477a0caa002005cfdcf70dc889412972949f4fdb02a93fedfd1f228d414a3",
+      "recoveredSha256": "d566417041be82a00febe954f479ef40b8bcb1d82e5f8ac55de7f9036763ea78"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "visitRules/warning.html",
+      "recoveredFile": "src/mall/visitRules/warning.html",
+      "sourceSha256": "e4d17553fd59b79ba2dae486098cabf56ab18193a2a3a51c401ba4cfb26e054f",
+      "recoveredSha256": "73024fa8f10f68812cc5a7c92f5d1f0f02c2641c8dc2863944132892b8bf15e4"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "warning/warning.html",
+      "recoveredFile": "src/mall/warning/warning.html",
+      "sourceSha256": "d5414a2ccaa05ccab68780c4b8a9247fb8ee95123f24312393e6be6db68d9265",
+      "recoveredSha256": "196b1c4a2ef14366e40c9f548599a920fc61a1c6c018c3e0f6ca1703b53ed2b0"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "sourceFile": "warning/warning.js",
+      "recoveredFile": "src/mall/warning/warning.js",
+      "sourceSha256": "ff820037b380b0d1cc666e703d19686dac85b01c65f95b8676df59808d1ffeb1",
+      "recoveredSha256": "a8b21c62297c07e2b81595a9c0658be656cffbc9b24a1ea83344fcf93d13fcf8"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "auto-fill.6b810132.js",
+      "recoveredFile": "src/account/auto-fill.6b810132.js",
+      "sourceSha256": "8373da700dae7e9a07eae7715b730490a253283f79a9b3b5342efb281d7139ea",
+      "recoveredSha256": "c71267359c221c0a0c48fa08d09a5a222622ab35353903c7ddcf957339f7c5f3"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "icon128.plasmo.74615566.png",
+      "recoveredFile": "src/account/icon128.plasmo.74615566.png",
+      "sourceSha256": "5f30da291b12ee9ffa8e6384aabde7489aab652099e310a725a60a9d798e916f",
+      "recoveredSha256": "5f30da291b12ee9ffa8e6384aabde7489aab652099e310a725a60a9d798e916f"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "icon16.plasmo.72e8bd43.png",
+      "recoveredFile": "src/account/icon16.plasmo.72e8bd43.png",
+      "sourceSha256": "911fd77f7365e541e58ea2baa1e74c6a6c266376ee09af09646a0f51af96edf5",
+      "recoveredSha256": "911fd77f7365e541e58ea2baa1e74c6a6c266376ee09af09646a0f51af96edf5"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "icon32.plasmo.328efb7e.png",
+      "recoveredFile": "src/account/icon32.plasmo.328efb7e.png",
+      "sourceSha256": "10e66f51d2800897867823500f88c10f50bd137e69fec5a73e3a683dec16dbde",
+      "recoveredSha256": "10e66f51d2800897867823500f88c10f50bd137e69fec5a73e3a683dec16dbde"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "icon48.plasmo.1b6c20e9.png",
+      "recoveredFile": "src/account/icon48.plasmo.1b6c20e9.png",
+      "sourceSha256": "e00c595c1d0abd3a59d048d7ad46d3545302d414de3ad2e4cc75d9ed5c13fd93",
+      "recoveredSha256": "e00c595c1d0abd3a59d048d7ad46d3545302d414de3ad2e4cc75d9ed5c13fd93"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "icon64.plasmo.6c816b7b.png",
+      "recoveredFile": "src/account/icon64.plasmo.6c816b7b.png",
+      "sourceSha256": "46f9612fd196b3a518ee950e6b3f811c50b8b74731cb69dfee5c11862b534a0e",
+      "recoveredSha256": "46f9612fd196b3a518ee950e6b3f811c50b8b74731cb69dfee5c11862b534a0e"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "manifest.json",
+      "recoveredFile": "src/account/manifest.json",
+      "sourceSha256": "875a7c1413c8e2059deb5ed8367a584a5337c343ea7ae375fcb75f591a9414c6",
+      "recoveredSha256": "b454f2390f3648aabe48a653145a83ced274edb46119bbe7848a497f7d3ba789"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "page-enhance.3374a2ac.js",
+      "recoveredFile": "src/account/page-enhance.3374a2ac.js",
+      "sourceSha256": "d5871ae14395d3a051b1a0f044d5e6df0fb2952ee26f0013483d73ac8d07da4c",
+      "recoveredSha256": "b15e24541fa4c26c8387d39b1d4a6d45f79c689e53bb8ff10d25b7e90b020f3d"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "popup.642a35ae.js",
+      "recoveredFile": "src/account/popup.642a35ae.js",
+      "sourceSha256": "9db907864fba719a06116f160c94c0d3b6fd11d6c31cd7253f6bdabc86cd49a3",
+      "recoveredSha256": "492facb98de1fc671354a527d3e113d0d8dfc5e61d18804399b4e932033cad9a"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "popup.9eac0145.css",
+      "recoveredFile": "src/account/popup.9eac0145.css",
+      "sourceSha256": "8e15493c78018e94ffdeff046ae90aecdbdace4ce79354ef7247e8fbda8e97bc",
+      "recoveredSha256": "14384e4c59b0c12586e8d3485775cbd9834fd51b84a3bfc13d7618a89f001a38"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "popup.html",
+      "recoveredFile": "src/account/popup.html",
+      "sourceSha256": "001359e1b6d999b7ef435b606131a460f0bd4db78ac079207584b4e1dbd06c15",
+      "recoveredSha256": "2d5603c4dcbade47069cd45dd1bca9055acd05ce4239184c3099773b99a6f7dc"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "sourceFile": "static/background/index.js",
+      "recoveredFile": "src/account/static/background/index.js",
+      "sourceSha256": "deb4b7edea6ebe6785a85f366d5757656873f239f5953e18ea6776543e8b1472",
+      "recoveredSha256": "cbf7f7edd4ec73b02a64f1c025028b86bc5440f01750b01c5990f91121e5e3f8"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+/core/target/
+/api/target/
+/worker/target/
+.env
+legacy-runtime.properties
+*.log

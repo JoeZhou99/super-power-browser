@@ -1,0 +1,15 @@
+import {createApp} from 'vue';
+import {createPinia} from 'pinia';
+import ElementPlus,{ElMessage} from 'element-plus';
+import zhCn from 'element-plus/es/locale/lang/zh-cn';
+import 'element-plus/dist/index.css';
+import App from './App.vue';
+import router from './router';
+import './styles/index.css';
+import './styles/workbench.css';
+import './styles/brand.css';
+const app=createApp(App);
+app.config.errorHandler=(error)=>ElMessage.error(error instanceof Error?error.message:'操作失败');
+app.use(createPinia()).use(router).use(ElementPlus,{locale:zhCn});
+router.isReady().then(()=>app.mount('#app'));
+window.addEventListener('unhandledrejection',event=>{event.preventDefault();ElMessage.error(event.reason?.message||'请求失败');});

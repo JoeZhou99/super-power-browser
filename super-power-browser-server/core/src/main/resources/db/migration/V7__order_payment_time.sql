@@ -1,0 +1,1 @@
+ALTER TABLE business_order ADD COLUMN paid_at TIMESTAMP NULL;

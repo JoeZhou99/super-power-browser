@@ -1,0 +1,7 @@
+ALTER TABLE auth_session ADD COLUMN id VARCHAR(64);
+UPDATE auth_session SET id=token_hash WHERE id IS NULL;
+ALTER TABLE auth_session MODIFY id VARCHAR(64) NOT NULL;
+CREATE UNIQUE INDEX auth_session_id ON auth_session(id);
+ALTER TABLE auth_session ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE auth_session ADD COLUMN client_name VARCHAR(300) NOT NULL DEFAULT '';
+ALTER TABLE auth_session ADD COLUMN remote_address VARCHAR(100) NOT NULL DEFAULT '';

@@ -1,0 +1,23 @@
+.local-preview/
+.tmp/
+
+# Local credentials and runtime configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+runtime.config.json
+legacy-runtime.properties
+
+# Dependencies and generated outputs
+node_modules/
+target/
+dist/
+out/
+*.log
+/super-power-browser-desktop/Plugin/
+/super-power-browser-desktop/resources/web/
+
+# Local editor and operating system files
+.DS_Store
+Thumbs.db

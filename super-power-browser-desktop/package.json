@@ -1,0 +1,60 @@
+{
+  "name": "super-power-browser-desktop",
+  "version": "0.1.0",
+  "description": "核心店铺浏览器客户端",
+  "author": "Super Power Browser",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "npm run build && electron .",
+    "start": "electron .",
+    "build": "node scripts/build.cjs",
+    "build:win": "npm run build && electron-builder --win --x64"
+  },
+  "dependencies": {
+    "adm-zip": "0.5.16",
+    "koffi": "2.12.3",
+    "proxy-chain": "^2.5.0",
+    "https-proxy-agent": "7.0.6",
+    "ws": "8.18.2"
+  },
+  "devDependencies": {
+    "electron": "35.7.5",
+    "electron-builder": "24.13.3"
+  },
+  "build": {
+    "appId": "com.superpower.browser",
+    "productName": "SuperPower Browser",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "branding",
+        "to": "branding"
+      },
+      {
+        "from": "resources/web",
+        "to": "web"
+      },
+      {
+        "from": "win/x64",
+        "to": "win/x64"
+      },
+      {
+        "from": "Plugin",
+        "to": "Plugin"
+      }
+    ],
+    "asarUnpack": [
+      "node_modules/koffi/**/*"
+    ],
+    "win": {
+      "icon": "branding/app.ico",
+      "target": "nsis"
+    }
+  }
+}

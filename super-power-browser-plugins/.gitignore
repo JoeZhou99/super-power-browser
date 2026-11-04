@@ -1,0 +1,9 @@
+node_modules/
+dist/
+artifacts/
+.private/
+**/config.dat
+**/init.json
+**/runtime.json
+**/bootstrap.json
+!examples/bootstrap.example.json

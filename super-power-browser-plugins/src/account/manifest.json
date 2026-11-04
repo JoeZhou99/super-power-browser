@@ -1,0 +1,58 @@
+{
+  "icons": {
+    "16": "icon16.plasmo.72e8bd43.png",
+    "32": "icon32.plasmo.328efb7e.png",
+    "48": "icon48.plasmo.1b6c20e9.png",
+    "64": "icon64.plasmo.6c816b7b.png",
+    "128": "icon128.plasmo.74615566.png"
+  },
+  "manifest_version": 3,
+  "action": {
+    "default_icon": {
+      "16": "icon16.plasmo.72e8bd43.png",
+      "32": "icon32.plasmo.328efb7e.png",
+      "48": "icon48.plasmo.1b6c20e9.png",
+      "64": "icon64.plasmo.6c816b7b.png",
+      "128": "icon128.plasmo.74615566.png"
+    },
+    "default_popup": "popup.html"
+  },
+  "version": "1.0.12",
+  "author": "Plasmo Corp. <foss@plasmo.com>",
+  "name": "账号助手",
+  "description": "店铺账号助手，高效管理店铺账号，一键登录店铺账号。",
+  "background": { "service_worker": "static/background/index.js" },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "webNavigation",
+    "favicon",
+    "tabs",
+    "cookies",
+    "superbrowser"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["page-enhance.3374a2ac.js"],
+      "all_frames": true,
+      "run_at": "document_end",
+      "css": []
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["auto-fill.6b810132.js"],
+      "all_frames": true,
+      "run_at": "document_end",
+      "css": []
+    }
+  ],
+  "host_permissions": ["<all_urls>"],
+  "web_accessible_resources": [
+    {
+      "resources": ["_favicon/*"],
+      "matches": ["<all_urls>"],
+      "extension_ids": ["*"]
+    }
+  ]
+}

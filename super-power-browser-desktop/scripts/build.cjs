@@ -1,0 +1,20 @@
+const fs=require('node:fs');
+const path=require('node:path');
+const {execFileSync}=require('node:child_process');
+const root=path.resolve(__dirname,'..');
+const pluginRoot=path.resolve(root,'../super-power-browser-plugins');
+fs.cpSync(path.resolve(root,'../branding'),path.join(root,'branding'),{recursive:true});
+execFileSync(process.execPath,[path.join(pluginRoot,'scripts/build.mjs')],{stdio:'inherit'});
+fs.cpSync(path.join(pluginRoot,'dist/superpower/Plugin'),path.join(root,'Plugin'),{recursive:true});
+fs.copyFileSync(path.join(pluginRoot,'lib/bootstrap.mjs'),path.join(root,'src/main/pluginManage/bootstrap.mjs'));
+function check(dir){for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const file=path.join(dir,entry.name);if(entry.isDirectory())check(file);else if(file.endsWith('.js'))execFileSync(process.execPath,['--check',file],{stdio:'inherit'});}}
+check(path.join(root,'src'));
+fs.cpSync(path.join(root,'src/main'),path.join(root,'out/main'),{recursive:true});
+fs.cpSync(path.join(root,'src/preload'),path.join(root,'out/preload'),{recursive:true});
+const web=path.resolve(root,'../super-power-browser-web/dist');
+if(!fs.existsSync(path.join(web,'index.html')))throw new Error('请先构建 super-power-browser-web');
+const webTarget=path.resolve(root,'resources/web');
+if(!webTarget.startsWith(root+path.sep))throw new Error('构建资源目录越界');
+fs.rmSync(webTarget,{recursive:true,force:true});
+fs.cpSync(web,webTarget,{recursive:true});
+console.log('桌面主进程语法检查完成，Web 资源已复制。');

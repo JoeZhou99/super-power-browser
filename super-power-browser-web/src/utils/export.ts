@@ -1,0 +1,2 @@
+export function downloadJson(name:string,data:unknown){const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));const link=document.createElement('a');link.href=url;link.download=name;link.click();URL.revokeObjectURL(url);}
+export async function importJson(file:File):Promise<Record<string,unknown>[]>{const data=JSON.parse(await file.text());if(!Array.isArray(data))throw new Error('请选择 JSON 数组文件');return data;}

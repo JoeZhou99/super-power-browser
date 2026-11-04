@@ -1,0 +1,13 @@
+{
+  "name": "super-power-browser-plugins",
+  "version": "0.2.7",
+  "private": true,
+  "type": "module",
+  "description": "店铺助手与账号助手的可构建源码工程、运行适配和功能契约",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "verify": "node scripts/verify.mjs",
+    "prepare-profile": "node scripts/prepare-profile.mjs"
+  }
+}

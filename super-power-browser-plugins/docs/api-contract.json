@@ -1,0 +1,494 @@
+{
+  "protocol": "super-power-browser-extension/1",
+  "methods": [
+    {
+      "plugin": "RXMallHelper",
+      "method": "getUserInfo",
+      "httpMethod": "GET",
+      "path": "/api/v1/user/getUserInfo",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getUserWebPageList",
+      "httpMethod": "GET",
+      "path": "/api/v1/webpage/getBindWebpageRuleV2",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getInfoByKey",
+      "httpMethod": "GET",
+      "path": "/api/v1/sundry/getInfoByKey",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getInfoByKeys",
+      "httpMethod": "GET",
+      "path": "/api/v1/sundry/getInfoByKeys",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "uploadStatistics",
+      "httpMethod": "GET",
+      "path": "/api/v1/statistics/click",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getTagPages",
+      "httpMethod": "GET",
+      "path": "/api/v1/bindMall/getTagPages",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getStaticByIp",
+      "httpMethod": "GET",
+      "path": "/api/v1/mall/bindMall/getAcceleratedDomain",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getCurrency",
+      "httpMethod": "GET",
+      "path": "/api/v1/common/currency",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getTime",
+      "httpMethod": "GET",
+      "path": "/api/v1/common/time",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getAdsRecommendBySite",
+      "httpMethod": "GET",
+      "path": "/api/v1/safe/actionLog/GetAdsRecommendBySite",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getMallInfo",
+      "httpMethod": "GET",
+      "path": "/api/v1/mall/bindMall/getMall",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "saveMallJumpMethod",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/updateJumpMethod",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "saveMallJumpUrls",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/updateJumpUrls",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getWebsiteList",
+      "httpMethod": "GET",
+      "path": "/api/v1/ads/website/getWebsiteList",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "addTagPages",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/addTagPages",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getFirewall",
+      "httpMethod": "GET",
+      "path": "/api/v1/mall/bindMall/getFirewall",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getFirewallNew",
+      "httpMethod": "GET",
+      "path": "/api/v1/mall/bindMall/getFirewallV2",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getWhiteList",
+      "httpMethod": "GET",
+      "path": "/services/cyt-browser-oss/whiteList_data.json",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getDirectList",
+      "httpMethod": "GET",
+      "path": "/api/v1/mall/bindMall/blackList",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getPluginInfo",
+      "httpMethod": "GET",
+      "path": "/api/v1/ads/plugin/getMallPluginInfo",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getPluginInfoByChromeId",
+      "httpMethod": "GET",
+      "path": "/api/v1/ads/plugin/getPluginInfo",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getPluginList",
+      "httpMethod": "GET",
+      "path": "/api/v1/ads/plugins/getMallList",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getBookmark",
+      "httpMethod": "GET",
+      "path": "/api/v1/bookmark/showBookmark",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "inBlackList",
+      "httpMethod": "GET",
+      "path": "/api/v1/mall/bindMall/inBlackList",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getAuditStatus",
+      "httpMethod": "GET",
+      "path": "/api/v1/epcheck/getAuditStatus",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getAuthenticationCode",
+      "httpMethod": "GET",
+      "path": "/api/v1/bindMall/getAuthenticationCode",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "setAuthenticationCode",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/setAuthenticationCode",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "refreshToken",
+      "httpMethod": "GET",
+      "path": "/api/v1/user/refreshToken",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "saveBookmark",
+      "httpMethod": "POST",
+      "path": "/api/v1/bookmark/saveBookmark",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "applyWhite",
+      "httpMethod": "POST",
+      "path": "/api/v1/white/apply",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "applyWhiteV2",
+      "httpMethod": "POST",
+      "path": "/api/v1/white/applyV2",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "setCookie",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/setCookie",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "reviewReason",
+      "httpMethod": "POST",
+      "path": "/api/v1/white/reviewReason",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "reviewReasonV2",
+      "httpMethod": "POST",
+      "path": "/api/v1/white/reviewReasonV2",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "decryptData",
+      "httpMethod": "POST",
+      "path": "/api/v1/common/decryptData",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "reportVerification",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/reportVerification",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "reportCheckForcedOffline",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/checkForcedOffline",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "setAccessStatus",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/setAccessStatus",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getWebpageList",
+      "httpMethod": "GET",
+      "path": "/api/v1/webpage/list",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "getWebpageGroupList",
+      "httpMethod": "GET",
+      "path": "/api/v1/webpage/groupList",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "saveWebpage",
+      "httpMethod": "POST",
+      "path": "/api/v1/webpage/save",
+      "encryptedRequest": true,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "batchSaveUrl",
+      "httpMethod": "POST",
+      "path": "/api/v1/domainUrl/batchSave",
+      "encryptedRequest": true,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "savePasskey",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/savePasskey",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "listPasskey",
+      "httpMethod": "GET",
+      "path": "/api/v1/bindMall/listPasskey",
+      "encryptedRequest": false,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "transferSpeed",
+      "httpMethod": "POST",
+      "path": "/api/v1/mall/bindMall/transferSpeed",
+      "encryptedRequest": true,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXMallHelper",
+      "method": "updateMainTransfer",
+      "httpMethod": "POST",
+      "path": "/api/v1/mall/bindMall/updateMainTransfer",
+      "encryptedRequest": true,
+      "source": "src/mall/js/api.js"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "method": "createAccountData",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/createBindMallsAccountFilling",
+      "source": "src/account/static/background/index.js"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "method": "editAccountData",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/updateBindMallsAccountFilling",
+      "source": "src/account/static/background/index.js"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "method": "removeAccountData",
+      "httpMethod": "POST",
+      "path": "/api/v1/bindMall/delBindMallsAccountFilling",
+      "source": "src/account/static/background/index.js"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "method": "getMallsAccountFillingList",
+      "httpMethod": "GET",
+      "path": "/api/v1/bindMall/getBindMallsAccountFillingList",
+      "source": "src/account/static/background/index.js"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "method": "addCustomSiteInfo",
+      "httpMethod": "POST",
+      "path": "/api/v1/siteInfo/addCustomSiteInfo",
+      "source": "src/account/static/background/index.js"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "method": "getSiteTreeByCategories",
+      "httpMethod": "GET",
+      "path": "/api/v1/siteInfo/getSiteTreeByCategoriesV2",
+      "source": "src/account/static/background/index.js"
+    },
+    {
+      "plugin": "RXAccountManage",
+      "method": "delCustomSiteInfo",
+      "httpMethod": "POST",
+      "path": "/api/v1/siteInfo/delCustomSiteInfo",
+      "source": "src/account/static/background/index.js"
+    }
+  ],
+  "additionalStaticPaths": [
+    "/api/v1/bindMall/createBindMallsAccountFilling",
+    "/api/v1/bindMall/delBindMallsAccountFilling",
+    "/api/v1/bindMall/getBindMallsAccountFillingList",
+    "/api/v1/bindMall/updateBindMallsAccountFilling",
+    "/api/v1/common/decryptData",
+    "/api/v1/siteInfo/addCustomSiteInfo",
+    "/api/v1/siteInfo/delCustomSiteInfo",
+    "/api/v1/siteInfo/getSiteTreeByCategoriesV2",
+    "/api/v1/sundry/getInfoByKey",
+    "/api/v1/sundry/getInfoByKeys",
+    "/api/v1/user/getUserInfo"
+  ],
+  "nativeMethods": [
+    "installExtension",
+    "showMessageDialog"
+  ],
+  "events": {
+    "login": "LOGIN",
+    "set_language": "SetLanguage",
+    "strat_debug": "stratDebug",
+    "deal_ipc_data": "DealIpcData",
+    "enable_debug_mode": "enable_debug_mode",
+    "disable_debug_mode": "disable_debug_mode",
+    "set_proxy": "setProxy",
+    "get_init_data": "getInitData",
+    "init_proxy_complete": "initProxyComplete",
+    "check_completed": "checkCompleted",
+    "report_opened_tab_urls": "reportOpenedTabUrls",
+    "open_mall": "openMall",
+    "no_other_action": "noOtherAction",
+    "downLoad_plugin": "DownLoadPlugin",
+    "install_plugin": "DownLoadPlugin",
+    "install_or_remove": "Install_Or_Remove",
+    "push_delete_plugin": "Push_Delete_Plugin",
+    "login_out": "LoginOut",
+    "update_mall_cookie": "UpdateMallCookie",
+    "message_tip": "messageTip",
+    "remind": "Remind",
+    "flash_window": "FlashWindow",
+    "play_video_mp3": "PlayVideoMp3",
+    "close_browser": "CloseBrowser",
+    "add_block_list": "AddBlockList",
+    "upload_cookies": "UploadCookies",
+    "upload_cache": "UploadCache",
+    "writeLog": "WriteLog",
+    "ping": "Ping",
+    "exit_client": "ExitClient",
+    "close_all_multi_open": "closeAllMultiOpen",
+    "network_exception": "NetworkException",
+    "get_dynamic_ip_warning_data": "GetDynamicIpWarningData",
+    "observe_disabled_element": "ObserveDisabledElement",
+    "swith_transit": "StartProxy"
+  },
+  "webSocketModules": {
+    "HeartBeat": "WebSocketModule",
+    "DownLoadPlugin": "PluginModule",
+    "LoginOut": "LoginModule",
+    "UpdateMallCookie": "BrowserModule",
+    "UploadCache": "BrowserModule",
+    "FlashWindow": "UserBehaviorModule",
+    "CloseBrowser": "BrowserModule",
+    "DealIpcData": "IpcModule",
+    "PlayVideoMp3": "TipModule",
+    "StartProxy": "NetworkModule"
+  },
+  "ipcModules": {
+    "WriteLog": "BrowserModule",
+    "Ping": "BrowserModule",
+    "ExitClient": "WebDriverModule",
+    "closeAllMultiOpen": "MultiModule"
+  }
+}

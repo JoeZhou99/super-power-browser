@@ -1,0 +1,2242 @@
+[
+  {
+    "Path": "README.md",
+    "SHA256": "001335F53F63219BCEE88284DE752443722E40CBC82EABE63380B2036979FB16"
+  },
+  {
+    "Path": "docs\\后端架构.md",
+    "SHA256": "EACC235DD83A2F950A027052F258F352D36D246EF5A77FF064A63B40B04B009E"
+  },
+  {
+    "Path": "docs\\品牌与界面.md",
+    "SHA256": "84141F32652B767D2C6F9E2BBE2CEBCA8943F65EFCDE675433BB72BCD0A17DE0"
+  },
+  {
+    "Path": "docs\\店铺启动流程复核.md",
+    "SHA256": "73CB9E4FC03CFA794A73D3DAD60E44137941AB09B4A4687AE506A5AFF67BEE1B"
+  },
+  {
+    "Path": "docs\\插件与指纹缺口验收.md",
+    "SHA256": "2C9C876FD5791F3AD49803DEA9F0108A367E218930016766C6C0B32B2B6ABF2C"
+  },
+  {
+    "Path": "docs\\现有系统观察与迁移依据.md",
+    "SHA256": "2FB5E8C8632E2E8EA1D1316E699C1B8F24F27DE6F194674DC213A23BDED5328C"
+  },
+  {
+    "Path": "docs\\设备代理检测与自有设备编辑.md",
+    "SHA256": "BFA77800ABE0E45A02591F8F4C41F7FC6A34D061DB01D770B2BE6E494312EE4A"
+  },
+  {
+    "Path": "docs\\迁移状态.md",
+    "SHA256": "EF45DDFA967B81995F9A595D5B48A31C7437C4AC4E12C74876451AB4D0E9CD29"
+  },
+  {
+    "Path": "super-power-browser-desktop\\.gitignore",
+    "SHA256": "7A42AF1EA5D98FA6E953ACD63234FE1E35EFC320DAA2B21A2587923FFB65814B"
+  },
+  {
+    "Path": "super-power-browser-desktop\\Plugin\\PluginVersion.ini",
+    "SHA256": "B1EE6CCB6553AC2B52C02531C25B896EBDE47274E444D3D80D446FC540110C5C"
+  },
+  {
+    "Path": "super-power-browser-desktop\\Plugin\\RXAccountManage.zip",
+    "SHA256": "DC27B0F844E35ECB3412A15F35386432F69AE381B7552227F63EBB8306EC9BDF"
+  },
+  {
+    "Path": "super-power-browser-desktop\\Plugin\\RXMallHelper.zip",
+    "SHA256": "B84B27386BEBAE05ED62E1B0F3912EBAB73FDD493321FC33EBF02B40290D8964"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\BrowserManage\\BrowserHost.js",
+    "SHA256": "50F6A6EE567F071B30579AE53DF7B19DB9E08417907B0C17B9D8BCC0084DAA32"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\BrowserManage\\NativeWindow.js",
+    "SHA256": "15F35B3D45FA7E459BBF1F8687725337DD0041DA77D2DDE981D82DD061636C51"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\Utils\\helperLibLoader.js",
+    "SHA256": "28C8725BF82B85FB46AA4EFC1551A39B8C72E478B359D8B0E4B83033ECC0627D"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\index.js",
+    "SHA256": "A52D735496B4E3286A3F3B7BE06598796993643318243089A0D1E9D5AAF3C06D"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\ipcserver\\NativeMessagePipeCore.cjs",
+    "SHA256": "8320FE671531B20582596E5AEC8F57C174D595AC132BE6330BE019F5D3C05035"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\ipcserver\\NativePipe.js",
+    "SHA256": "6995BAF6A3928D278F4B9FBCC59E3BE978F5D0E0BBAC75D33D71FBAFBC28830A"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\ipcserver\\NativePipeChild.cjs",
+    "SHA256": "0F0F4AEEB46DDF39EBC5E0A21B845D77A2E6ED44187DE06B1CB3CE990357B012"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\ipcserver\\RuxHelper.js",
+    "SHA256": "1269DCBB2494F986EF352948B9B2C99246C8ADAAF07B5DDEE62557A042CDE461"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\model\\InitData.js",
+    "SHA256": "29641B62C68808D06FE54A28C2B72834CCF3414C7CC5F5652141DA043D4D7211"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\module\\SettingsModule.js",
+    "SHA256": "701B1D86F51C4A124E7CE654C686A5D3FD720A0DF75CA121B0206677E12241CB"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\pluginManage\\DesktopBridge.js",
+    "SHA256": "AD13F050E4A65FE55CBB2C18E9DA127FD0954935B0D5C2725283B72B46534139"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\pluginManage\\NetworkInfo.js",
+    "SHA256": "60D68687F5E599A8DA5CB2DAFD37EF62924F23EBE367FF3D4A7FFBC1A42067C5"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\pluginManage\\PluginActivation.js",
+    "SHA256": "E815397BAFCF87648081B22834EBF66216BCFB27265B85FC5677622C38506483"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\pluginManage\\PluginService.js",
+    "SHA256": "258443042071C30239CA7E676656E4DB9D088D61B9C6461CD535F7B3CE136F66"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\pluginManage\\bootstrap.mjs",
+    "SHA256": "7AFD0E1C714B36FA62D63C4C0DAD9B150F1014086A4C0199CA5DBBE8991D49C0"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\services\\ApiClient.js",
+    "SHA256": "5AB2F27636862371B21E5C859AF20E785E5E7DD2DAE49C905D3193EA7BF27EBA"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\services\\WebServer.js",
+    "SHA256": "E04CB3DCC6A55740483DAEA5D139C7B08505C7315DC8F4ED4596E2E1AFAF9CF2"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\zhanfubrowser\\FingerprintConfig.js",
+    "SHA256": "61A4D6EF7A2528114FEA1AEBDFCF1ADF440A03869607DD8D9767ED5BEBF09507"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\main\\zhanfubrowser\\RuxToSbp.js",
+    "SHA256": "B8F0CD3677828692435079E4AE0C4F4E127E7813F524CB4543947321EF787D70"
+  },
+  {
+    "Path": "super-power-browser-desktop\\out\\preload\\index.js",
+    "SHA256": "EC64D323CE0993A2C2EFFE7287829DBD0315C72E17C7823B399D2A6652934AA8"
+  },
+  {
+    "Path": "super-power-browser-desktop\\package-lock.json",
+    "SHA256": "8052315D53877644B54114EE9E2FEA4A46DCB11F855D2D470D0E80EEA769AF67"
+  },
+  {
+    "Path": "super-power-browser-desktop\\package.json",
+    "SHA256": "BE534C9D8AB8342AF50A673BF690C1FA4DB204BE2DA0D466F481CD18F1660348"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\PaymentDialog.vue_vue_type_script_setup_true_lang-CndSwgVl.js",
+    "SHA256": "FE0DD5791924857F6D24B5BDB13FA83CC88A749CFA70D14223E209DD91803857"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\aggregateBuy-AxqYKWlz.js",
+    "SHA256": "BC7E91FC8C36A70F023DFB04DBF1420768EE1B994FBE3358499136CA7D1243C9"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\aggregateBuy.vue_vue_type_script_setup_true_lang-KqC4JcN6.js",
+    "SHA256": "5C06BDBAC5821FB653AD1D5673A7CD4758268EECDAF67DF91D1894B01863CA24"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\buySpeed-E3udjXGQ.js",
+    "SHA256": "6C5C80F7FDCCB0D2343DCDF284BE7F8BF5AA7D896AB0946FADC4FE86426AE9AD"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-7dbT3El2.js",
+    "SHA256": "0865C3336758C2A3AC380303C8E83D1A9F34CA63151C1F7DFF06196317EBAD6D"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-B_ik1CMF.js",
+    "SHA256": "A6D26DCFA47FF5578A2B090273E4455905ED943C94DC9C5F9FE74B94025FF8EA"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-BtVa7EeR.js",
+    "SHA256": "412827A98CBD5A31D570E2A9D6CAC896A2C103EF9721265C21FB6FC70BED7526"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-C2qDuiz5.css",
+    "SHA256": "E004B21A09809C72BAB5A66FC3CAFAB28EF2B195863B4F3AC6B23FFD1F5BC9F3"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-C_u5sMjd.js",
+    "SHA256": "A5C55387CE14FCD9E2F7927CAE495EFFBFFC416061A406402709EF0D0E35653C"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-Cbd-YCev.css",
+    "SHA256": "8CA45B0572B0640ACA2170311BE4D4D44A36275C72229826A143663BA40E51DD"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-Cpm1srkq.js",
+    "SHA256": "293C0D383A5CA4AB0079DE8DC5F716DF979DB4CDCE7D71AD83E40B805146C8F0"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-CrVWd-su.js",
+    "SHA256": "040ABCD9BEE21D09EA51A1E1226E22E331E89D7238C9F93F79E9B6CAA7DCABD8"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-D-8PIsc8.css",
+    "SHA256": "64EC2812B48DF8D2FD0CD8388C7EDA50496CE82A015AB536AA080B9C9AFB5E42"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-MAxLKUA_.css",
+    "SHA256": "6425150B45859C5625BB175B4B91213E6541901FAA24322D56EF1D3151982236"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\index-j0PZBCp4.js",
+    "SHA256": "7A1770AAA62FF4E5D3B6E000B60EC677CDCEB200387248A89C644E3728136848"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\mall.api-Ci6AolSd.js",
+    "SHA256": "9F95013B2FA19C34AFAD580B99BDAE7F3C354FA3F8700F183F20A91C8F0263D2"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\mallManage-UNX5jSiA.js",
+    "SHA256": "DA0384922702E072EE05359B40EA91F9F51E8AE155FAC8CC62C85A4CD5ACEB8B"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\mallManage.vue_vue_type_script_setup_true_lang-D5cnIYdx.js",
+    "SHA256": "EAEBA30C9A8675C889736E3061C76E2E0832657AA38A014C6FFAA47EDC5AFBA2"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\order-RpxNCC62.js",
+    "SHA256": "20BCC97F4CBFE723595261AD62ECAFF429230C94D5CA86AACB5EE73E9CDC6CB9"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\recharge-Dpp-9GNK.js",
+    "SHA256": "2F4673BA4A926E5F657BF079EBCE53C3C548C8E11F2252549060573343857BAE"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\recycleMall-B6X-udaO.js",
+    "SHA256": "68E4A4313DBB35D2993DD1AE8DB615D0FC5363D22124A849A5D5EEA22079060C"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\renew-8LeVRjLC.js",
+    "SHA256": "5524FB5D2125EF9BE659D5B01F975369C449686983A1FD2895151A1EF96F5169"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\assets\\workbook-BsqbxeU2.js",
+    "SHA256": "9BADF1A53EAC405F8CFB5D0C2454902A0B5DBE1C7FFB3077704CD97C805A641E"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\brand-mark.svg",
+    "SHA256": "59C0B9FD08F1B397A280ABE546016E1DA9711C802C64838236B46C50F5ACFCA0"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\favicon.ico",
+    "SHA256": "D5BBEDA3E88343C204A15611E0DF241FCA2B505EB162265AB636735A0A44E9A6"
+  },
+  {
+    "Path": "super-power-browser-desktop\\resources\\web\\index.html",
+    "SHA256": "5AE6BD561273E764A12E8B85D0AFE8F82953181A0E5CB0CC6F14AEE44417310B"
+  },
+  {
+    "Path": "super-power-browser-desktop\\runtime.config.example.json",
+    "SHA256": "44720A80D80301BAF57EB5EDCAFF7CFF0DE343A94EDF6E360B921BE3F8DDAB4D"
+  },
+  {
+    "Path": "super-power-browser-desktop\\scripts\\build.cjs",
+    "SHA256": "8BC52BC8F5D9D02B5CF2EDB7A423F451ACF131DEB68EB346E01B589B7841909E"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\BrowserManage\\BrowserHost.js",
+    "SHA256": "50F6A6EE567F071B30579AE53DF7B19DB9E08417907B0C17B9D8BCC0084DAA32"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\BrowserManage\\NativeWindow.js",
+    "SHA256": "15F35B3D45FA7E459BBF1F8687725337DD0041DA77D2DDE981D82DD061636C51"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\Utils\\helperLibLoader.js",
+    "SHA256": "28C8725BF82B85FB46AA4EFC1551A39B8C72E478B359D8B0E4B83033ECC0627D"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\index.js",
+    "SHA256": "A52D735496B4E3286A3F3B7BE06598796993643318243089A0D1E9D5AAF3C06D"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\ipcserver\\NativeMessagePipeCore.cjs",
+    "SHA256": "8320FE671531B20582596E5AEC8F57C174D595AC132BE6330BE019F5D3C05035"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\ipcserver\\NativePipe.js",
+    "SHA256": "6995BAF6A3928D278F4B9FBCC59E3BE978F5D0E0BBAC75D33D71FBAFBC28830A"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\ipcserver\\NativePipeChild.cjs",
+    "SHA256": "0F0F4AEEB46DDF39EBC5E0A21B845D77A2E6ED44187DE06B1CB3CE990357B012"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\ipcserver\\RuxHelper.js",
+    "SHA256": "1269DCBB2494F986EF352948B9B2C99246C8ADAAF07B5DDEE62557A042CDE461"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\model\\InitData.js",
+    "SHA256": "29641B62C68808D06FE54A28C2B72834CCF3414C7CC5F5652141DA043D4D7211"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\module\\SettingsModule.js",
+    "SHA256": "701B1D86F51C4A124E7CE654C686A5D3FD720A0DF75CA121B0206677E12241CB"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\pluginManage\\DesktopBridge.js",
+    "SHA256": "AD13F050E4A65FE55CBB2C18E9DA127FD0954935B0D5C2725283B72B46534139"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\pluginManage\\NetworkInfo.js",
+    "SHA256": "60D68687F5E599A8DA5CB2DAFD37EF62924F23EBE367FF3D4A7FFBC1A42067C5"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\pluginManage\\PluginActivation.js",
+    "SHA256": "E815397BAFCF87648081B22834EBF66216BCFB27265B85FC5677622C38506483"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\pluginManage\\PluginService.js",
+    "SHA256": "258443042071C30239CA7E676656E4DB9D088D61B9C6461CD535F7B3CE136F66"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\pluginManage\\bootstrap.mjs",
+    "SHA256": "7AFD0E1C714B36FA62D63C4C0DAD9B150F1014086A4C0199CA5DBBE8991D49C0"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\services\\ApiClient.js",
+    "SHA256": "5AB2F27636862371B21E5C859AF20E785E5E7DD2DAE49C905D3193EA7BF27EBA"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\services\\WebServer.js",
+    "SHA256": "E04CB3DCC6A55740483DAEA5D139C7B08505C7315DC8F4ED4596E2E1AFAF9CF2"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\zhanfubrowser\\FingerprintConfig.js",
+    "SHA256": "61A4D6EF7A2528114FEA1AEBDFCF1ADF440A03869607DD8D9767ED5BEBF09507"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\main\\zhanfubrowser\\RuxToSbp.js",
+    "SHA256": "B8F0CD3677828692435079E4AE0C4F4E127E7813F524CB4543947321EF787D70"
+  },
+  {
+    "Path": "super-power-browser-desktop\\src\\preload\\index.js",
+    "SHA256": "EC64D323CE0993A2C2EFFE7287829DBD0315C72E17C7823B399D2A6652934AA8"
+  },
+  {
+    "Path": "super-power-browser-desktop\\win\\x64\\ruxbrowser_helper.dll",
+    "SHA256": "F5CED32DD834CC5E978FC1984BA095F2E04052C43C83AAD7AA6F3BA557CE6966"
+  },
+  {
+    "Path": "super-power-browser-plugins\\.gitignore",
+    "SHA256": "546A92F179824D08FE5ED9DB575327CF08183619B1A379630047A29918D7D3B4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\README.md",
+    "SHA256": "B288834DC958E5B16E963EE5F1ED711C44C152C2801C60A372AD64FCC05813C8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\delivery.json",
+    "SHA256": "20F2AFF8ACABE5A1965999BE44B44577809692492F72DF4500F5FCE8FCD83F0B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\Plugin\\RXAccountManage.zip",
+    "SHA256": "D62356849BA5B65671E69C78F1C61DC77D21382A9CF5516764EF295FBF36D859"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\Plugin\\RXMallHelper.zip",
+    "SHA256": "AD0915880835AD320839261FC2B85AC29052D4E12670386D6B9CFA5FB2C4E76E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\auto-fill.6b810132.js",
+    "SHA256": "5E5ACFDF21EA8E2294A328A834B89FD32B63B9B179CFD8FA4592153D4E01198A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\icon128.plasmo.74615566.png",
+    "SHA256": "5F30DA291B12EE9FFA8E6384AABDE7489AAB652099E310A725A60A9D798E916F"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\icon16.plasmo.72e8bd43.png",
+    "SHA256": "911FD77F7365E541E58EA2BAA1E74C6A6C266376EE09AF09646A0F51AF96EDF5"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\icon32.plasmo.328efb7e.png",
+    "SHA256": "10E66F51D2800897867823500F88C10F50BD137E69FEC5A73E3A683DEC16DBDE"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\icon48.plasmo.1b6c20e9.png",
+    "SHA256": "E00C595C1D0ABD3A59D048D7AD46D3545302D414DE3AD2E4CC75D9ED5C13FD93"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\icon64.plasmo.6c816b7b.png",
+    "SHA256": "46F9612FD196B3A518EE950E6B3F811C50B8B74731CB69DFEE5C11862B534A0E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\manifest.json",
+    "SHA256": "221652076751CE7BBAA3FFF0418900D02EF287427DFB8BAB0E2D5508EEDF08CA"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\page-enhance.3374a2ac.js",
+    "SHA256": "D8E57E04389C6CA81BE74B2414BBDFB626C9C899B0FB12551093A59A88CEC5E6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\popup.642a35ae.js",
+    "SHA256": "8FB2B262EF6039F2400B755164E578DC566208E6855D01CAF2378E6AEBF7B166"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\popup.9eac0145.css",
+    "SHA256": "14384E4C59B0C12586E8D3485775CBD9834FD51B84A3BFC13D7618A89F001A38"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\popup.html",
+    "SHA256": "2D5603C4DCBADE47069CD45DD1BCA9055ACD05CE4239184C3099773B99A6F7DC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\runtime\\build.json",
+    "SHA256": "B1580800EE5B01F167DDAD1506610AFE15D035CF6731A4B5DC478A0E84EC65C4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\runtime\\guard.mjs",
+    "SHA256": "4092AFA35D35685F406DE7F4EEC065C20CDC4F3F1A30CB836C837144C05958E4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\runtime\\status.css",
+    "SHA256": "11AA2D80414DFCAE1BAADE10CF90B012422375A88E23825854E7CDBD4FC8BA80"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\runtime\\status.html",
+    "SHA256": "1757FD5F5D704E7488CDB184075D0388450EFB501B52B59E7C47564E4D2BAFC2"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\runtime\\status.js",
+    "SHA256": "04E489CC617FAA6929F55A2493131006DD9AA625484F37ED4EDB553890168FFB"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXAccountManage\\static\\background\\index.js",
+    "SHA256": "F4A1AFB64BA82B0FC82CA2BC341A93DBC07F2A34CDFD84F58C2ED08BD3B78A7D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\avatar_extracted-BsUeCeNq.png",
+    "SHA256": "B87E80F486427D61317810F1D7BA067168B03564779F386EE4041E6CA8FD9D0D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\bgCheck-eVhq9yDi.png",
+    "SHA256": "D6C5E0FC6A9D4AF055E9B9162092A0A162926793B50145AE5504CE043CC317A0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\china-BKPdZLOY.png",
+    "SHA256": "07B7A83FF9C40B1297ED0005BA3EF2B76825BDE1D0518B8708A5F944FA87CAE2"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\contentPage-B99IICC6.css",
+    "SHA256": "49081A378C038B0EA6CB0DCE459647B99A1ABC29462B360701D28CFAFCC808BD"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\cookieTool-DPB18h0-.css",
+    "SHA256": "AE1FFC281891B15E4AF5EC5F4F2BAF980312B34BD10F304AC47207F3D851D14A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\favicon-DLMzPxpA.ico",
+    "SHA256": "60EEAC573D2BF5742B96EFE32C0BCF39000452B70AE8CC3821C29AC20CEF2037"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\imageLogoHelp-DBeOKbnV.png",
+    "SHA256": "F9FBDDF1D2800F176E951D222D31D292CD6B1D37B207C73E4D423F02C3D884AC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\index-CQbTeKEe.css",
+    "SHA256": "FF3850ABE2C8F7607C04BF8017DC302E9BD4839A186AB27CA7EF3EEA8A4B9E85"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\loading-CB8X-BI1.css",
+    "SHA256": "C685197DA81F1C5E6E807A7F9CEEEFEBAB52B952C7CBC6CEC9C8BC274B58DD75"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\popup-D6m9WDyY.css",
+    "SHA256": "650290AC50B85E8DF0B963875F444259C2B3BC60364D9FC35C5A21DE8F0A15AC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\rz-B_nyHGUT.png",
+    "SHA256": "59CDAADE0216CBB833E944B62E2E7EC2FD6E180F4ACC30EBACD0E18E399471A1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\visitRules-BFxzzTOM.css",
+    "SHA256": "6631FCD292010359A0123E57C2317509B4BA80C1BEF46F328032B9F49F49259A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\assets\\warning-CCZc5Fll.css",
+    "SHA256": "D5C76999E8E4E1FAD3910517AFF4245FCB59A25E62890757AA049AF0DF5DFFFD"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\background\\service-worker.js",
+    "SHA256": "5AB5701050B1C184297A547483C52587C49C54B95C08CD5E58EED6048B0B6808"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\contentPage\\check.html",
+    "SHA256": "FB72EBE9979C9DF8B364C66EC0AC5EA824BCA0497DFC9260B5EC7F858023D884"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\contentPage\\contentPage.js",
+    "SHA256": "F738118B010AFC7E3A43A7FBA69881FDA84159DD6DD43445FAE9503B247C95FA"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\Collection.js",
+    "SHA256": "1EA8EFD15EF0256766899BAD8D5D6347AA760890D0C3CA6D2C7F9C0D36C796E8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\amazon_intercept.js",
+    "SHA256": "227492B9EB4177A640477712C3F8DF5DE66BB5282F1513CAC72624F440A35EE3"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\amazon_passkey_page.js",
+    "SHA256": "1B34D4E835DC5FA0A7E5DF84267CF015F04E2D7EACFBAA98C102522915300125"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\amazon_signin.js",
+    "SHA256": "775479E31638AE63D3E7D731F24108D309239124F85BE1CA3ACF9E500683B97D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\content.js",
+    "SHA256": "DACBB52C0FCA3D40856BBC558BDB9A20166C18161AFF468EF12FE20B7E57A025"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\dynamicIpWarning.js",
+    "SHA256": "348F5090EF277B557F6BC96F8058968DE9117CA5C06E82F6700289A286D80F25"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\element.js",
+    "SHA256": "A162E8CA2E952C95B3351CBA64723A1E3E22139BC235B0D94477FCEA9393A64A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\message.js",
+    "SHA256": "71807C3989EE40397CDC7FBDD3CB68EEB86613F1DEBF58AE753E5D2A153B0C46"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\platform\\siteCookieAutomation.js",
+    "SHA256": "6F771B22AFC41EC5EFC5A31D5FFC7AFF7C6678993814249B0D9FB49FE4C479D7"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\platform\\siteLoginAutomation.js",
+    "SHA256": "5B12D49B76B195F66167922BEF0E657827E12EA1AAEE58558194DDF09DD7BF2B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\translate.js",
+    "SHA256": "CF2D0519958C2BDCFBC0C0A95662704A1B9F632CCA717AC16D14BDFBA7202964"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\content\\twoStep.js",
+    "SHA256": "459F75F6DCCA8F441E64F350F5DA18BE6C8534C3CBE9C0C04A047D944E3837E7"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\cookieTool\\cookieTool.js",
+    "SHA256": "3A1D194E46E7A05F87C6D8110735A9DBEB884BD072310A584669967E6ADB6ECC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\cookieTool\\index.html",
+    "SHA256": "A1D6610E5D833D79C9C556BF1DE60670BC3C4997527A38094BF6050319A8A011"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\avatar_extracted.png",
+    "SHA256": "B87E80F486427D61317810F1D7BA067168B03564779F386EE4041E6CA8FD9D0D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\bgCheck.png",
+    "SHA256": "D6C5E0FC6A9D4AF055E9B9162092A0A162926793B50145AE5504CE043CC317A0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\copy.png",
+    "SHA256": "1C9861CBE94CAD93660C31149B7D37AD3E650C01B6923EA11E7D2A0C0B02467B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\dynamic-ip-arrow.png",
+    "SHA256": "E78781A4B0ED59AC07B174D89819B62AFCA7B1C93EE5A4DACB0A3FE3ECB34E33"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\dynamic-ip-warning.png",
+    "SHA256": "9D7C404A88E776FD8EA7A485C63E1416AF7D757C01E636461FF02FF6691BBFB1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\favicon.ico",
+    "SHA256": "60EEAC573D2BF5742B96EFE32C0BCF39000452B70AE8CC3821C29AC20CEF2037"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\guide-decoration.png",
+    "SHA256": "2E8E1E5F1138FFCF4B3835C0F0AAD93E8D9A9DEE3F75A70D2D7B6949D346E6E9"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\hard-drive-2-fill.png",
+    "SHA256": "A4B33424D903CBB868E33C7F5557D346C7C6CCBDA3F51827E756802FA25E28E4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\icon.png",
+    "SHA256": "F815983F7D49AA81D93FE41152ECDD508FB58E1F8A3E6172A4A450D83A6856E8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\icon.xcf",
+    "SHA256": "5D743CE4921F82B8767189205AB249828A75E2FD05B319576AC4313E13CE9596"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\icon128.png",
+    "SHA256": "9D94237003CFF6DBF5C7A09F4AC7D50556E7EA9A699BF57661D52E349A7481A9"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\icon16.png",
+    "SHA256": "5A08B6B099A0919BF0EB9A3378AAD191396F0E1AB6C9C359FA3B8E313261A352"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\icon19.png",
+    "SHA256": "0410BAACD498C3B22B64147ED9C494810DB4F5D8C9C5803E61FC08418C4E167E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\icon48.png",
+    "SHA256": "B60961CA6AFCAF9E4A4A33CA8355090B61B7C54D207739DD910F476E7C8E05D5"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\imageLogoHelp.png",
+    "SHA256": "F9FBDDF1D2800F176E951D222D31D292CD6B1D37B207C73E4D423F02C3D884AC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\load.png",
+    "SHA256": "164F55B7D0A9126CA1DDFAA80CD04345FEED86E97A4A4F87F373BCAEEB68AFE8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\network-line.png",
+    "SHA256": "49576F5D863F92AEEBBA60C68D2F7CFF9824EEBC3942D4505DD77815A325DFCD"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\remind.mp3",
+    "SHA256": "64CCCF76A1A9E1A5A8A9A16CB4716BED0D4F534AEF6F168523F73FFD09E9F386"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\rz.png",
+    "SHA256": "59CDAADE0216CBB833E944B62E2E7EC2FD6E180F4ACC30EBACD0E18E399471A1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\update.png",
+    "SHA256": "6C96B309E2EE089F992F1B31033F5B94E8762EB8166D3AEE9E0EA88C8E0D24A6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\icons\\warn.png",
+    "SHA256": "D4436B33DC2995CD238B3CF0EBC8C779A7F5B6B5510CB16CC2B407B411F4FCE7"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\js\\api.js",
+    "SHA256": "DC6DA580B86586BEB1D4198A83A5076FBE1F97A15F4E66A6B990CD0D3074FAFB"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\js\\auth.js",
+    "SHA256": "371174A4F1F129880CCBFADF6C38605B8B2DA8AD7969FBB07D527D33A01BB1FA"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\js\\common.js",
+    "SHA256": "BC58D03F9726F39756BF0A8B941F22BC21E8583D65C6C8D8B089B2D3BCF9200F"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\js\\cookies.js",
+    "SHA256": "3FC9C204392FB09EFEE63D3BF8BF87D628C9CF12232574F0EC9A794B4711B8A1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\js\\desktop-bridge.js",
+    "SHA256": "C7E4E524B883943EB801566DA85AF350E19F285FBD5D3D037B459668A6BD120D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\js\\locales.js",
+    "SHA256": "7EE390B7E09643163193AA7680432B9877DCC3A9DE510E7C89482665F118C093"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\js\\vendor-commonjs.js",
+    "SHA256": "3F116F00627A05F04D99AA225E5B2EACCBEEDC1FE2F3A0406677A9814A26078C"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\js\\vendor-elements.js",
+    "SHA256": "4A20EAFF19E372C81AAA74B5945D9F11925AB25F51396D37C1F10DCEA64BB167"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\js\\vendor-pinia.js",
+    "SHA256": "134875DB910835D75090D8FAD684A99E81697836976A39990F5CD98C6314762B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\js\\vendor-vue.js",
+    "SHA256": "D72C397EEEF58FE0C17603BBDB85F45D8509694F0B4B712EFD24B99C13A81E85"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\loading\\loading.html",
+    "SHA256": "6E1FEF719098133C725CD8EBE042AA24EBF86B3D03FD91BEA3CFE3E07135E654"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\loading\\loading.js",
+    "SHA256": "6FB0461CB0C66E49DF26052430129FB0025AF0007CB73F4683AFE177737A5A98"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\manifest.json",
+    "SHA256": "D6ED61AA5526F3878E8A4657A12E2E73FD8E55569515B377A951755C20B65C80"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\newtab\\newtab.html",
+    "SHA256": "3CE4C1817A7CC787ACC2BDF19FABDCF341B785820D1ADBE06650DC2F413E9F54"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\newtab\\newtab.js",
+    "SHA256": "4435EB49D334C5471374131E6961DD4E91BE38EE361BAF9A99E57A2E658C370E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\popup\\index.html",
+    "SHA256": "A6AA5D0AA6310ED63E772B1E80262CF8B20D22B5D7B41F0CC85614A299086E27"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\popup\\popup.js",
+    "SHA256": "DD1B43917A251CFCD791F86A0DB65A40AC6B7DAA36A1B7E77F7CA6041FBD9B1B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\runtime\\build.json",
+    "SHA256": "DCC46357C0ECA9B03120502B32837A02529461CBF94DD430004F0F56D3AFE9B3"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\runtime\\guard.mjs",
+    "SHA256": "4092AFA35D35685F406DE7F4EEC065C20CDC4F3F1A30CB836C837144C05958E4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\runtime\\status.css",
+    "SHA256": "11AA2D80414DFCAE1BAADE10CF90B012422375A88E23825854E7CDBD4FC8BA80"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\runtime\\status.html",
+    "SHA256": "1757FD5F5D704E7488CDB184075D0388450EFB501B52B59E7C47564E4D2BAFC2"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\runtime\\status.js",
+    "SHA256": "04E489CC617FAA6929F55A2493131006DD9AA625484F37ED4EDB553890168FFB"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\visitRules\\visitRules.js",
+    "SHA256": "D566417041BE82A00FEBE954F479EF40B8BCB1D82E5F8AC55DE7F9036763EA78"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\visitRules\\warning.html",
+    "SHA256": "73024FA8F10F68812CC5A7C92F5D1F0F02C2641C8DC2863944132892B8BF15E4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\warning\\warning.html",
+    "SHA256": "196B1C4A2EF14366E40C9F548599A920FC61A1C6C018C3E0F6CA1703B53ED2B0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\RXMallHelper\\warning\\warning.js",
+    "SHA256": "A8B21C62297C07E2B81595A9C0658BE656CFFBC9B24A1EA83344FCF93D13FCF8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\legacy\\build-report.json",
+    "SHA256": "E7918AB5B303907A0D2F744E50C3B8993C9BF886ECED1FBAD9B6FEB88CB653DC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\Plugin\\RXAccountManage.zip",
+    "SHA256": "DC27B0F844E35ECB3412A15F35386432F69AE381B7552227F63EBB8306EC9BDF"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\Plugin\\RXMallHelper.zip",
+    "SHA256": "B84B27386BEBAE05ED62E1B0F3912EBAB73FDD493321FC33EBF02B40290D8964"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\auto-fill.6b810132.js",
+    "SHA256": "5E5ACFDF21EA8E2294A328A834B89FD32B63B9B179CFD8FA4592153D4E01198A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\app.ico",
+    "SHA256": "D5BBEDA3E88343C204A15611E0DF241FCA2B505EB162265AB636735A0A44E9A6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\check-background.svg",
+    "SHA256": "984201A05395612FEB0A2F04DB9D83D2DE1C868FFC70875B90917BD2E2EAEAA7"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\icon-128.png",
+    "SHA256": "0FF607E705A0E07896D92FB071C0BAAC9BE9FBE1DE39CB1A75EFE28CBB8F6B37"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\icon-16.png",
+    "SHA256": "5D11D5926C5D51FA3D9E8E2EDCBED1A13D5F6445AC9732A76491F6EEF66E2074"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\icon-19.png",
+    "SHA256": "66A45F52CD54BBA8D4DDE2419662E444BDBE523D932698262CFC381E608E77B3"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\icon-24.png",
+    "SHA256": "3952A8812D3F132700B39E24DACE2ECC89A42751EC86AA3EE6948E747E4119A3"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\icon-256.png",
+    "SHA256": "CEA52071BCE29E2010BFD04D9F6BEEAAC1B26006D14148908FD385AFC196D1D8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\icon-32.png",
+    "SHA256": "3CE63E0A885DD291A35DBFFE2E2CD0ED29CC89A90AFA73D07C089A97032BBC6F"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\icon-48.png",
+    "SHA256": "6058DE5DF9D292E18E3D45058F6E6426CD1163560600F570952FE335B2136B78"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\icon-64.png",
+    "SHA256": "54F3D5579107455BCC51B40A3ACD90AE99AA7B96E570382995C7F6EDF585D204"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\mark.svg",
+    "SHA256": "59C0B9FD08F1B397A280ABE546016E1DA9711C802C64838236B46C50F5ACFCA0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\plugin.css",
+    "SHA256": "E3D573E5D1FA290907F7C8A42BF497A422765EBF7398613663B4788D1F60E7E2"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\branding\\wordmark.svg",
+    "SHA256": "F3D255F52131216DF1E5E604D3ABB3FB4A0B24A139C05743574E061017FAC0A5"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\icon128.plasmo.74615566.png",
+    "SHA256": "0FF607E705A0E07896D92FB071C0BAAC9BE9FBE1DE39CB1A75EFE28CBB8F6B37"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\icon16.plasmo.72e8bd43.png",
+    "SHA256": "5D11D5926C5D51FA3D9E8E2EDCBED1A13D5F6445AC9732A76491F6EEF66E2074"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\icon32.plasmo.328efb7e.png",
+    "SHA256": "3CE63E0A885DD291A35DBFFE2E2CD0ED29CC89A90AFA73D07C089A97032BBC6F"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\icon48.plasmo.1b6c20e9.png",
+    "SHA256": "6058DE5DF9D292E18E3D45058F6E6426CD1163560600F570952FE335B2136B78"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\icon64.plasmo.6c816b7b.png",
+    "SHA256": "54F3D5579107455BCC51B40A3ACD90AE99AA7B96E570382995C7F6EDF585D204"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\manifest.json",
+    "SHA256": "6F7BB2E098EDD7FA0D1884FEAED10315E72CAFDE798A1E355D148B60F3AFC042"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\page-enhance.3374a2ac.js",
+    "SHA256": "D8E57E04389C6CA81BE74B2414BBDFB626C9C899B0FB12551093A59A88CEC5E6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\popup.642a35ae.js",
+    "SHA256": "128E827B2EEACF13FD12AC4DD933BD98248D8FBA4ED68FE86A9786D8A40C5E30"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\popup.9eac0145.css",
+    "SHA256": "14384E4C59B0C12586E8D3485775CBD9834FD51B84A3BFC13D7618A89F001A38"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\popup.html",
+    "SHA256": "027889F55CE87C302A213BCA45A2606C7BAA1384D1349F7DE9CCC1B89F76647A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\runtime\\access-denied.html",
+    "SHA256": "C59F97462384BDB61698EC494CD6F76470326009142B809964D503680E318AC8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\runtime\\access-policy.mjs",
+    "SHA256": "D3F491E3500A54C25EB226836B63538389160AC7C7905A7A3663F2EA54811F2F"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\runtime\\build.json",
+    "SHA256": "DD68B9ADD0EA93311C5BDA7773299FB5900ABF2F38797F3E4688D6B3BA26461C"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\runtime\\guard.mjs",
+    "SHA256": "0179BD49A5B1F7815B4B5E25DC7BA1F13626BC52355D473F78E8114E5844CB2E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\runtime\\status.css",
+    "SHA256": "11AA2D80414DFCAE1BAADE10CF90B012422375A88E23825854E7CDBD4FC8BA80"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\runtime\\status.html",
+    "SHA256": "E132F5AE18C5729919FD666C27DDBC7748F8D7EF93FA4BE637131D67573D67B5"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\runtime\\status.js",
+    "SHA256": "04E489CC617FAA6929F55A2493131006DD9AA625484F37ED4EDB553890168FFB"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXAccountManage\\static\\background\\index.js",
+    "SHA256": "7869415F2C45F2C0D614EB98DCE903F4189A6922D6A2F97E31764B40580098F2"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\avatar_extracted-BsUeCeNq.png",
+    "SHA256": "0FF607E705A0E07896D92FB071C0BAAC9BE9FBE1DE39CB1A75EFE28CBB8F6B37"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\bgCheck-eVhq9yDi.png",
+    "SHA256": "D6C5E0FC6A9D4AF055E9B9162092A0A162926793B50145AE5504CE043CC317A0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\china-BKPdZLOY.png",
+    "SHA256": "07B7A83FF9C40B1297ED0005BA3EF2B76825BDE1D0518B8708A5F944FA87CAE2"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\contentPage-B99IICC6.css",
+    "SHA256": "EE5910DC40D1B31797E5C66D5B49750FCBA31C37581571C5BE3662F500DD14E6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\cookieTool-DPB18h0-.css",
+    "SHA256": "AE1FFC281891B15E4AF5EC5F4F2BAF980312B34BD10F304AC47207F3D851D14A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\favicon-DLMzPxpA.ico",
+    "SHA256": "D5BBEDA3E88343C204A15611E0DF241FCA2B505EB162265AB636735A0A44E9A6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\imageLogoHelp-DBeOKbnV.png",
+    "SHA256": "0FF607E705A0E07896D92FB071C0BAAC9BE9FBE1DE39CB1A75EFE28CBB8F6B37"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\index-CQbTeKEe.css",
+    "SHA256": "FF3850ABE2C8F7607C04BF8017DC302E9BD4839A186AB27CA7EF3EEA8A4B9E85"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\loading-CB8X-BI1.css",
+    "SHA256": "C685197DA81F1C5E6E807A7F9CEEEFEBAB52B952C7CBC6CEC9C8BC274B58DD75"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\popup-D6m9WDyY.css",
+    "SHA256": "650290AC50B85E8DF0B963875F444259C2B3BC60364D9FC35C5A21DE8F0A15AC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\rz-B_nyHGUT.png",
+    "SHA256": "59CDAADE0216CBB833E944B62E2E7EC2FD6E180F4ACC30EBACD0E18E399471A1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\visitRules-BFxzzTOM.css",
+    "SHA256": "6631FCD292010359A0123E57C2317509B4BA80C1BEF46F328032B9F49F49259A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\assets\\warning-CCZc5Fll.css",
+    "SHA256": "D5C76999E8E4E1FAD3910517AFF4245FCB59A25E62890757AA049AF0DF5DFFFD"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\background\\service-worker.js",
+    "SHA256": "D22AE8B507441C0D5116AAFD3B234D282F62F951488ADDE37AC436328F85A827"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\app.ico",
+    "SHA256": "D5BBEDA3E88343C204A15611E0DF241FCA2B505EB162265AB636735A0A44E9A6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\check-background.svg",
+    "SHA256": "984201A05395612FEB0A2F04DB9D83D2DE1C868FFC70875B90917BD2E2EAEAA7"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\icon-128.png",
+    "SHA256": "0FF607E705A0E07896D92FB071C0BAAC9BE9FBE1DE39CB1A75EFE28CBB8F6B37"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\icon-16.png",
+    "SHA256": "5D11D5926C5D51FA3D9E8E2EDCBED1A13D5F6445AC9732A76491F6EEF66E2074"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\icon-19.png",
+    "SHA256": "66A45F52CD54BBA8D4DDE2419662E444BDBE523D932698262CFC381E608E77B3"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\icon-24.png",
+    "SHA256": "3952A8812D3F132700B39E24DACE2ECC89A42751EC86AA3EE6948E747E4119A3"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\icon-256.png",
+    "SHA256": "CEA52071BCE29E2010BFD04D9F6BEEAAC1B26006D14148908FD385AFC196D1D8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\icon-32.png",
+    "SHA256": "3CE63E0A885DD291A35DBFFE2E2CD0ED29CC89A90AFA73D07C089A97032BBC6F"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\icon-48.png",
+    "SHA256": "6058DE5DF9D292E18E3D45058F6E6426CD1163560600F570952FE335B2136B78"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\icon-64.png",
+    "SHA256": "54F3D5579107455BCC51B40A3ACD90AE99AA7B96E570382995C7F6EDF585D204"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\mark.svg",
+    "SHA256": "59C0B9FD08F1B397A280ABE546016E1DA9711C802C64838236B46C50F5ACFCA0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\plugin.css",
+    "SHA256": "E3D573E5D1FA290907F7C8A42BF497A422765EBF7398613663B4788D1F60E7E2"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\branding\\wordmark.svg",
+    "SHA256": "F3D255F52131216DF1E5E604D3ABB3FB4A0B24A139C05743574E061017FAC0A5"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\contentPage\\check.html",
+    "SHA256": "B7178AB036FBE3AF129809FD62CA890971C680757EA905E3C7AB78485BF70975"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\contentPage\\contentPage.js",
+    "SHA256": "0846C36CFF3F8973B80309E98B0558EA2DBC8736DBE51930FB57461CD2374D38"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\Collection.js",
+    "SHA256": "24D78F9D4C96BEA5334D85476DEDCDC69803FF4DD2A46B01244063B15382AB5A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\amazon_intercept.js",
+    "SHA256": "227492B9EB4177A640477712C3F8DF5DE66BB5282F1513CAC72624F440A35EE3"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\amazon_passkey_page.js",
+    "SHA256": "1B34D4E835DC5FA0A7E5DF84267CF015F04E2D7EACFBAA98C102522915300125"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\amazon_signin.js",
+    "SHA256": "775479E31638AE63D3E7D731F24108D309239124F85BE1CA3ACF9E500683B97D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\content.js",
+    "SHA256": "DACBB52C0FCA3D40856BBC558BDB9A20166C18161AFF468EF12FE20B7E57A025"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\dynamicIpWarning.js",
+    "SHA256": "348F5090EF277B557F6BC96F8058968DE9117CA5C06E82F6700289A286D80F25"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\element.js",
+    "SHA256": "A162E8CA2E952C95B3351CBA64723A1E3E22139BC235B0D94477FCEA9393A64A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\message.js",
+    "SHA256": "71807C3989EE40397CDC7FBDD3CB68EEB86613F1DEBF58AE753E5D2A153B0C46"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\platform\\siteCookieAutomation.js",
+    "SHA256": "6F771B22AFC41EC5EFC5A31D5FFC7AFF7C6678993814249B0D9FB49FE4C479D7"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\platform\\siteLoginAutomation.js",
+    "SHA256": "D8243BA130177CB0D4C73DF9A9B2B7B64F87DE7ED8609CF620A036CFA547414C"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\translate.js",
+    "SHA256": "CF2D0519958C2BDCFBC0C0A95662704A1B9F632CCA717AC16D14BDFBA7202964"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\content\\twoStep.js",
+    "SHA256": "5030B64F0FC9531AC963E2A21677CC6AED6AE1CB2006782DDA310B980F241458"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\cookieTool\\cookieTool.js",
+    "SHA256": "3A1D194E46E7A05F87C6D8110735A9DBEB884BD072310A584669967E6ADB6ECC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\cookieTool\\index.html",
+    "SHA256": "8E327D607FB381EE8D4AB69167DD384A096A7A8CE75E051CFB6F0B6EBCF14FB4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\avatar_extracted.png",
+    "SHA256": "B87E80F486427D61317810F1D7BA067168B03564779F386EE4041E6CA8FD9D0D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\bgCheck.png",
+    "SHA256": "D6C5E0FC6A9D4AF055E9B9162092A0A162926793B50145AE5504CE043CC317A0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\copy.png",
+    "SHA256": "1C9861CBE94CAD93660C31149B7D37AD3E650C01B6923EA11E7D2A0C0B02467B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\dynamic-ip-arrow.png",
+    "SHA256": "E78781A4B0ED59AC07B174D89819B62AFCA7B1C93EE5A4DACB0A3FE3ECB34E33"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\dynamic-ip-warning.png",
+    "SHA256": "9D7C404A88E776FD8EA7A485C63E1416AF7D757C01E636461FF02FF6691BBFB1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\favicon.ico",
+    "SHA256": "D5BBEDA3E88343C204A15611E0DF241FCA2B505EB162265AB636735A0A44E9A6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\guide-decoration.png",
+    "SHA256": "2E8E1E5F1138FFCF4B3835C0F0AAD93E8D9A9DEE3F75A70D2D7B6949D346E6E9"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\hard-drive-2-fill.png",
+    "SHA256": "A4B33424D903CBB868E33C7F5557D346C7C6CCBDA3F51827E756802FA25E28E4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\icon.png",
+    "SHA256": "0FF607E705A0E07896D92FB071C0BAAC9BE9FBE1DE39CB1A75EFE28CBB8F6B37"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\icon.xcf",
+    "SHA256": "5D743CE4921F82B8767189205AB249828A75E2FD05B319576AC4313E13CE9596"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\icon128.png",
+    "SHA256": "0FF607E705A0E07896D92FB071C0BAAC9BE9FBE1DE39CB1A75EFE28CBB8F6B37"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\icon16.png",
+    "SHA256": "5D11D5926C5D51FA3D9E8E2EDCBED1A13D5F6445AC9732A76491F6EEF66E2074"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\icon19.png",
+    "SHA256": "66A45F52CD54BBA8D4DDE2419662E444BDBE523D932698262CFC381E608E77B3"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\icon48.png",
+    "SHA256": "6058DE5DF9D292E18E3D45058F6E6426CD1163560600F570952FE335B2136B78"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\imageLogoHelp.png",
+    "SHA256": "F9FBDDF1D2800F176E951D222D31D292CD6B1D37B207C73E4D423F02C3D884AC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\load.png",
+    "SHA256": "164F55B7D0A9126CA1DDFAA80CD04345FEED86E97A4A4F87F373BCAEEB68AFE8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\network-line.png",
+    "SHA256": "49576F5D863F92AEEBBA60C68D2F7CFF9824EEBC3942D4505DD77815A325DFCD"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\remind.mp3",
+    "SHA256": "64CCCF76A1A9E1A5A8A9A16CB4716BED0D4F534AEF6F168523F73FFD09E9F386"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\rz.png",
+    "SHA256": "59CDAADE0216CBB833E944B62E2E7EC2FD6E180F4ACC30EBACD0E18E399471A1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\update.png",
+    "SHA256": "6C96B309E2EE089F992F1B31033F5B94E8762EB8166D3AEE9E0EA88C8E0D24A6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\icons\\warn.png",
+    "SHA256": "D4436B33DC2995CD238B3CF0EBC8C779A7F5B6B5510CB16CC2B407B411F4FCE7"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\js\\api.js",
+    "SHA256": "E33A6F9F1434AF5866587874B9037A304D452D0A1DE52B44308EC52E17554E36"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\js\\auth.js",
+    "SHA256": "7FF2BF31267ECA940068460FEFFB413023BD4FC5D0C15B44965768FC2F0A9B25"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\js\\common.js",
+    "SHA256": "388FEA07F65681C0C913E23C8A04F117E1425B671E04EECBDE4ABDC8E133CAE4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\js\\cookies.js",
+    "SHA256": "3FC9C204392FB09EFEE63D3BF8BF87D628C9CF12232574F0EC9A794B4711B8A1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\js\\desktop-bridge.js",
+    "SHA256": "DEFD50B8DE5776644F14E2190C860FFE233857ABD26A7055A1DF7442B6CFF59D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\js\\locales.js",
+    "SHA256": "C054917EEA57C2C51CFD9A1C3D103223886081AD71764FC1DBEFD84610FC1EA1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\js\\vendor-commonjs.js",
+    "SHA256": "3F116F00627A05F04D99AA225E5B2EACCBEEDC1FE2F3A0406677A9814A26078C"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\js\\vendor-elements.js",
+    "SHA256": "4A20EAFF19E372C81AAA74B5945D9F11925AB25F51396D37C1F10DCEA64BB167"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\js\\vendor-pinia.js",
+    "SHA256": "134875DB910835D75090D8FAD684A99E81697836976A39990F5CD98C6314762B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\js\\vendor-vue.js",
+    "SHA256": "D72C397EEEF58FE0C17603BBDB85F45D8509694F0B4B712EFD24B99C13A81E85"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\loading\\loading.html",
+    "SHA256": "56534BD66AD393137AA15653265D3F3A486AA41C1CCF4D8F71D014B279905606"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\loading\\loading.js",
+    "SHA256": "6FB0461CB0C66E49DF26052430129FB0025AF0007CB73F4683AFE177737A5A98"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\manifest.json",
+    "SHA256": "B1A6A4AC3FE5962D39A2BD76B29EDFCAF7A0210295D0DB5AF61A8150C8527E99"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\newtab\\newtab.html",
+    "SHA256": "5D5B9274D29E264C652480970E15FA060DDB9CFD2B219C84311CBEF55F02322A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\newtab\\newtab.js",
+    "SHA256": "4435EB49D334C5471374131E6961DD4E91BE38EE361BAF9A99E57A2E658C370E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\popup\\index.html",
+    "SHA256": "50BA8EAA22F5C1F22E898C2B8B3DAF752FC37615ED2FBF37835F438E3A70502A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\popup\\popup.js",
+    "SHA256": "DD1B43917A251CFCD791F86A0DB65A40AC6B7DAA36A1B7E77F7CA6041FBD9B1B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\runtime\\access-denied.html",
+    "SHA256": "FD7B702C55F38EA862548408015087FACF4542F0762E59B09D7744D3DF893438"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\runtime\\access-policy.mjs",
+    "SHA256": "D3F491E3500A54C25EB226836B63538389160AC7C7905A7A3663F2EA54811F2F"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\runtime\\build.json",
+    "SHA256": "307C458266F5E6F866A6ED674F7227448FC8193DE51921384F2C33B52AD9F445"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\runtime\\desktop-adapter.mjs",
+    "SHA256": "0F078A9A7E7DB63FC2456998BEB5D699D34B295E276731B68FAACAD77AC72305"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\runtime\\guard.mjs",
+    "SHA256": "0179BD49A5B1F7815B4B5E25DC7BA1F13626BC52355D473F78E8114E5844CB2E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\runtime\\status.css",
+    "SHA256": "11AA2D80414DFCAE1BAADE10CF90B012422375A88E23825854E7CDBD4FC8BA80"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\runtime\\status.html",
+    "SHA256": "C2DA95809D3D69F616536D67F296E0F660E19C9B0EEA1D4C89098DD542DFA4CA"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\runtime\\status.js",
+    "SHA256": "04E489CC617FAA6929F55A2493131006DD9AA625484F37ED4EDB553890168FFB"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\visitRules\\visitRules.js",
+    "SHA256": "D566417041BE82A00FEBE954F479EF40B8BCB1D82E5F8AC55DE7F9036763EA78"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\visitRules\\warning.html",
+    "SHA256": "0EB374E1B64CFF0692F969E659C7F5263B5B25B4BC1BB7A54FCF4D946ABEEF4B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\warning\\warning.html",
+    "SHA256": "1E55B927AE36C455CFE74816662C6CF1F3C82BA3725C73E118A392B2840C3FAE"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\RXMallHelper\\warning\\warning.js",
+    "SHA256": "A8B21C62297C07E2B81595A9C0658BE656CFFBC9B24A1EA83344FCF93D13FCF8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\dist\\superpower\\build-report.json",
+    "SHA256": "E59AAADB963D8EC79EC2DD2F82D49934269E27644D12226C761F71AD699C5ED2"
+  },
+  {
+    "Path": "super-power-browser-plugins\\docs\\api-contract.json",
+    "SHA256": "636F219685584E90603465AC5F9F655B7AB45107EC574400FF7F0E70C8635171"
+  },
+  {
+    "Path": "super-power-browser-plugins\\docs\\features.md",
+    "SHA256": "5738424B74850A6983319FFDB13784B93EA43CFAE1254DAD773FAF3E2C0B90B4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\docs\\integration.md",
+    "SHA256": "3EBE4CD373C88B5138F99337D5978D941995B989AFD87F4C00AA41FD4B7BBC24"
+  },
+  {
+    "Path": "super-power-browser-plugins\\docs\\recovered-inventory.json",
+    "SHA256": "329AF5E7C4B8F37C0AB31F4A2A7F6F5CEAC51700C02000FB878A3698FAD371AC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\docs\\source-provenance.json",
+    "SHA256": "296CB549DE4D03C0C08E49FC4A1FFE1C9634776E2ECC245A4088512FF1ACAC34"
+  },
+  {
+    "Path": "super-power-browser-plugins\\docs\\validation.md",
+    "SHA256": "6A99B893AE227E6C6F5BEFB9B36BFF34F559B64F48D6BBAE04E3F9C4BD9D685A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\examples\\bootstrap.example.json",
+    "SHA256": "8570A96FA243B7AEF721F61A5A7872E8BEF82A99CC8D18318128E250743B6EFD"
+  },
+  {
+    "Path": "super-power-browser-plugins\\examples\\build.example.json",
+    "SHA256": "B87F99960715F7598AC539E0EF3853D12604B17A61FDEF49D0057507EB0BBE1B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\lib\\bookmark-lifecycle.mjs",
+    "SHA256": "16B6F5B811C6D18F7B66AF8711C23D8609AF8F01207019E935F3782DF1E58CBB"
+  },
+  {
+    "Path": "super-power-browser-plugins\\lib\\bootstrap.mjs",
+    "SHA256": "7AFD0E1C714B36FA62D63C4C0DAD9B150F1014086A4C0199CA5DBBE8991D49C0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\lib\\branding.mjs",
+    "SHA256": "C0108DC98BAA74CCDE08331C621CFE6AA3D4E1B381A3373D1D1D520EF6DB125B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\lib\\build-config.mjs",
+    "SHA256": "3FC6344B31E13EB057FF2AC9B7A04AA51968DF37A38A8F991EFA852F660D74CF"
+  },
+  {
+    "Path": "super-power-browser-plugins\\lib\\network-presentation.mjs",
+    "SHA256": "C1CF8835FBEDADFCC6363E4FF1DAC7F21FA1EF3318D763BC8AE0126D38B5C22B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\lib\\zip.mjs",
+    "SHA256": "579FF8978CD97F09DC46D6775CA5C8D0471C511A588EFDC5ED64FDDABB73A035"
+  },
+  {
+    "Path": "super-power-browser-plugins\\package.json",
+    "SHA256": "94D3917B0277FC7BDD732D446A0BBA56FEC04EDCB6A8F93BC8DBB1F03FA382F5"
+  },
+  {
+    "Path": "super-power-browser-plugins\\runtime\\access-denied.html",
+    "SHA256": "E9D036F84FFE8AE49A2743680E979FDEF21A0FD5C73ED178F9764F590AB89795"
+  },
+  {
+    "Path": "super-power-browser-plugins\\runtime\\access-policy.mjs",
+    "SHA256": "D3F491E3500A54C25EB226836B63538389160AC7C7905A7A3663F2EA54811F2F"
+  },
+  {
+    "Path": "super-power-browser-plugins\\runtime\\desktop-adapter.mjs",
+    "SHA256": "0F078A9A7E7DB63FC2456998BEB5D699D34B295E276731B68FAACAD77AC72305"
+  },
+  {
+    "Path": "super-power-browser-plugins\\runtime\\guard.mjs",
+    "SHA256": "0179BD49A5B1F7815B4B5E25DC7BA1F13626BC52355D473F78E8114E5844CB2E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\runtime\\status.css",
+    "SHA256": "11AA2D80414DFCAE1BAADE10CF90B012422375A88E23825854E7CDBD4FC8BA80"
+  },
+  {
+    "Path": "super-power-browser-plugins\\runtime\\status.html",
+    "SHA256": "1757FD5F5D704E7488CDB184075D0388450EFB501B52B59E7C47564E4D2BAFC2"
+  },
+  {
+    "Path": "super-power-browser-plugins\\runtime\\status.js",
+    "SHA256": "04E489CC617FAA6929F55A2493131006DD9AA625484F37ED4EDB553890168FFB"
+  },
+  {
+    "Path": "super-power-browser-plugins\\scripts\\build.mjs",
+    "SHA256": "3CAB22690EB534C96A753A53C981880DCC436E5D087A4CD2180DAE1E44474EC6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\scripts\\catalog.mjs",
+    "SHA256": "531A7980A3A6238DFD018904A26B3AA99C04E20BEEC3B1834035EFC198846071"
+  },
+  {
+    "Path": "super-power-browser-plugins\\scripts\\prepare-profile.mjs",
+    "SHA256": "1EF8A4DC0341B6EBFFFD046264592D3C5BA00EE81F0968083777A84EB0C94690"
+  },
+  {
+    "Path": "super-power-browser-plugins\\scripts\\verify.mjs",
+    "SHA256": "29E2640ADE5F05FD4A32BC1BB2175E63A219CC3016D03E959E402FD134EF87AE"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\auto-fill.6b810132.js",
+    "SHA256": "C71267359C221C0A0C48FA08D09A5A222622AB35353903C7DDCF957339F7C5F3"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\icon128.plasmo.74615566.png",
+    "SHA256": "5F30DA291B12EE9FFA8E6384AABDE7489AAB652099E310A725A60A9D798E916F"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\icon16.plasmo.72e8bd43.png",
+    "SHA256": "911FD77F7365E541E58EA2BAA1E74C6A6C266376EE09AF09646A0F51AF96EDF5"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\icon32.plasmo.328efb7e.png",
+    "SHA256": "10E66F51D2800897867823500F88C10F50BD137E69FEC5A73E3A683DEC16DBDE"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\icon48.plasmo.1b6c20e9.png",
+    "SHA256": "E00C595C1D0ABD3A59D048D7AD46D3545302D414DE3AD2E4CC75D9ED5C13FD93"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\icon64.plasmo.6c816b7b.png",
+    "SHA256": "46F9612FD196B3A518EE950E6B3F811C50B8B74731CB69DFEE5C11862B534A0E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\manifest.json",
+    "SHA256": "B454F2390F3648AABE48A653145A83CED274EDB46119BBE7848A497F7D3BA789"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\page-enhance.3374a2ac.js",
+    "SHA256": "B15E24541FA4C26C8387D39B1D4A6D45F79C689E53BB8FF10D25B7E90B020F3D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\popup.642a35ae.js",
+    "SHA256": "492FACB98DE1FC671354A527D3E113D0D8DFC5E61D18804399B4E932033CAD9A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\popup.9eac0145.css",
+    "SHA256": "14384E4C59B0C12586E8D3485775CBD9834FD51B84A3BFC13D7618A89F001A38"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\popup.html",
+    "SHA256": "2D5603C4DCBADE47069CD45DD1BCA9055ACD05CE4239184C3099773B99A6F7DC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\account\\static\\background\\index.js",
+    "SHA256": "CBF7F7EDD4EC73B02A64F1C025028B86BC5440F01750B01C5990F91121E5E3F8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\avatar_extracted-BsUeCeNq.png",
+    "SHA256": "B87E80F486427D61317810F1D7BA067168B03564779F386EE4041E6CA8FD9D0D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\bgCheck-eVhq9yDi.png",
+    "SHA256": "D6C5E0FC6A9D4AF055E9B9162092A0A162926793B50145AE5504CE043CC317A0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\china-BKPdZLOY.png",
+    "SHA256": "07B7A83FF9C40B1297ED0005BA3EF2B76825BDE1D0518B8708A5F944FA87CAE2"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\contentPage-B99IICC6.css",
+    "SHA256": "49081A378C038B0EA6CB0DCE459647B99A1ABC29462B360701D28CFAFCC808BD"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\cookieTool-DPB18h0-.css",
+    "SHA256": "AE1FFC281891B15E4AF5EC5F4F2BAF980312B34BD10F304AC47207F3D851D14A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\favicon-DLMzPxpA.ico",
+    "SHA256": "60EEAC573D2BF5742B96EFE32C0BCF39000452B70AE8CC3821C29AC20CEF2037"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\imageLogoHelp-DBeOKbnV.png",
+    "SHA256": "F9FBDDF1D2800F176E951D222D31D292CD6B1D37B207C73E4D423F02C3D884AC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\index-CQbTeKEe.css",
+    "SHA256": "FF3850ABE2C8F7607C04BF8017DC302E9BD4839A186AB27CA7EF3EEA8A4B9E85"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\loading-CB8X-BI1.css",
+    "SHA256": "C685197DA81F1C5E6E807A7F9CEEEFEBAB52B952C7CBC6CEC9C8BC274B58DD75"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\popup-D6m9WDyY.css",
+    "SHA256": "650290AC50B85E8DF0B963875F444259C2B3BC60364D9FC35C5A21DE8F0A15AC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\rz-B_nyHGUT.png",
+    "SHA256": "59CDAADE0216CBB833E944B62E2E7EC2FD6E180F4ACC30EBACD0E18E399471A1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\visitRules-BFxzzTOM.css",
+    "SHA256": "6631FCD292010359A0123E57C2317509B4BA80C1BEF46F328032B9F49F49259A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\assets\\warning-CCZc5Fll.css",
+    "SHA256": "D5C76999E8E4E1FAD3910517AFF4245FCB59A25E62890757AA049AF0DF5DFFFD"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\background\\service-worker.js",
+    "SHA256": "BDB5F107F1162C23BEF136CF7E89145BF1C58B20B2D4B33C3DFF0B26BF7BA2C5"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\contentPage\\check.html",
+    "SHA256": "FB72EBE9979C9DF8B364C66EC0AC5EA824BCA0497DFC9260B5EC7F858023D884"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\contentPage\\contentPage.js",
+    "SHA256": "F738118B010AFC7E3A43A7FBA69881FDA84159DD6DD43445FAE9503B247C95FA"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\Collection.js",
+    "SHA256": "1EA8EFD15EF0256766899BAD8D5D6347AA760890D0C3CA6D2C7F9C0D36C796E8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\amazon_intercept.js",
+    "SHA256": "227492B9EB4177A640477712C3F8DF5DE66BB5282F1513CAC72624F440A35EE3"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\amazon_passkey_page.js",
+    "SHA256": "1B34D4E835DC5FA0A7E5DF84267CF015F04E2D7EACFBAA98C102522915300125"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\amazon_signin.js",
+    "SHA256": "775479E31638AE63D3E7D731F24108D309239124F85BE1CA3ACF9E500683B97D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\content.js",
+    "SHA256": "DACBB52C0FCA3D40856BBC558BDB9A20166C18161AFF468EF12FE20B7E57A025"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\dynamicIpWarning.js",
+    "SHA256": "348F5090EF277B557F6BC96F8058968DE9117CA5C06E82F6700289A286D80F25"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\element.js",
+    "SHA256": "A162E8CA2E952C95B3351CBA64723A1E3E22139BC235B0D94477FCEA9393A64A"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\message.js",
+    "SHA256": "71807C3989EE40397CDC7FBDD3CB68EEB86613F1DEBF58AE753E5D2A153B0C46"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\platform\\siteCookieAutomation.js",
+    "SHA256": "6F771B22AFC41EC5EFC5A31D5FFC7AFF7C6678993814249B0D9FB49FE4C479D7"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\platform\\siteLoginAutomation.js",
+    "SHA256": "5B12D49B76B195F66167922BEF0E657827E12EA1AAEE58558194DDF09DD7BF2B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\translate.js",
+    "SHA256": "CF2D0519958C2BDCFBC0C0A95662704A1B9F632CCA717AC16D14BDFBA7202964"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\content\\twoStep.js",
+    "SHA256": "459F75F6DCCA8F441E64F350F5DA18BE6C8534C3CBE9C0C04A047D944E3837E7"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\cookieTool\\cookieTool.js",
+    "SHA256": "3A1D194E46E7A05F87C6D8110735A9DBEB884BD072310A584669967E6ADB6ECC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\cookieTool\\index.html",
+    "SHA256": "A1D6610E5D833D79C9C556BF1DE60670BC3C4997527A38094BF6050319A8A011"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\avatar_extracted.png",
+    "SHA256": "B87E80F486427D61317810F1D7BA067168B03564779F386EE4041E6CA8FD9D0D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\bgCheck.png",
+    "SHA256": "D6C5E0FC6A9D4AF055E9B9162092A0A162926793B50145AE5504CE043CC317A0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\copy.png",
+    "SHA256": "1C9861CBE94CAD93660C31149B7D37AD3E650C01B6923EA11E7D2A0C0B02467B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\dynamic-ip-arrow.png",
+    "SHA256": "E78781A4B0ED59AC07B174D89819B62AFCA7B1C93EE5A4DACB0A3FE3ECB34E33"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\dynamic-ip-warning.png",
+    "SHA256": "9D7C404A88E776FD8EA7A485C63E1416AF7D757C01E636461FF02FF6691BBFB1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\favicon.ico",
+    "SHA256": "60EEAC573D2BF5742B96EFE32C0BCF39000452B70AE8CC3821C29AC20CEF2037"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\guide-decoration.png",
+    "SHA256": "2E8E1E5F1138FFCF4B3835C0F0AAD93E8D9A9DEE3F75A70D2D7B6949D346E6E9"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\hard-drive-2-fill.png",
+    "SHA256": "A4B33424D903CBB868E33C7F5557D346C7C6CCBDA3F51827E756802FA25E28E4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\icon.png",
+    "SHA256": "F815983F7D49AA81D93FE41152ECDD508FB58E1F8A3E6172A4A450D83A6856E8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\icon.xcf",
+    "SHA256": "5D743CE4921F82B8767189205AB249828A75E2FD05B319576AC4313E13CE9596"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\icon128.png",
+    "SHA256": "9D94237003CFF6DBF5C7A09F4AC7D50556E7EA9A699BF57661D52E349A7481A9"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\icon16.png",
+    "SHA256": "5A08B6B099A0919BF0EB9A3378AAD191396F0E1AB6C9C359FA3B8E313261A352"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\icon19.png",
+    "SHA256": "0410BAACD498C3B22B64147ED9C494810DB4F5D8C9C5803E61FC08418C4E167E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\icon48.png",
+    "SHA256": "B60961CA6AFCAF9E4A4A33CA8355090B61B7C54D207739DD910F476E7C8E05D5"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\imageLogoHelp.png",
+    "SHA256": "F9FBDDF1D2800F176E951D222D31D292CD6B1D37B207C73E4D423F02C3D884AC"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\load.png",
+    "SHA256": "164F55B7D0A9126CA1DDFAA80CD04345FEED86E97A4A4F87F373BCAEEB68AFE8"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\network-line.png",
+    "SHA256": "49576F5D863F92AEEBBA60C68D2F7CFF9824EEBC3942D4505DD77815A325DFCD"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\remind.mp3",
+    "SHA256": "64CCCF76A1A9E1A5A8A9A16CB4716BED0D4F534AEF6F168523F73FFD09E9F386"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\rz.png",
+    "SHA256": "59CDAADE0216CBB833E944B62E2E7EC2FD6E180F4ACC30EBACD0E18E399471A1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\update.png",
+    "SHA256": "6C96B309E2EE089F992F1B31033F5B94E8762EB8166D3AEE9E0EA88C8E0D24A6"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\icons\\warn.png",
+    "SHA256": "D4436B33DC2995CD238B3CF0EBC8C779A7F5B6B5510CB16CC2B407B411F4FCE7"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\js\\api.js",
+    "SHA256": "DC6DA580B86586BEB1D4198A83A5076FBE1F97A15F4E66A6B990CD0D3074FAFB"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\js\\auth.js",
+    "SHA256": "371174A4F1F129880CCBFADF6C38605B8B2DA8AD7969FBB07D527D33A01BB1FA"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\js\\common.js",
+    "SHA256": "BC58D03F9726F39756BF0A8B941F22BC21E8583D65C6C8D8B089B2D3BCF9200F"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\js\\cookies.js",
+    "SHA256": "3FC9C204392FB09EFEE63D3BF8BF87D628C9CF12232574F0EC9A794B4711B8A1"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\js\\desktop-bridge.js",
+    "SHA256": "C7E4E524B883943EB801566DA85AF350E19F285FBD5D3D037B459668A6BD120D"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\js\\locales.js",
+    "SHA256": "7EE390B7E09643163193AA7680432B9877DCC3A9DE510E7C89482665F118C093"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\js\\vendor-commonjs.js",
+    "SHA256": "3F116F00627A05F04D99AA225E5B2EACCBEEDC1FE2F3A0406677A9814A26078C"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\js\\vendor-elements.js",
+    "SHA256": "4A20EAFF19E372C81AAA74B5945D9F11925AB25F51396D37C1F10DCEA64BB167"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\js\\vendor-pinia.js",
+    "SHA256": "134875DB910835D75090D8FAD684A99E81697836976A39990F5CD98C6314762B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\js\\vendor-vue.js",
+    "SHA256": "D72C397EEEF58FE0C17603BBDB85F45D8509694F0B4B712EFD24B99C13A81E85"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\loading\\loading.html",
+    "SHA256": "6E1FEF719098133C725CD8EBE042AA24EBF86B3D03FD91BEA3CFE3E07135E654"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\loading\\loading.js",
+    "SHA256": "6FB0461CB0C66E49DF26052430129FB0025AF0007CB73F4683AFE177737A5A98"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\manifest.json",
+    "SHA256": "75FE073B2E644099E68D3D8989684F23BD0A4B14CF9E4E7FED6276C02C15B3AD"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\newtab\\newtab.html",
+    "SHA256": "3CE4C1817A7CC787ACC2BDF19FABDCF341B785820D1ADBE06650DC2F413E9F54"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\newtab\\newtab.js",
+    "SHA256": "4435EB49D334C5471374131E6961DD4E91BE38EE361BAF9A99E57A2E658C370E"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\popup\\index.html",
+    "SHA256": "A6AA5D0AA6310ED63E772B1E80262CF8B20D22B5D7B41F0CC85614A299086E27"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\popup\\popup.js",
+    "SHA256": "DD1B43917A251CFCD791F86A0DB65A40AC6B7DAA36A1B7E77F7CA6041FBD9B1B"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\visitRules\\visitRules.js",
+    "SHA256": "D566417041BE82A00FEBE954F479EF40B8BCB1D82E5F8AC55DE7F9036763EA78"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\visitRules\\warning.html",
+    "SHA256": "73024FA8F10F68812CC5A7C92F5D1F0F02C2641C8DC2863944132892B8BF15E4"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\warning\\warning.html",
+    "SHA256": "196B1C4A2EF14366E40C9F548599A920FC61A1C6C018C3E0F6CA1703B53ED2B0"
+  },
+  {
+    "Path": "super-power-browser-plugins\\src\\mall\\warning\\warning.js",
+    "SHA256": "A8B21C62297C07E2B81595A9C0658BE656CFFBC9B24A1EA83344FCF93D13FCF8"
+  },
+  {
+    "Path": "super-power-browser-server\\.env.example",
+    "SHA256": "14FF2E9DB54AD5490EDEA5D78A0DA80E921F2C679D1262B9BC6178C42959B343"
+  },
+  {
+    "Path": "super-power-browser-server\\.gitignore",
+    "SHA256": "689EE3F98EC2F87B415FEFE432F6CF15781B278FFB5063A7586E37C8987C517A"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\pom.xml",
+    "SHA256": "994543B9D19955492D54EA91B0D933D5B989D64EBFDBE9CC5C3CFBDF60648565"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\src\\main\\java\\com\\superpower\\browser\\api\\ApiApplication.java",
+    "SHA256": "1100AE37D4EE89769448E5E7971D40B7D67AF8F0B4E2193CEE22DFF4411D448E"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\src\\main\\java\\com\\superpower\\browser\\api\\AuthController.java",
+    "SHA256": "13EBA6F7971E17472280C721844F7F7B9A0FB47849F6107FD77C3E7DAD2B539A"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\src\\main\\java\\com\\superpower\\browser\\api\\BillingController.java",
+    "SHA256": "D4E2731A0D0B31639C0A53FFA60BA111A2CE977A863AD4412321DED1C50D4A81"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\src\\main\\java\\com\\superpower\\browser\\api\\DeviceController.java",
+    "SHA256": "8337063BFC7249A24142002DC563EEF38F87235AA30E2A8D06867B07098ECCA7"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\src\\main\\java\\com\\superpower\\browser\\api\\EnvironmentController.java",
+    "SHA256": "74765835592DB64A14025ECAFADF354717FBE0EBE2F67011B68171B0389B6E9F"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\src\\main\\java\\com\\superpower\\browser\\api\\Errors.java",
+    "SHA256": "D69D9418CC93BC1487613986CB88A3EC48A609F01ED7A118D90E53703FA80C08"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\src\\main\\java\\com\\superpower\\browser\\api\\ExtensionController.java",
+    "SHA256": "0B85085D93FF3A69E2644796300518DCFA569D094D3E17B9678021872CA09F64"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\src\\main\\java\\com\\superpower\\browser\\api\\RuntimeController.java",
+    "SHA256": "2506CFCFC60E24CA77209E5D2178F5ECAA74AF9A37ACFA83DFDE854889D599C0"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\src\\main\\java\\com\\superpower\\browser\\api\\SecurityConfig.java",
+    "SHA256": "E2C7F24A58561E46D32BEC63B964417121E1BE69CF01183AE3ABC3DA803D4217"
+  },
+  {
+    "Path": "super-power-browser-server\\api\\target\\api-0.1.0.jar",
+    "SHA256": "84FF101CD25A817B6460D5FC67893CDEF6E944118A1898150FA1F1B39C86D91D"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\pom.xml",
+    "SHA256": "9E5F03D0304C6697F362C346AFDEBBF9B93FD048D086A39E0A1E307095C78C1B"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\auth\\Actor.java",
+    "SHA256": "4FF19F4BC2885C3CD5BACE74C5C4363D29D5944A9DCC33BF01132ACB8A196C96"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\auth\\AuthRepository.java",
+    "SHA256": "6B37CBE42A2CC4FA1A3100137CB35385F2B26CCD13F7792C56903A11ECA02C21"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\auth\\AuthService.java",
+    "SHA256": "5DE1C8E7C1EEED2BC4355DCEA4C845121B43A344F478C40A01EFC74F901AE576"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\auth\\Bootstrap.java",
+    "SHA256": "CA2B298636F78F6B79195018E14390188854455C07A1A2763830DCCA27CC8F06"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\auth\\MemberDirectory.java",
+    "SHA256": "5C30C82CC029153E3957779FBA337AA4BBC5B20353CC83C8703F3DDB9EA15F62"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\billing\\BackgroundOperations.java",
+    "SHA256": "3B7D1F7D0BD4845F1DC12C439E637BABA052F9057532BD14977033ABF6D753BA"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\billing\\BillingRepository.java",
+    "SHA256": "3B2BCDA9676E0CA51BFA26B61191E80A5342254C4A72C5CD50EFA6AC48BD205A"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\billing\\BillingService.java",
+    "SHA256": "0ACC82434057F197BB408D8ACEBCA1A53A8F87CD9DACB5EB282260A9060A3AC3"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\billing\\DeliveryTransactions.java",
+    "SHA256": "A14083FB476AC6072057A5F3A7F2B7EBA27668C2AFBE59B21B9E1C5851BA830C"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\billing\\OrderTransactions.java",
+    "SHA256": "2EC163FCAB869485E389783FA28D08BA34C7B5E883A3FF51B43D2D6B31147928"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\billing\\PaymentGateway.java",
+    "SHA256": "C574E5BA522B0F8FC48211C6CD544E0DD6097819F33805859F0D6B0D295C7545"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\billing\\TaskRepository.java",
+    "SHA256": "68B49937B9C5D131A26E084AA4CAC7BE1BA5F53D22B5F4F6F0DB9686539CE939"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\billing\\UnavailablePaymentGateway.java",
+    "SHA256": "A373C457FC94839BB935E6667FE5411AA96F131748D255322E51B2B0DEACA266"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\billing\\WalletAccounts.java",
+    "SHA256": "ACDF1D4D8819858B089F8427F403739F4F4A703A260551F1D4321544B8460F66"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\device\\DeviceAccess.java",
+    "SHA256": "15A1558E7A5567A88F14B2B13A4CC169B82B569EE5BC84DA98006579C4EE5D70"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\device\\DeviceDeliveryRepository.java",
+    "SHA256": "A21CC9149C8E7792A43C6E1D51589B275AA46267F07FB80EEE5437E9EE844FAE"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\device\\DeviceFulfillment.java",
+    "SHA256": "8ECBF167DE09125B4F49115E213B0E54028E1F2DF0A72BDADA853E172B60A276"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\device\\DeviceImportService.java",
+    "SHA256": "A4F98AF0DEB4C7FB3607BFC5505DB3E92CFE421E90027CE1BFE33796D209690B"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\device\\DeviceRepository.java",
+    "SHA256": "3809B79C78233166778DA39C9BEEBE0A7802067E06519C960FF6D800E724FE4A"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\device\\DeviceService.java",
+    "SHA256": "AF57947F71E95B20D8AE5A29AAF0BB59613321E18AF96931B652982BDEC774FB"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\device\\DeviceSupplier.java",
+    "SHA256": "BC3A10DDAAA6AC89BDEAA128B0F41DA415B77678C3CC124DA91A2288580A7E5F"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\device\\UnavailableDeviceSupplier.java",
+    "SHA256": "68BC46E84CC89FFFB4E6AE205A1A8FD358DED5C363A27C8975DD15A9FE62DAE5"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\environment\\EnvironmentRepository.java",
+    "SHA256": "D6C90696B701CD5E2F28240207EF92865A861CEEE84C274DAABA7B406F21E12C"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\environment\\EnvironmentService.java",
+    "SHA256": "B8FC3DAA394ED0441476C5995B620C74FB8E0986591723B0CD41E5DB7F9C4683"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\environment\\FingerprintSettings.java",
+    "SHA256": "BA24F2BFDDFEA25F48A85954B2F79A9B1339241D6079B103F264DC541AD550FE"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\extension\\ExtensionCrypto.java",
+    "SHA256": "B043A1BA79A195BC26F2FB86E9381311FECC8255762C4CA2CA0BFFBF1997EBFB"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\extension\\ExtensionDocuments.java",
+    "SHA256": "23C2BA30ADD358BA60964FE4B3552300E9510FA3ABF81476DEDDE1760AE9156D"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\extension\\ExtensionService.java",
+    "SHA256": "4D58CD58982EEAD0999C8663791D95DFEDA1A9D16F218EBCC4201B7C448C60B5"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\extension\\ExtensionSessions.java",
+    "SHA256": "1360FBE479E0436A6CFA8B9CA30AA615E240985E4041364F43135D90D4DB1B78"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\runtime\\LegacyRuntimeAdapter.java",
+    "SHA256": "476CDD1DD5C5820C408093A6450667EC6E877AA06DFCDE4953BF1E87E469D159"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\shared\\AuditRepository.java",
+    "SHA256": "D79AD514AE6434A296A31E31DB56A8BF0A4B267DBE3B90EE62A64DE29633B081"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\shared\\BusinessException.java",
+    "SHA256": "3FEEDA75111E9A8D9E743A803CA778E6D001AE586F3CBE550F5860AECE5E36FA"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\shared\\Data.java",
+    "SHA256": "FEC45D6DBE5DF3CA959CBE02B2EFDA18F127E64D9BCDBF72F4D7910D2A947E58"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\shared\\Db.java",
+    "SHA256": "F38830548521562B228B2DA63975FD8EEEF700D5DDE0F6493AE59AB605E38F95"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\java\\com\\superpower\\browser\\shared\\SecretCipher.java",
+    "SHA256": "526D3F6E6DBBCD6FE33D5F6182129C9F149F03857CF31BCA230DC1AB8BAA201E"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\application.yml",
+    "SHA256": "AB6A05607EBFD0907ED9D28118FFDC130E71695E65FB28ADA8F549DCB8B9EF38"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\db\\migration\\V10__device_network_fields.sql",
+    "SHA256": "DD48DD9655323C6AEA5659DE915FBA71ACFF4DBB30FAFAA2FFF4D9AC46D52780"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\db\\migration\\V1__core.sql",
+    "SHA256": "27DA2347253893E5EE26B3D0B36F9537D55382FDADF2F649D4EBFD9D47E4C131"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\db\\migration\\V2__device_creator.sql",
+    "SHA256": "5334A3E4822B2BC0CD30064E63C9E756F880EFE8598323963C616F6E692C862E"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\db\\migration\\V3__delivery.sql",
+    "SHA256": "70D6852A52C16EA442A3F91C36E1A8C430839662AD2ED0CE05850B029666E094"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\db\\migration\\V4__renewal_consent.sql",
+    "SHA256": "5F6C0C1E94631C866AA50ACA22195132C037F28AC82EF72EB141F0DEF29EAA7E"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\db\\migration\\V5__account_sessions.sql",
+    "SHA256": "F295B7EB03E18188C1664BD5FEA2F94868AA44125895DB65837190F39E9E8620"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\db\\migration\\V6__environment_details.sql",
+    "SHA256": "387B933BED581954FBE34AC6B9F991ADA479F0A9F080FC4560B5C08099CED25A"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\db\\migration\\V7__order_payment_time.sql",
+    "SHA256": "34D7A5381A9302B03AF394704DCF2E34326A5EB2FACA0DB8607260774F24574C"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\db\\migration\\V8__member_role_details.sql",
+    "SHA256": "D2213DC9FD9DA8132590B7BEADE643DDC0C89AB6E6CB4005F38AC5D89141A3E5"
+  },
+  {
+    "Path": "super-power-browser-server\\core\\src\\main\\resources\\db\\migration\\V9__extension_runtime.sql",
+    "SHA256": "246B23245D914CBC248AAD34DB11D977F79269FD5896D2205C92A47A8D424A5C"
+  },
+  {
+    "Path": "super-power-browser-server\\pom.xml",
+    "SHA256": "8AEF5E5DE16BAA91725E1C85918C2BD8A32FDD1CF2E3BCFFCDE080D3D8F676EB"
+  },
+  {
+    "Path": "super-power-browser-server\\scripts\\configure-legacy.ps1",
+    "SHA256": "0B430C34D35263B18ADE0AA953B54324EF61F62B366F5D8132C803EA21BBA747"
+  },
+  {
+    "Path": "super-power-browser-server\\scripts\\start.ps1",
+    "SHA256": "E32F010BE458BDB867A47387EB594DF310C2B30A910EB269A6E8449A169F76E6"
+  },
+  {
+    "Path": "super-power-browser-server\\worker\\pom.xml",
+    "SHA256": "B2B16C70CBE067DF7625A819B07617EA4B8D3898C4D4712376ABE2F90C6781C0"
+  },
+  {
+    "Path": "super-power-browser-server\\worker\\src\\main\\java\\com\\superpower\\browser\\worker\\WorkerApplication.java",
+    "SHA256": "12E54E6A7C19DC0DE8FF6F0309D8C861E8E29F8959FA914E110FC3B275D66F57"
+  },
+  {
+    "Path": "super-power-browser-server\\worker\\target\\worker-0.1.0.jar",
+    "SHA256": "DB1C1C55E63895BD73419EB29823F1BB193DF55E0E5D02C434F448E0A85645CD"
+  },
+  {
+    "Path": "super-power-browser-web\\.gitignore",
+    "SHA256": "C9AD14763C92C7C9C5A31034E19456B5032BF698DC1FB276362D78B4ACABF117"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\PaymentDialog.vue_vue_type_script_setup_true_lang-CndSwgVl.js",
+    "SHA256": "FE0DD5791924857F6D24B5BDB13FA83CC88A749CFA70D14223E209DD91803857"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\aggregateBuy-AxqYKWlz.js",
+    "SHA256": "BC7E91FC8C36A70F023DFB04DBF1420768EE1B994FBE3358499136CA7D1243C9"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\aggregateBuy.vue_vue_type_script_setup_true_lang-KqC4JcN6.js",
+    "SHA256": "5C06BDBAC5821FB653AD1D5673A7CD4758268EECDAF67DF91D1894B01863CA24"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\buySpeed-E3udjXGQ.js",
+    "SHA256": "6C5C80F7FDCCB0D2343DCDF284BE7F8BF5AA7D896AB0946FADC4FE86426AE9AD"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-7dbT3El2.js",
+    "SHA256": "0865C3336758C2A3AC380303C8E83D1A9F34CA63151C1F7DFF06196317EBAD6D"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-B_ik1CMF.js",
+    "SHA256": "A6D26DCFA47FF5578A2B090273E4455905ED943C94DC9C5F9FE74B94025FF8EA"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-BtVa7EeR.js",
+    "SHA256": "412827A98CBD5A31D570E2A9D6CAC896A2C103EF9721265C21FB6FC70BED7526"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-C2qDuiz5.css",
+    "SHA256": "E004B21A09809C72BAB5A66FC3CAFAB28EF2B195863B4F3AC6B23FFD1F5BC9F3"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-C_u5sMjd.js",
+    "SHA256": "A5C55387CE14FCD9E2F7927CAE495EFFBFFC416061A406402709EF0D0E35653C"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-Cbd-YCev.css",
+    "SHA256": "8CA45B0572B0640ACA2170311BE4D4D44A36275C72229826A143663BA40E51DD"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-Cpm1srkq.js",
+    "SHA256": "293C0D383A5CA4AB0079DE8DC5F716DF979DB4CDCE7D71AD83E40B805146C8F0"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-CrVWd-su.js",
+    "SHA256": "040ABCD9BEE21D09EA51A1E1226E22E331E89D7238C9F93F79E9B6CAA7DCABD8"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-D-8PIsc8.css",
+    "SHA256": "64EC2812B48DF8D2FD0CD8388C7EDA50496CE82A015AB536AA080B9C9AFB5E42"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-MAxLKUA_.css",
+    "SHA256": "6425150B45859C5625BB175B4B91213E6541901FAA24322D56EF1D3151982236"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\index-j0PZBCp4.js",
+    "SHA256": "7A1770AAA62FF4E5D3B6E000B60EC677CDCEB200387248A89C644E3728136848"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\mall.api-Ci6AolSd.js",
+    "SHA256": "9F95013B2FA19C34AFAD580B99BDAE7F3C354FA3F8700F183F20A91C8F0263D2"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\mallManage-UNX5jSiA.js",
+    "SHA256": "DA0384922702E072EE05359B40EA91F9F51E8AE155FAC8CC62C85A4CD5ACEB8B"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\mallManage.vue_vue_type_script_setup_true_lang-D5cnIYdx.js",
+    "SHA256": "EAEBA30C9A8675C889736E3061C76E2E0832657AA38A014C6FFAA47EDC5AFBA2"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\order-RpxNCC62.js",
+    "SHA256": "20BCC97F4CBFE723595261AD62ECAFF429230C94D5CA86AACB5EE73E9CDC6CB9"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\recharge-Dpp-9GNK.js",
+    "SHA256": "2F4673BA4A926E5F657BF079EBCE53C3C548C8E11F2252549060573343857BAE"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\recycleMall-B6X-udaO.js",
+    "SHA256": "68E4A4313DBB35D2993DD1AE8DB615D0FC5363D22124A849A5D5EEA22079060C"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\renew-8LeVRjLC.js",
+    "SHA256": "5524FB5D2125EF9BE659D5B01F975369C449686983A1FD2895151A1EF96F5169"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\assets\\workbook-BsqbxeU2.js",
+    "SHA256": "9BADF1A53EAC405F8CFB5D0C2454902A0B5DBE1C7FFB3077704CD97C805A641E"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\brand-mark.svg",
+    "SHA256": "59C0B9FD08F1B397A280ABE546016E1DA9711C802C64838236B46C50F5ACFCA0"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\favicon.ico",
+    "SHA256": "D5BBEDA3E88343C204A15611E0DF241FCA2B505EB162265AB636735A0A44E9A6"
+  },
+  {
+    "Path": "super-power-browser-web\\dist\\index.html",
+    "SHA256": "5AE6BD561273E764A12E8B85D0AFE8F82953181A0E5CB0CC6F14AEE44417310B"
+  },
+  {
+    "Path": "super-power-browser-web\\index.html",
+    "SHA256": "E260E0648A1F2DAA0550CF526CA27DA088D3554FE78342DC45C0DEECBE3026F4"
+  },
+  {
+    "Path": "super-power-browser-web\\package-lock.json",
+    "SHA256": "DD9FE07EE59F02BCEEC3F8D436489998A0E13AFE0925D08F05A6A57E4208DF26"
+  },
+  {
+    "Path": "super-power-browser-web\\package.json",
+    "SHA256": "38EF14BADAA7D53D102B9B594FDC827D8F59575DA3AA7A0919A7C6C38071E7F4"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\App.vue",
+    "SHA256": "076AA29C68448946528BF7CAF5A4E02DA2B0376C349F894B9355D63AAB0A2787"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\api\\mall\\mall.api.ts",
+    "SHA256": "D09F716D370D2C5DD85B5FD94250DC91D4FCDB10DD42D769830E708BA28EFA06"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\components\\DesktopTitlebar.vue",
+    "SHA256": "6C93E1D2ED893782D3721B6007B234D2F0E60F8E7DE4B67383EF6E4A6DB7D0F3"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\components\\ImportDialog.vue",
+    "SHA256": "E033F95D1D9191E627B314097E0761F6608F301F0F18E4B3856299F986A3893E"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\components\\OwnDeviceImportDialog.vue",
+    "SHA256": "B412F653277328719C8FBA730442024210042BADFFE7BB7CD7AC55ED81FE3B0E"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\components\\PaymentDialog.vue",
+    "SHA256": "B58808E7E7F12C32792D024265C162CFBF1553F2B8DE8CA222C53C5E16A47B7C"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\layout\\components\\Sidebar\\components\\CompanyInfo.vue",
+    "SHA256": "E40F5CC7749D82B16CA90B6134D1BB65832E348952714C128FBAFD6D58246B47"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\layout\\index.vue",
+    "SHA256": "070508FFCED3936B41D1E5D074279B49B163EA4D824E186A4386047A6693B8E4"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\main.ts",
+    "SHA256": "2C669DBD7AD48E25053728460ED4AEA4AB8D55272F6E3DF396DF00B29877C62F"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\router\\index.ts",
+    "SHA256": "81A298181562F551D4A32AA72DFBF74F85EBC91020E11A7175973D285E0D5644"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\router\\modules\\businessCenter\\agentIp.ts",
+    "SHA256": "B53580C1D771FB557E705A66334B4BF7CD9465FDDD31BA3577C2B521132E0E38"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\router\\modules\\businessCenter\\mall.ts",
+    "SHA256": "ACEAE89D7173A45F916A4A4DFBC4B19FC86FF2259DFC76A64EEC60B7E3A3B72B"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\router\\modules\\businessCenter\\money.ts",
+    "SHA256": "D1218D1F9D478C46A21C19C371542AD0F0FC6EF5FEF258EB2C2C0E6C0D6C4354"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\store\\modules\\account.store.ts",
+    "SHA256": "A47C233574D0A9C01EA4F0E60C3F4B53D5DAAB36E15DA0C0830547A75132671A"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\store\\modules\\permission.store.ts",
+    "SHA256": "A33760EFA040C1107882486F1AA8B0A8FE8C57AD58F203BE267E1DE0DB4F4CCA"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\styles\\brand.css",
+    "SHA256": "BD56151A223160A9E75C0B9EF2DBA5E0029D32085C9DE35CB9979052C7C96317"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\styles\\index.css",
+    "SHA256": "C293F4CBDE75F99D9469289009C753E592551FE05E1C99073AB442F5E2BF5450"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\styles\\workbench.css",
+    "SHA256": "1071FFA019C91F218DEDD0C193D3524535FEFD7D9CD1FAE7B9749D5A0A3B6666"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\types\\desktop.d.ts",
+    "SHA256": "F42057E6B82A8603879F68773182999C1C5658E9D4B246D2F4398911E93D6826"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\utils\\export.ts",
+    "SHA256": "842DA738BD833A84209558AA27E03C10B9431D239EDA11603548DF437623A3F8"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\utils\\format.ts",
+    "SHA256": "7F52A817DFF1DCAFDABA609D986378171119AF8E9DC4C031EAD26EF184F1D28A"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\utils\\ownDeviceWorkbook.ts",
+    "SHA256": "ED27B4735DE0D24C9EDD1D613B4A69B35313A331235DEFE5450106A558489218"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\utils\\request.ts",
+    "SHA256": "C1AE11B3225C09056B5F51FDA41EF7494F7945EC4D9C2F2FB52E821F19E4A23A"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\utils\\workbook.ts",
+    "SHA256": "45AE29CA08AC8F721772FA495C01630A10815CC598A70CFB828DB539CDC706AD"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\agentIp\\aggregateBuy.vue",
+    "SHA256": "83638493D19C225111791F98D80B40957D607C87D955AEC18141EB2124356945"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\agentIp\\compoents\\buySpeed.vue",
+    "SHA256": "FB7913B2E0CE4BFBD6B027AAFAF57169540B26615EC1D97EFD7C5C96DCF3DBA4"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\agentIp\\index.vue",
+    "SHA256": "E03B8684857FE7D3E1BF263D5C3AB8110D0443622BBE14A4BBAB8BC42BD60B1C"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\agentIp\\renew.vue",
+    "SHA256": "E74823A6B290298ABEDB20134805D71AC88EA93F08E4EE4E6539501F6D84A4B1"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\company\\index.vue",
+    "SHA256": "595C5588E306AB80ECB1FBB65BCA6882D09168835FB2BD45D328B8A30B05871D"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\dashboard\\assets\\allicon.svg",
+    "SHA256": "E9F06DAC057F689AA21EFA800F4A66631BE56AADBE681CF5A74290C431C482B6"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\dashboard\\index.vue",
+    "SHA256": "036C154226CDF703D4061036302087794B20429DF779B63E7455B7862172309B"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\login\\index.vue",
+    "SHA256": "EF44328CE6D2486E4FC0EF1B9962A93AC20649DFB188BCA42238CC3B4CF13AF7"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\mallManage\\component\\copyMall.vue",
+    "SHA256": "D8D5B0F809FAEB476B6FEB8B6ADB60140BC4CC0A272A1AD502E79FBD1021498E"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\mallManage\\component\\createMall.vue",
+    "SHA256": "8E78B6644F101C16419F8549D3B968A931DB89A3CA67CDCC73E99BB079832F98"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\mallManage\\component\\detailMall.vue",
+    "SHA256": "90AFD103244380235D9313B654B3B5D60D432A801EAB24716A3195B941DC0F0D"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\mallManage\\mallManage.vue",
+    "SHA256": "3023D9B9DD7C31AFD0CA85EA33D0CADE9EFFB9B2A29283EDC8873BC3B3C0DCBF"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\mallManage\\recycleMall.vue",
+    "SHA256": "E9B16F175E79D98D6E0745D9FC4FFA449C037505B76B61E46979C979F13E5C8B"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\money\\order.vue",
+    "SHA256": "B04010E35FFD3C8B39C0FBDA5A47FE2E49A7ED329CAAFB114A5F0A4EB1A92CCE"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\money\\recharge.vue",
+    "SHA256": "510E7EB35419CF36996AEDD91A8273EC8C25CC465185931F47C0E1E518B2DCB6"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\noticeSetting\\index.vue",
+    "SHA256": "8CCE3474670DA1DB4B95DFCF754EF1778CB35FA2CBBA0D158169FE1AD44C0298"
+  },
+  {
+    "Path": "super-power-browser-web\\src\\views\\system\\setCenter\\index.vue",
+    "SHA256": "364A9E68FBF631A66B41EB4EDA66A00AA9E51164E77BF800D7163591C1E933A3"
+  },
+  {
+    "Path": "super-power-browser-web\\tsconfig.json",
+    "SHA256": "B8C484FA0767B69FCDC06B02D5C536BC1EC6745E68DDCF2E57532350DA3CE71F"
+  },
+  {
+    "Path": "super-power-browser-web\\vite.config.ts",
+    "SHA256": "CE75CA6BB1D33E493CC2C5A4AE7553E560F81DE3D4C9ECC88A506D4C86D649C4"
+  }
+]

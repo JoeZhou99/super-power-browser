@@ -1,0 +1,153 @@
+* {
+  padding: 0;
+  margin: 0;
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+body {
+  font-family:
+    Segoe UI,
+    Tahoma,
+    Geneva,
+    Verdana,
+    sans-serif;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  overflow: hidden;
+}
+.loader-container {
+  text-align: center;
+  padding: 2rem;
+  background-color: #ffffff26;
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 40px #00000014;
+  max-width: 90%;
+  width: 400px;
+  position: relative;
+  overflow: hidden;
+  color: #0a51f9;
+}
+h1 {
+  margin-bottom: 1.5rem;
+  font-weight: 300;
+  font-size: 1.8rem;
+}
+.loader {
+  width: 100%;
+  height: 8px;
+  background-color: #ffffff4d;
+  border-radius: 10px;
+  margin: 2rem auto;
+  overflow: hidden;
+  position: relative;
+}
+.loader:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, #fff, #3f78ff);
+  border-radius: 10px;
+  animation: loading 2.5s infinite ease-in-out;
+}
+@keyframes loading {
+  0% {
+    left: -50%;
+    width: 50%;
+  }
+  50% {
+    width: 80%;
+  }
+  to {
+    left: 100%;
+    width: 50%;
+  }
+}
+.logo {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto 1.5rem;
+  position: relative;
+  animation: bounce 1.5s infinite alternate;
+}
+@keyframes bounce {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  to {
+    transform: translateY(-15px) scale(1.05);
+  }
+}
+.spinner {
+  width: 70px;
+  height: 70px;
+  margin: 0 auto 1.5rem;
+  position: relative;
+}
+.spinner-dot {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background-color: #3f78ff;
+  border-radius: 50%;
+  animation: spin 1.5s infinite ease-in-out;
+}
+.spinner-dot:nth-child(1) {
+  top: 0;
+  left: 27px;
+  animation-delay: 0s;
+}
+.spinner-dot:nth-child(2) {
+  top: 10px;
+  right: 10px;
+  animation-delay: 0.2s;
+}
+.spinner-dot:nth-child(3) {
+  bottom: 0;
+  left: 27px;
+  animation-delay: 0.4s;
+}
+.spinner-dot:nth-child(4) {
+  top: 10px;
+  left: 10px;
+  animation-delay: 0.6s;
+}
+@keyframes spin {
+  0%,
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(0.5);
+    opacity: 0.5;
+  }
+}
+.progress-text {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  opacity: 0.8;
+}
+@media (max-width: 500px) {
+  .loader-container {
+    width: 90%;
+    padding: 1.5rem;
+  }
+  h1 {
+    font-size: 1.4rem;
+  }
+  .logo,
+  .spinner {
+    width: 60px;
+    height: 60px;
+  }
+}
