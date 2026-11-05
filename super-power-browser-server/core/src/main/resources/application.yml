@@ -20,12 +20,18 @@ app:
   bootstrap:
     username: ${ADMIN_USERNAME:admin}
     password: ${ADMIN_PASSWORD:}
-  legacy:
-    base-url: ${LEGACY_BASE_URL:}
-    token: ${LEGACY_TOKEN:}
-    encryption-key: ${LEGACY_ENCRYPTION_KEY:}
-    encryption-iv: ${LEGACY_ENCRYPTION_IV:}
   update-manifest: ${UPDATE_MANIFEST_URL:}
+  kernel-manifest: ${KERNEL_MANIFEST_PATH:}
+  kernels:
+    local-root: ${KERNEL_LOCAL_ROOT:}
+    publisher-ids: ${KERNEL_PUBLISHER_IDS:}
+    bucket: ${KERNEL_S3_BUCKET:}
+    endpoint: ${KERNEL_S3_ENDPOINT:}
+    region: ${KERNEL_S3_REGION:us-east-1}
+    prefix: ${KERNEL_S3_PREFIX:kernels}
+    path-style: ${KERNEL_S3_PATH_STYLE:false}
+    allow-http: ${KERNEL_S3_ALLOW_HTTP:false}
+    url-minutes: ${KERNEL_URL_MINUTES:15}
 logging:
   level:
     root: INFO

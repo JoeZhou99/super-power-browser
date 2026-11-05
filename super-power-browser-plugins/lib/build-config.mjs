@@ -10,7 +10,7 @@ export function validateBuildConfig(input = {}) {
     if (mode === 'superpower' && /(^|\.)zhanfubrowser\.com$/i.test(u.hostname)) throw new Error('新项目模式不能连接旧平台服务');
   }
   if (new URL(authOrigin).pathname !== '/') throw new Error('authOrigin 必须为不带路径的源地址');
-  return { mode, apiBase: apiBase.replace(/\/$/, ''), authOrigin: new URL(authOrigin).origin, version: '0.2.7' };
+  return { mode, apiBase: apiBase.replace(/\/$/, ''), authOrigin: new URL(authOrigin).origin, version: '0.3.1' };
 }
 
 export function rewriteServices(text, config) {

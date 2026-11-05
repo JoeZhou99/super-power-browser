@@ -4,12 +4,17 @@ const {execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
 const pluginRoot=path.resolve(root,'../super-power-browser-plugins');
 fs.cpSync(path.resolve(root,'../branding'),path.join(root,'branding'),{recursive:true});
+require('./notification-sound.cjs')(path.join(root,'branding'));
 execFileSync(process.execPath,[path.join(pluginRoot,'scripts/build.mjs')],{stdio:'inherit'});
 fs.cpSync(path.join(pluginRoot,'dist/superpower/Plugin'),path.join(root,'Plugin'),{recursive:true});
 fs.copyFileSync(path.join(pluginRoot,'lib/bootstrap.mjs'),path.join(root,'src/main/pluginManage/bootstrap.mjs'));
 function check(dir){for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const file=path.join(dir,entry.name);if(entry.isDirectory())check(file);else if(file.endsWith('.js'))execFileSync(process.execPath,['--check',file],{stdio:'inherit'});}}
 check(path.join(root,'src'));
-fs.cpSync(path.join(root,'src/main'),path.join(root,'out/main'),{recursive:true});
+const out=path.join(root,'out');
+if(path.dirname(out)!==root)throw new Error('构建目录越界');
+fs.rmSync(out,{recursive:true,force:true});
+const legacy=new Set(['ipcserver','zhanfubrowser','helperLibLoader.js']);
+fs.cpSync(path.join(root,'src/main'),path.join(root,'out/main'),{recursive:true,filter:file=>!legacy.has(path.basename(file))});
 fs.cpSync(path.join(root,'src/preload'),path.join(root,'out/preload'),{recursive:true});
 const web=path.resolve(root,'../super-power-browser-web/dist');
 if(!fs.existsSync(path.join(web,'index.html')))throw new Error('请先构建 super-power-browser-web');

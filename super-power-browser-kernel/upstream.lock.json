@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "provider": "fingerprint-chromium",
+  "version": "144",
+  "fullVersion": "144.0.7559.132",
+  "protocol": "fingerprint-chromium/1",
+  "repository": "https://github.com/adryfish/fingerprint-chromium",
+  "sourceCommit": "831623f2965e34554304caabfc3a1e4e3741db1f",
+  "sourceSha256": "8b12db47301e386fd8f6a78e86f145d18dcda76e9e8ea950ab9e0f7e932cfc63",
+  "sourceUrl": "https://codeload.github.com/adryfish/fingerprint-chromium/zip/831623f2965e34554304caabfc3a1e4e3741db1f",
+  "downloadUrl": "https://github.com/adryfish/fingerprint-chromium/releases/download/144.0.7559.132/ungoogled-chromium_144.0.7559.132-1.1_windows_x64.zip",
+  "sha256": "ab409667ca7ec3d67a060f1ffea8bd3a450b71ed54d17b361024986e7edd0996",
+  "archiveBytes": 176796270,
+  "platform": "win32",
+  "arch": "x64",
+  "license": "BSD-3-Clause; see upstream and Chromium third-party notices",
+  "verifiedAt": "2026-11-04",
+  "legacySupportedVersions": ["126", "130", "137", "140", "144", "150"],
+  "legacyRecommendedVersion": "137"
+}

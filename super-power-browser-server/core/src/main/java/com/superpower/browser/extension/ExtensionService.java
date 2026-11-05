@@ -171,7 +171,7 @@ public class ExtensionService {
         var proxy=devices.launchProxy(c.actor(),text(env,"deviceId"));
         var fp=object(text(env,"fingerprint"));String version=text(env,"kernelVersion");
         String system=switch(text(fp,"os")){case "Mac"->"Macintosh; Intel Mac OS X 10_15_7";case "Android"->"Linux; Android 13; Pixel 7";default->"Windows NT 10.0; Win64; x64";};
-        String ua=text(fp,"userAgent");if(ua.isBlank())ua="Mozilla/5.0 ("+system+") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/"+version+".0.0.0 Safari/537.36";
+        String ua=text(fp,"userAgent");if(ua.isBlank())ua="Mozilla/5.0 ("+system+") AppleWebKit/537.36 (KHTML, like Gecko) Chrome/"+(version.contains(".")?version:version+".0.0.0")+" Safari/537.36";
         var result=new LinkedHashMap<String,Object>();String id=c.environmentId();
         result.put("id",id);result.put("mall_id",id);result.put("mall_name",text(env,"name"));result.put("platformName",text(env,"platform"));result.put("site_info_id",0);
         result.put("mall_account",text(env,"accountName"));result.put("password_key",ExtensionCrypto.encode(text(env,"accountPassword")));result.put("password_k",ExtensionCrypto.encode(text(env,"accountPassword")));

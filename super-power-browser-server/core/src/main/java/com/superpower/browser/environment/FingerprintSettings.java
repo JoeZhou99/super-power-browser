@@ -13,6 +13,14 @@ public final class FingerprintSettings {
         for(String key:List.of("canvas","audio","clientRects","fontMetrics","webglFingerprint","fonts","speechVoices")) choice(fp,key,Set.of("privacy","real"));
         choice(fp,"webRtc",Set.of("privacy","real","replace","disabled"));
         choice(fp,"os",Set.of("Windows","Mac","Android"));
+        if(kernel.split("\\.")[0].equals("144")) {
+            require(!Objects.equals(fp.get("os"),"Android"),400,"当前独立内核不支持 Android 环境");
+            require(!Objects.equals(fp.get("webRtc"),"replace"),400,"当前独立内核尚未实现 WebRTC 指定 IP 替换");
+            require(!fp.containsKey("fontList")&&Objects.toString(fp.get("webglVendor"),"").isBlank()&&Objects.toString(fp.get("webglRenderer"),"").isBlank(),400,"当前独立内核不支持自定义字体列表或 GPU 字符串");
+            boolean canvas=Objects.equals(fp.get("canvas"),"real");
+            require(canvas==Objects.equals(fp.get("fontMetrics"),"real")&&canvas==Objects.equals(fp.get("webglFingerprint"),"real"),400,"Canvas、字体测量和 WebGL 噪声必须使用相同模式");
+        }
+        if(fp.containsKey("hardwareConcurrency"))require(fp.get("hardwareConcurrency") instanceof Number n&&n.doubleValue()==n.intValue()&&n.intValue()>=1&&n.intValue()<=128,400,"CPU 并发数必须是 1 至 128 的整数");
         for(String key:List.of("webgl","hardwareAcceleration","rememberPassword","notifications","autoInjectPasskey","disabledPasskey","accountLock"))
             if(fp.containsKey(key))require(fp.get(key) instanceof Boolean,400,key+" 必须为开关值");
         if(fp.containsKey("resolution"))require(fp.get("resolution") instanceof String s&&s.matches("[1-9][0-9]{2,3}x[1-9][0-9]{2,3}"),400,"窗口尺寸格式不正确");

@@ -41,10 +41,6 @@
         "to": "web"
       },
       {
-        "from": "win/x64",
-        "to": "win/x64"
-      },
-      {
         "from": "Plugin",
         "to": "Plugin"
       }

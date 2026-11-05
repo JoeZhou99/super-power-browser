@@ -52,7 +52,10 @@ export async function boot(chromeApi = chrome, fetcher = fetch) {
     if(endpoint.protocol!=='https:'&&!(endpoint.protocol==='http:'&&['127.0.0.1','localhost'].includes(endpoint.hostname)))throw new Error('插件后台地址必须使用 HTTPS 或本机地址');
     build.compiledApiBase=build.apiBase;build.apiBase=bootstrap.apiBase;build.authOrigin=bootstrap.authOrigin;
   }
-  if (!chromeApi.superbrowser) throw new Error('当前浏览器缺少所需的专用内核接口');
+  if (build.mode === 'superpower') {
+    if (bootstrap.desktopProtocol !== 'super-power-browser-desktop/1' || bootstrap.kernelProtocol !== 'fingerprint-chromium/1') throw new Error('桌面与独立内核启动协议不匹配');
+    if (!chromeApi.storage?.session || !chromeApi.cookies) throw new Error('当前浏览器缺少必需的扩展能力');
+  } else if (!chromeApi.superbrowser) throw new Error('当前浏览器缺少所需的专用内核接口');
   await checkBackend(build, bootstrap, fetcher);
   bootstrap.authOrigin ||= build.authOrigin;
   return { build, bootstrap };

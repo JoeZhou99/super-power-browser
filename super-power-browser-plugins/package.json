@@ -1,6 +1,6 @@
 {
   "name": "super-power-browser-plugins",
-  "version": "0.2.7",
+  "version": "0.3.1",
   "private": true,
   "type": "module",
   "description": "店铺助手与账号助手的可构建源码工程、运行适配和功能契约",

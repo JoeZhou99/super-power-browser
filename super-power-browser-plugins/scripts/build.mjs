@@ -19,6 +19,7 @@ export async function build(input = {}, output = path.join(root, 'dist', input.m
   const requiredMethods = [...apiSource.matchAll(/async (\w+)\(/g)].map(m => m[1]);
   requiredMethods.push('createAccountData', 'editAccountData', 'removeAccountData', 'getMallsAccountFillingList', 'addCustomSiteInfo', 'getSiteTreeByCategories', 'delCustomSiteInfo');
   const artifacts = [];
+  const identities = JSON.parse(await readFile(path.join(root, 'lib/extension-identities.json'), 'utf8'));
   for (const [source, name, title] of [['mall', 'RXMallHelper', 'Super Power 店铺助手'], ['account', 'RXAccountManage', 'Super Power 账号助手']]) {
     const target = path.join(output, name);
     await cp(path.join(root, 'src', source), target, { recursive: true });
@@ -55,6 +56,19 @@ const fetch=async(input,options)=>{const base=(await chrome.storage.session.get(
     manifest.description = source === 'mall' ? '店铺环境检测、代理、Cookie、访问控制与平台辅助工具' : '店铺账号管理、表单识别与自动填充';
     delete manifest.homepage_url;
     manifest.background.type = 'module';
+    if(config.mode==='superpower'){
+      manifest.key=identities[name];
+      manifest.permissions=manifest.permissions.filter(p=>p!=='superbrowser');
+      if(source==='mall'){
+        manifest.content_scripts.unshift({js:['runtime/environment-policy.js'],matches:['http://*/*','https://*/*'],run_at:'document_start',world:'MAIN',all_frames:true,match_about_blank:true,match_origin_as_fallback:true});
+        await writeFile(path.join(target,'runtime/environment-policy.js'),'// Configured by the desktop before launch.\n');
+        const pageFile=path.join(target,'contentPage/contentPage.js');
+        let page=await readFile(pageFile,'utf8');
+        page=page.replace('chrome.superbrowser.showMessageDialog(', '__spMessageDialog(');
+        page=`function __spMessageDialog(title,content,unused,ok,cancel,modal,callback){if(window.confirm(title+'\\n\\n'+content))callback(true);}\n${page}`;
+        await writeFile(pageFile,page);
+      }
+    }
     const worker = path.join(target, manifest.background.service_worker);
     let workerText = await readFile(worker, 'utf8');
     if(source==='mall'&&config.mode==='superpower')workerText=bookmarkLifecycle(workerText);
@@ -62,9 +76,10 @@ const fetch=async(input,options)=>{const base=(await chrome.storage.session.get(
     if (source === 'mall') {
       const entries = [...workerText.matchAll(/^([\w$]+)\.init\(\);$/gm)];
       if (entries.length !== 1) throw new Error('店铺助手入口发生变化，请更新构建适配');
-      workerText = workerText.replace(entries[0][0], `__spRun(() => { __spInstallDesktop(); __spInstallAccessPolicy(); return ${entries[0][1]}.init(); });`);
+      workerText = workerText.replace(entries[0][0], `__spRun(async () => { __spInstallDesktop(); await __spInstallAccessPolicy(); return ${entries[0][1]}.init(); });`);
       workerText = `import { installAccessPolicy as __spInstallAccessPolicy } from '../runtime/access-policy.mjs';\nimport { installDesktopAdapter as __spInstallDesktop } from '../runtime/desktop-adapter.mjs';\n${workerText}`;
       if(config.mode==='superpower'){
+        workerText=workerText.replace('const ut = chrome?.superbrowser;', 'const ut = true;');
         workerText=`function __spInternalCookie(c){const host=c.domain.replace(/^\\./,'');return ['127.0.0.1','localhost',new URL(globalThis.__SP_BOOTSTRAP__.authOrigin).hostname].includes(host)&&['chrome_token','browserVersion','lang'].includes(c.name);}\n${workerText}`;
         workerText=workerText.replace(/([ci])\.domain\.indexOf\("zhanfubrowser"\) < 0/g, '$1.domain.indexOf("zhanfubrowser") < 0 && !__spInternalCookie($1)');
       }
@@ -82,11 +97,15 @@ const fetch=async(input,options)=>{const base=(await chrome.storage.session.get(
         bridge=bridge.replace('this.handleCallbackFuns = e','globalThis.__SP_SOCKET__ = this, this.handleCallbackFuns = e');
         bridge=bridge.replace('this.handleCallbackFuns.onMessageHandle(o);','globalThis.__SP_REPLY__?.(o); this.handleCallbackFuns.onMessageHandle(o);');
         bridge=bridge.replace('"&sign=" + e;', '"&sign=" + encodeURIComponent(e);');
-        bridge=bridge.replace('function A(s) {', `const __spNativeListeners=[];
+        bridge=bridge.replace(/function k\(\) \{[\s\S]*?\nfunction L\(/, `const __spNativeListeners=[];
 function A(s) {
-  if(globalThis.__SP_RPC__) {globalThis.__SP_RPC__(JSON.parse(N(s))).catch(()=>{});return;}
-  chrome.runtime.sendMessage({type:'sp:native',data:s}).then(reply=>{if(reply?.data)for(const listener of __spNativeListeners)listener(reply.data);}).catch(()=>{});return;`);
-        bridge=bridge.replace('function F(s) {','function F(s) { __spNativeListeners.push(s); return;');
+  const deliver=data=>{for(const listener of __spNativeListeners)listener(data);};
+  if(globalThis.__SP_RPC__) {globalThis.__SP_RPC__(JSON.parse(N(s))).then(reply=>deliver(_(JSON.stringify(reply)))).catch(()=>{});return;}
+  chrome.runtime.sendMessage({type:'sp:native',data:s}).then(reply=>{if(reply?.data)deliver(reply.data);}).catch(()=>{});
+}
+function L(`);
+        bridge=bridge.replace(/function F\(s\) \{[\s\S]*?\n\}/,'function F(s) { __spNativeListeners.push(s); }');
+        bridge=bridge.replace(/  install\(s\) \{[\s\S]*?  async isExistSameVersionPlugin/, `  install(s) { throw new Error('独立内核仅加载桌面发布的内置插件，暂不支持插件市场安装'); },\n  unistall(s) { throw new Error('请从桌面管理已发布的插件'); },\n  async isExistSameVersionPlugin`);
         await writeFile(bridgeFile,bridge);
       }
     } else {

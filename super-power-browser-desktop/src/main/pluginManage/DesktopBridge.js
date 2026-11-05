@@ -51,7 +51,7 @@ class DesktopBridge {
           return {latency:await tcpLatency(this.proxy.host,this.proxy.port)};
         }));
       }else if(request.action==='WriteLog')result={accepted:true};
-      else if(request.action==='CheckCompleted'){this.ready=true;result={ready:true};await this.onAction?.(request.action,args);}
+      else if(request.action==='CheckCompleted'){await this.onAction?.(request.action,args);this.ready=true;result={ready:true};}
       else result=await this.onAction(request.action,args);
       this.events.push({action:request.action,ok:true,at:Date.now()});this.events=this.events.slice(-100);
       this.reply(socket,request,200,result);

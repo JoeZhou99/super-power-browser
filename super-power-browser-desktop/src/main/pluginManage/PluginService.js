@@ -6,7 +6,7 @@ const AdmZip=require('adm-zip');
 async function json(file,fallback){try{return JSON.parse(await fs.readFile(file,'utf8'));}catch(error){if(error.code==='ENOENT')return fallback;throw error;}}
 async function atomic(file,text){const temporary=file+'.spb-tmp';await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(temporary,text,{mode:0o600});await fs.rename(temporary,file);}
 async function preparePlugins(resources,profile,{environment,session,websocketPort,proxyUrl,apiUrl,cookie='',localGeo=null}){
-  const {extensionId,encodeBootstrap}=await import(pathToFileURL(path.join(__dirname,'bootstrap.mjs')).href);
+  const {encodeBootstrap}=await import(pathToFileURL(path.join(__dirname,'bootstrap.mjs')).href);
   const dirs=[],pluginIdMap={};
   for(const name of ['RXMallHelper','RXAccountManage']){
     const target=path.join(profile,'RBP',name),zip=await fs.readFile(path.join(resources,'Plugin',name+'.zip'));
@@ -24,21 +24,23 @@ async function preparePlugins(resources,profile,{environment,session,websocketPo
     const build=await json(path.join(target,'runtime/build.json'),{});
     if(build.mode!=='superpower')throw new Error('请先构建新项目插件包，禁止加载旧后台插件');
     await atomic(path.join(target,'runtime/endpoint.json'),JSON.stringify({apiBase:new URL('/extension',apiUrl).href,authOrigin:new URL(apiUrl).origin}));
-    pluginIdMap[name]=extensionId(target);dirs.push(target);
+    const manifest=await json(path.join(target,'manifest.json'),{});
+    if(!manifest.key)throw new Error('内置插件缺少固定身份公钥');
+    pluginIdMap[name]=createHash('sha256').update(Buffer.from(manifest.key,'base64')).digest('hex').slice(0,32).replace(/[0-9a-f]/g,c=>String.fromCharCode(97+parseInt(c,16)));dirs.push(target);
+    if(name==='RXMallHelper')await atomic(path.join(target,'runtime/environment-policy.js'),environmentPolicy(environment.fingerprint));
   }
   const loopback=new URL(proxyUrl);
-  const configuration={browserId:environment.id,sysMallId:environment.id,accessToken:session.token,websocketPort,pluginIdMap,
+  const configuration={desktopProtocol:'super-power-browser-desktop/1',kernelProtocol:'fingerprint-chromium/1',browserId:environment.id,sysMallId:environment.id,accessToken:session.token,websocketPort,pluginIdMap,
     proxyInfo:{proxyAuthUrl:`http://${loopback.host}@`,proxyIp:environment.proxy.host},staticProxy:{exchange:`http://${loopback.host}@`},
     localGeo,accessRules:environment.fingerprint.accessRules,language_setPlugin:'zh-CN',language:'zh-CN',appVersion:'5.3.17',browserVersion:environment.kernelVersion,
     cookie,installPlugins:[],commonParams:{is_plugin_sync_cookie:1},logoInfo:{brand_name:'SuperPower',main_logo:`chrome-extension://${pluginIdMap.RXMallHelper}/branding/mark.svg`},openUrl:environment.startUrl,
     apiBase:new URL('/extension',apiUrl).href,authOrigin:new URL(apiUrl).origin};
   const bundle=encodeBootstrap(configuration);
   for(const target of dirs){await atomic(path.join(target,'config.dat'),bundle.configDat);await atomic(path.join(target,'init.json'),bundle.initJson);}
-  for(const name of ['Preferences','Secure Preferences']){
+  for(const name of ['Preferences']){
     const file=path.join(profile,'Default',name),prefs=await json(file,{});
     prefs.extensions??={};
-    // 与旧客户端一致：开发者模式由普通 Preferences 导入，安装态只写入
-    // Secure Preferences。首次启动在两处重复写受保护项会触发内核重置。
+    // 安装状态和受保护首选项由 Chromium 自己维护。
     if(name==='Preferences'){
       prefs.extensions.ui??={};prefs.extensions.ui.developer_mode=true;
       prefs.credentials_enable_service=environment.fingerprint.rememberPassword!==false;
@@ -51,15 +53,6 @@ async function preparePlugins(resources,profile,{environment,session,websocketPo
       else delete prefs.profile.content_settings.exceptions.notifications['https://*,*'];
     }
     prefs.extensions.pinned_extensions=[...new Set([...(prefs.extensions.pinned_extensions||[]),...Object.values(pluginIdMap)])];
-    if(name==='Secure Preferences'){
-      prefs.extensions.settings??={};
-      for(let i=0;i<dirs.length;i++){
-        const id=Object.values(pluginIdMap)[i];
-        prefs.extensions.settings[id]={...(prefs.extensions.settings[id]||{}),path:dirs[i],location:4,state:1,creation_flags:38,from_webstore:false,incognito:true};
-      }
-      prefs.protection??={};prefs.protection.macs??={};prefs.protection.macs.extensions??={};prefs.protection.macs.extensions.settings??={};
-      for(const id of Object.values(pluginIdMap))prefs.protection.macs.extensions.settings[id]=id.toUpperCase().repeat(2);
-    }
     await atomic(file,JSON.stringify(prefs));
   }
   await fs.writeFile(path.join(profile,'First Run'),'');
@@ -67,4 +60,11 @@ async function preparePlugins(resources,profile,{environment,session,websocketPo
   return {dirs,pluginIdMap,bundle,configuration};
 }
 async function clearBootstrap(profile){for(const name of ['RXMallHelper','RXAccountManage'])for(const file of ['config.dat','init.json'])await fs.rm(path.join(profile,'RBP',name,file),{force:true});}
-module.exports={preparePlugins,clearBootstrap};
+// Compatibility restrictions in page worlds, not native fingerprint patches.
+function environmentPolicy(fp){
+  return `(()=>{const policy=${JSON.stringify({disableRtc:fp.webRtc==='disabled',hideVoices:fp.speechVoices!=='real'})};
+    if(policy.disableRtc)for(const name of ['RTCPeerConnection','webkitRTCPeerConnection']){try{Object.defineProperty(globalThis,name,{value:undefined,writable:false,configurable:false});}catch{}}
+    if(policy.hideVoices&&globalThis.SpeechSynthesis)try{Object.defineProperty(SpeechSynthesis.prototype,'getVoices',{value:function getVoices(){return [];},writable:false,configurable:false});}catch{}
+  })();`;
+}
+module.exports={preparePlugins,clearBootstrap,environmentPolicy};

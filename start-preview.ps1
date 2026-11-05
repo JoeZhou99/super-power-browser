@@ -12,6 +12,8 @@ if(-not (Test-Path -LiteralPath $accessFile)){
 }
 $access=Get-Content -LiteralPath $accessFile -Raw -Encoding UTF8|ConvertFrom-Json
 $apiUrl='http://127.0.0.1:18080'
+$kernelManifest=Join-Path $previewDir 'runtime/kernels.json'
+if(Test-Path -LiteralPath $kernelManifest){$env:KERNEL_MANIFEST_PATH=$kernelManifest}
 try{$health=Invoke-RestMethod "$apiUrl/api/health" -TimeoutSec 2}catch{$health=$null}
 if(-not $health){
     $h2Jar=Join-Path $previewDir 'h2-2.4.240.jar'
@@ -20,14 +22,6 @@ if(-not $health){
     $env:ADMIN_USERNAME=$access.username
     $env:ADMIN_PASSWORD=$access.password
     $env:APP_DATA_KEY=$access.dataKey
-    $runtimeFile=Join-Path $previewDir 'legacy-runtime.json'
-    if(Test-Path -LiteralPath $runtimeFile){
-        $runtime=Get-Content -LiteralPath $runtimeFile -Raw -Encoding UTF8|ConvertFrom-Json
-        $env:LEGACY_BASE_URL=$runtime.baseUrl
-        $env:LEGACY_TOKEN=$runtime.token
-        $env:LEGACY_ENCRYPTION_KEY=$runtime.encryptionKey
-        $env:LEGACY_ENCRYPTION_IV=$runtime.encryptionIv
-    }
     $javaArgs=@("-Dloader.path=$h2Jar",'-cp',(Join-Path $projectRoot 'super-power-browser-server/api/target/api-0.1.0.jar'),'org.springframework.boot.loader.launch.PropertiesLauncher',"--spring.datasource.url=jdbc:h2:file:$dbFile;MODE=MySQL;NON_KEYWORDS=ROLE",'--spring.datasource.username=sa','--spring.datasource.password=','--server.address=127.0.0.1','--server.port=18080')
     $javaProcess=Start-Process -FilePath (Get-Command java).Source -ArgumentList $javaArgs -WorkingDirectory $projectRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $previewDir 'api.log') -RedirectStandardError (Join-Path $previewDir 'api-error.log') -PassThru
     $javaProcess.Id|Set-Content -LiteralPath (Join-Path $previewDir 'api.pid') -Encoding ASCII
@@ -41,8 +35,7 @@ if(-not $health){
 if(-not $BackendOnly){
     $desktopDir=Join-Path $projectRoot 'super-power-browser-desktop'
     $electronPath=Join-Path $desktopDir 'node_modules/electron/dist/electron.exe'
-    if(-not (Test-Path -LiteralPath $electronPath)){$electronPath='D:\Joe\project\rux-browser-master\node_modules\electron\dist\electron.exe'}
-    if(-not (Test-Path -LiteralPath $electronPath)){throw 'Install desktop dependencies with npm ci first.'}
+    if(-not (Test-Path -LiteralPath $electronPath)){throw 'Desktop Electron is missing. Run npm ci in super-power-browser-desktop; the old project runtime is not used.'}
     Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
     $desktop=Start-Process -FilePath $electronPath -ArgumentList @($desktopDir) -WorkingDirectory $desktopDir -WindowStyle Normal -PassThru
     $desktop.Id|Set-Content -LiteralPath (Join-Path $previewDir 'desktop.pid') -Encoding ASCII

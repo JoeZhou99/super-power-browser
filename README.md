@@ -2,7 +2,7 @@
 
 按 `rux-core-rebuild` Skill 迁移的第一版工程，目标目录为 `D:\Joe\myself\super-power-browser`。Web、Electron、后端分别维护依赖和构建入口，尽量保留原前端的相对目录。
 
-**已在 Windows x64 / 137 内核上接通新项目的店铺启动主流程。** 桌面自动生成店铺专属插件配置、启动通信和代理、加载两个新插件；检测完成后打开店铺。账号、Cookie、书签和通行密钥使用新后端。原来的 `10008` 启动阻塞已排除。支付商户、设备供应商及完整业务验收仍需独立联调。
+**已切换到独立的开源 Chromium 144.0.7559.132，完成 Windows x64 联调店铺启动、插件通信和环境检测。** 运行资源由新后端发布，桌面不再使用旧站斧内核、DLL 或授权凭据。当前使用上游预编译包，原生指纹算法与旧版不同，详细来源、启动方式和限制见 [独立内核说明](super-power-browser-kernel/README.md)。账号、Cookie、书签和通行密钥使用新后端，完整业务验收仍需继续。
 
 ```text
 super-power-browser/
@@ -10,6 +10,7 @@ super-power-browser/
 ├─ super-power-browser-desktop/    Electron 本地客户端
 ├─ super-power-browser-server/     Java API、core、Worker
 ├─ super-power-browser-plugins/    店铺助手、账号助手及运行适配
+├─ super-power-browser-kernel/     开源内核版本锁定、校验与发布
 └─ docs/                          架构、观察依据、验证与待办
 ```
 
@@ -61,17 +62,12 @@ npm run dev
 
 桌面构建会自动构建相邻插件工程并复制 ZIP，同时将 Web 的 `dist` 复制到 `resources/web`。客户端通过仅监听 `127.0.0.1` 的页面服务加载。Electron 锁定 `35.7.5`。
 
-`runtime.config.json`、`.env` 不应提交版本库。`corePath` 可指向已授权安装内核的只读位置；`dataPath` 必须是新项目专用目录，不能指向旧店铺目录。本机预览运行根目录的 `./start-preview.ps1`，随后在新客户端点击店铺的“打开”；无需手动安装插件。具体目录和通信流程见 [插件接入说明](super-power-browser-plugins/docs/integration.md)。
+内核版本由数据库管理；生产安装包通过私有 S3 兼容对象存储分发，发布、停用、推荐和本地包迁移使用运维 CLI。配置步骤与真实云服务尚待验证的边界见 [生产内核分发](super-power-browser-kernel/PRODUCTION.md)。
+
+`runtime.config.json`、`.env` 不应提交版本库。`corePath` 是新项目可写的内核缓存，留空使用独立数据目录下的 `Core`；`dataPath` 必须为新项目专用目录。先按 [内核发布步骤](super-power-browser-kernel/README.md) 配置内核清单，再运行根目录的 `./start-preview.ps1`，选择已发布的 144 内核后打开店铺；无需手动安装插件。具体目录和通信流程见 [插件接入说明](super-power-browser-plugins/docs/integration.md)。
 
 ## 旧接口与待接入边界
 
-仅 `LegacyRuntimeAdapter` 调用旧内核凭据和内核清单接口，代码标有 `TODO(runtime-replacement)`。插件采用可构建移植工程，在新模式下对接 `/extension` 新后端和本机通信服务。Windows 消息管道传输实现适配自原项目；插件业务主体仍是恢复的编译后 JavaScript。旧店铺、设备、成员、支付和充值接口不作为新后端的替代实现。
+`LegacyRuntimeAdapter` 和旧凭据入口已移除，启动不读取 `LEGACY_TOKEN` 或旧运行配置。插件是可构建移植工程，业务主体仍来自恢复的 JavaScript，通过 `/extension` 新后端和本机鉴权 WebSocket 工作。历史兼容源码保留作对照，不进入独立桌面产物。
 
-旧运行资源兼容配置可从已授权源项目读取：
-
-```powershell
-# 在后端目录执行，仅提取源码中的接口域名及协议加密常量，不读取已登录账号令牌：
-powershell -ExecutionPolicy Bypass -File scripts/configure-legacy.ps1
-```
-
-需要填写旧账号令牌时，由管理员通过 `LEGACY_TOKEN` 配置。新支付实现 `PaymentGateway`，新设备供应实现 `DeviceSupplier`，以 `@Primary` 注册正式适配器。接入要求、已验证范围和后续工作见 [迁移状态](docs/迁移状态.md)；后端职责见 [后端架构](docs/后端架构.md)。
+第三方插件市场、完整浏览器缓存上传、供应商备用线路未实现；原生指纹不能声称与旧版完全等价。新支付实现 `PaymentGateway`，新设备供应实现 `DeviceSupplier`，以 `@Primary` 注册正式适配器。此前功能验收属于旧 137 基线，不能自动作为新 144 的验证结论。后端职责见 [后端架构](docs/后端架构.md)。

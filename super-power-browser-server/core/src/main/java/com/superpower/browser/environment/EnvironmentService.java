@@ -3,6 +3,7 @@ package com.superpower.browser.environment;
 import com.superpower.browser.auth.Actor;
 import com.superpower.browser.auth.MemberDirectory;
 import com.superpower.browser.device.DeviceAccess;
+import com.superpower.browser.runtime.KernelCatalog;
 import com.superpower.browser.shared.*;
 import java.net.URI;
 import java.util.*;
@@ -17,8 +18,9 @@ public class EnvironmentService {
     private final MemberDirectory members;
     private final DeviceAccess devices;
     private final AuditRepository audit;
-    public EnvironmentService(EnvironmentRepository repository,MemberDirectory members,DeviceAccess devices,AuditRepository audit) {
-        this.repository=repository; this.members=members; this.devices=devices; this.audit=audit;
+    private final KernelCatalog kernels;
+    public EnvironmentService(EnvironmentRepository repository,MemberDirectory members,DeviceAccess devices,AuditRepository audit,KernelCatalog kernels) {
+        this.repository=repository; this.members=members; this.devices=devices; this.audit=audit;this.kernels=kernels;
     }
     public Map<String,Object> get(Actor a,String id,String permission) { a.allow(permission); return repository.get(a,id); }
     public Map<String,Object> list(Actor a,String category,String query,int page,int size,boolean recycled) {
@@ -43,7 +45,10 @@ public class EnvironmentService {
         String kernel=required(input,"kernelVersion",30);
         require(kernel.matches("[0-9]+(?:\\.[0-9]+)*"),400,"内核版本不合法");
         require(input.get("fingerprint") instanceof Map<?,?>,400,"指纹配置必须是对象");
-        FingerprintSettings.validate((Map<?,?>)input.get("fingerprint"),kernel);
+        if(previous==null||!text(previous,"kernelVersion").equals(kernel))kernels.requirePublished(kernel);
+        var fingerprint=new LinkedHashMap<>((Map<?,?>)input.get("fingerprint"));
+        fingerprint.remove("iconColor");fingerprint.remove("taskbarNumber");input.put("fingerprint",fingerprint);
+        FingerprintSettings.validate(fingerprint,kernel);
         String serialized=json(input.get("fingerprint")); require(serialized.length()<30000,400,"指纹配置过大");
         require(text(input,"remark").length()<=50,400,"备注最多 50 字");
         String password=input.containsKey("accountPassword")?text(input,"accountPassword"):previous==null?"":text(previous,"accountPassword");
