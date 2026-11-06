@@ -1,0 +1,29 @@
+{
+  "name": "@super-power-browser/ai",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SuperPower AI local runtime, tools, approvals and SQLite conversations",
+  "main": "out/main/embed.js",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build-embedded.mjs"
+  },
+  "dependencies": {
+    "@cline/sdk": "0.0.83",
+    "extract-zip": "^2.0.1",
+    "fflate": "0.8.2",
+    "playwright-core": "^1.64.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.12"
+  },
+  "exports": {
+    ".": "./out/main/embed.js",
+    "./channels": "./src/shared/channels.js"
+  },
+  "files": [
+    "out/main",
+    "src/skills",
+    "src/shared/channels.js"
+  ]
+}

@@ -16,7 +16,8 @@ const rules: FormRules = {
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
 };
 
-function checkCapsLock(event: KeyboardEvent) {
+function checkCapsLock(event: Event | KeyboardEvent) {
+  if (!(event instanceof KeyboardEvent)) return;
   capsLock.value = event.getModifierState('CapsLock');
 }
 

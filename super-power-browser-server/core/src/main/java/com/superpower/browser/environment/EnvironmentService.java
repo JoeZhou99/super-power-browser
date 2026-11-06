@@ -27,6 +27,11 @@ public class EnvironmentService {
         a.allow("shop.view"); require(page>0 && size>0 && size<=200,400,"分页参数不合法");
         return repository.list(a,category,query,page,size,recycled);
     }
+    public Map<String,Object> aiList(Actor a,String query,String platforms,int page,int size) {
+        a.allow("shop.view");require(page>0&&size>0&&size<=200&&query.length()<=200&&platforms.length()<=1000,400,"店铺查询参数不合法");
+        return repository.aiList(a,query,platforms.isBlank()?List.of():Arrays.asList(platforms.split(",")),page,size);
+    }
+    public List<Map<String,Object>> aiPlatforms(Actor a) { a.allow("shop.view");return repository.aiPlatforms(a); }
     public Map<String,Long> statistics(Actor a,boolean recycled) {
         Map<String,Long> counts=new LinkedHashMap<>();
         for(String c:List.of("all","recent_open","often_use","unbindIp","unauthorize","need_renew")) counts.put(c,(Long)list(a,c,"",1,1,recycled).get("total"));

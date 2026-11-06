@@ -23,5 +23,5 @@ class TaskRepository {
         db.execute("UPDATE business_order SET delivery_status=?,failure_reason=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",exhausted?"FAILED":"PENDING",message,text(task,"orderId"));
     }
     void processing(String id) { db.execute("UPDATE business_order SET delivery_status='PROCESSING',updated_at=CURRENT_TIMESTAMP WHERE id=?",id); }
-    List<Map<String,Object>> pendingPayments() { return rows(db.select("SELECT id,channel FROM business_order WHERE channel<>'balance' AND payment_status<>'PAID' AND created_at>? ORDER BY created_at LIMIT 100",Timestamp.from(Instant.now().minusSeconds(86400*7)))); }
+    List<Map<String,Object>> pendingPayments() { return rows(db.select("SELECT id,channel FROM business_order WHERE kind<>'AI_PLAN' AND channel<>'balance' AND payment_status<>'PAID' AND created_at>? ORDER BY created_at LIMIT 100",Timestamp.from(Instant.now().minusSeconds(86400*7)))); }
 }

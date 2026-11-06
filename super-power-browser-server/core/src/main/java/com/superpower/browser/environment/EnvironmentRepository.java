@@ -39,6 +39,13 @@ class EnvironmentRepository {
         args.add(size); args.add((page-1)*size);
         return Map.of("items",rows(db.select("SELECT "+PUBLIC+" FROM environment e WHERE "+where+" ORDER BY e.last_opened_at DESC,e.created_at DESC LIMIT ? OFFSET ?",args.toArray())),"total",total);
     }
+    Map<String,Object> aiList(Actor a,String query,List<String> platforms,int page,int size) {
+        var args=scopeArgs(a);String where=SCOPE+" AND e.recycled=FALSE AND (e.name LIKE ? OR e.account_name LIKE ?)";args.add("%"+query+"%");args.add("%"+query+"%");
+        if(!platforms.isEmpty()){where+=" AND e.platform IN ("+String.join(",",Collections.nCopies(platforms.size(),"?"))+")";args.addAll(platforms);}
+        long total=number(one(db.select("SELECT COUNT(*) total FROM environment e WHERE "+where,args.toArray())),"total");args.add(size);args.add((page-1)*size);
+        return Map.of("items",rows(db.select("SELECT e.id,e.name,e.platform,e.account_name FROM environment e WHERE "+where+" ORDER BY e.name,e.id LIMIT ? OFFSET ?",args.toArray())),"total",total);
+    }
+    List<Map<String,Object>> aiPlatforms(Actor a) {return rows(db.select("SELECT DISTINCT e.platform AS id,e.platform AS name FROM environment e WHERE "+SCOPE+" AND e.recycled=FALSE ORDER BY e.platform",scopeArgs(a).toArray()));}
     void create(String id,Actor a,Map<String,Object> r) {
         r=new HashMap<>(r);r.put("accountPassword",secrets.encrypt(text(r,"accountPassword")));
         db.execute("INSERT INTO environment(id,tenant_id,owner_id,name,platform,start_url,account_name,account_password,remark,kernel_version,fingerprint_seed,fingerprint) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",id,a.tenantId(),a.id(),text(r,"name"),text(r,"platform"),text(r,"startUrl"),text(r,"accountName"),text(r,"accountPassword"),text(r,"remark"),text(r,"kernelVersion"),Data.id(),text(r,"fingerprint"));

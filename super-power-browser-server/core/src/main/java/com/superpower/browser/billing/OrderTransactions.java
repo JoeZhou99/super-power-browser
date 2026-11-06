@@ -56,6 +56,7 @@ public class OrderTransactions {
         var order=repository.lock(orderId);
         require(text(order,"tenantId").equals(a.tenantId()),404,"订单不存在");
         require(a.owner() || text(order,"creatorId").equals(a.id()),403,"只能取消自己创建的订单");
+        require(!text(order,"kind").equals("AI_PLAN"),409,"请在 AI 套餐中处理订单，避免中断额度开通");
         require(text(order,"paymentStatus").equals("PENDING"),409,"只能取消待支付订单");
         repository.cancel(orderId);
     }

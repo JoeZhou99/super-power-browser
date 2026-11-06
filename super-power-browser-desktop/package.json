@@ -15,7 +15,8 @@
     "koffi": "2.12.3",
     "proxy-chain": "^2.5.0",
     "https-proxy-agent": "7.0.6",
-    "ws": "8.18.2"
+    "ws": "8.18.2",
+    "@super-power-browser/ai": "file:../super-power-browser-ai"
   },
   "devDependencies": {
     "electron": "35.7.5",
@@ -46,7 +47,9 @@
       }
     ],
     "asarUnpack": [
-      "node_modules/koffi/**/*"
+      "node_modules/koffi/**/*",
+      "node_modules/@cline/**/*",
+      "node_modules/@super-power-browser/ai/**/*"
     ],
     "win": {
       "icon": "branding/app.ico",

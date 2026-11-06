@@ -4,12 +4,13 @@ const {Server}=require('proxy-chain');
 const {configuration}=require('./model/InitData');
 const {ApiClient}=require('./services/ApiClient');
 const {serveWeb}=require('./services/WebServer');
+const {AiHost}=require('./services/AiHost');
 const {BrowserHost,upstream}=require('./BrowserManage/BrowserHost');
 const {collectGeo,validateExit,expectedExit}=require('./pluginManage/NetworkInfo');
 const {cacheFolders,clearCache}=require('./module/SettingsModule');
 app.setName('super-power-browser');
 if(process.platform==='win32')app.setAppUserModelId('com.superpower.browser');
-app.setPath('userData',path.join(app.getPath('appData'),'super-power-browser'));
+app.setPath('userData',!app.isPackaged&&process.env.SPB_USER_DATA?path.resolve(process.env.SPB_USER_DATA):path.join(app.getPath('appData'),'super-power-browser'));
 if(!app.requestSingleInstanceLock())app.quit();
 else app.whenReady().then(async()=>{
   const config=configuration(),api=new ApiClient(config.apiUrl),browsers=new BrowserHost(config,api,{onApplicationAction:applicationAction,onActionError:error=>dialog.showErrorBox('桌面操作失败',error.message)});
@@ -19,21 +20,22 @@ else app.whenReady().then(async()=>{
   const window=new BrowserWindow({width:1440,height:940,minWidth:1100,minHeight:720,title:'SuperPower Browser',icon:path.join(config.resources,'branding/app.ico'),backgroundColor:'#edf2ff',titleBarStyle:'hidden',titleBarOverlay:{color:'#eaf0ff',symbolColor:'#344f7e',height:44},webPreferences:{preload:path.join(__dirname,'../preload/index.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   window.setMenuBarVisibility(false);
   const origin=new URL(pageUrl).origin;
+  const ai=new AiHost({api,browsers,config,window,origin});
   window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   window.webContents.on('will-navigate',(event,url)=>{if(new URL(url).origin!==origin)event.preventDefault();});
   function handle(name,fn){ipcMain.handle(`spb:${name}`,(event,...args)=>{if(event.sender!==window.webContents||!event.senderFrame||new URL(event.senderFrame.url).origin!==origin)throw new Error('请求来源不合法');return fn(...args);});}
-  handle('setSession',async token=>{if(typeof token!=='string'||token.length>500)throw new Error('登录凭据不合法');if(api.token&&api.token!==token)await browsers.closeAll();api.token=token;});
-  handle('openBrowser',id=>browsers.open(id));handle('closeBrowser',id=>browsers.close(id));handle('closeAll',()=>browsers.closeAll());handle('browserStates',()=>browsers.states());
+  handle('setSession',async token=>{if(typeof token!=='string'||token.length>500)throw new Error('登录凭据不合法');if(api.token!==token){await ai.stop();if(api.token)await browsers.closeAll();api.token=token;}});
+  handle('openBrowser',async id=>{try{const result=await browsers.open(id);window.webContents.send('spb:shopStatus',await ai.connection(id));return result;}catch(error){window.webContents.send('spb:shopStatus',{browserId:id,isopen:false});throw error;}});handle('closeBrowser',id=>browsers.close(id));handle('closeAll',()=>browsers.closeAll());handle('browserStates',()=>browsers.states());
   handle('browserProgress',()=>browsers.progress());
   handle('settings',async()=>({version:app.getVersion(),userData:config.profiles,corePath:config.corePath,downloads:config.downloads,cacheBytes:(await cacheFolders(config.profiles)).reduce((n,c)=>n+c.bytes,0)}));
   handle('clearCache',()=>clearCache(config.profiles,new Set([...browsers.running.keys(),...browsers.pending.keys()])));
   handle('checkUpdate',async()=>{const {manifestUrl}=await api.request('/runtime/updates');if(!manifestUrl)throw new Error('尚未配置更新服务');const url=new URL(manifestUrl);if(url.protocol!=='https:')throw new Error('更新地址必须使用 HTTPS');const manifest=await (await fetch(url,{signal:AbortSignal.timeout(10000)})).json();if(!/^\d+\.\d+\.\d+$/.test(manifest.version))throw new Error('更新版本格式不正确');const current=app.getVersion().split('.').map(Number),next=manifest.version.split('.').map(Number);let available=false;for(let i=0;i<3;i++){if(next[i]!==current[i]){available=next[i]>current[i];break;}}return {version:manifest.version,available};});
   handle('checkProxy',async id=>{const proxy=await api.request(`/devices/${id}/connection`);const server=new Server({port:0,host:'127.0.0.1',prepareRequestFunction:()=>({upstreamProxyUrl:upstream(proxy)})});await server.listen();try{const exit=await collectGeo({proxyUrl:`http://127.0.0.1:${server.port}`,expectedIp:expectedExit(proxy)}),result=validateExit(proxy,exit);return {connected:result.allowed,ip:exit.ip||'',message:result.allowed?`代理连接成功，检测 IP：${exit.ip}${exit.country_name?'（'+exit.country_name+'）':''}${exit.multipleExits?'；不同检测地址返回不同出口，请检查代理分流规则':''}`:result.message};}finally{await server.close(true);}});
-  const monitor=setInterval(()=>browsers.enforceAccess().catch(()=>{}),10000);
+  const monitor=setInterval(()=>{browsers.enforceAccess().catch(()=>{});ai.enforceAccess().catch(()=>{});},10000);
   let quitting=false,shutdown=null,applicationTask=null;
   async function finishQuit(relaunch=false){
     if(shutdown)return shutdown;
-    shutdown=(async()=>{await browsers.closeAll();quitting=true;clearInterval(monitor);local.server.close();if(relaunch)app.relaunch();window.destroy();app.quit();})();
+    shutdown=(async()=>{await ai.stop();await browsers.closeAll();quitting=true;clearInterval(monitor);local.server.close();if(relaunch)app.relaunch();window.destroy();app.quit();})();
     try{await shutdown;}catch(error){shutdown=null;throw error;}
   }
   async function applicationAction(action){
@@ -43,7 +45,7 @@ else app.whenReady().then(async()=>{
         await dialog.showMessageBox(window,{type:'error',buttons:['确认'],defaultId:0,title:'登录状态提示',message:'登录状态异常',detail:'你的登录信息已经失效，请重新登录。'});
         await browsers.closeAll();
         try{if(api.token)await api.request('/auth/logout',{method:'POST'});}catch(error){if(![401,403].includes(error.status))throw error;}
-        finally{api.token='';window.webContents.send('spb:loggedOut');window.show();}
+        finally{await ai.stop();api.token='';window.webContents.send('spb:loggedOut');window.show();}
       }else await finishQuit(action==='closeAllMultiOpen');
     })();
     try{await applicationTask;}finally{applicationTask=null;}

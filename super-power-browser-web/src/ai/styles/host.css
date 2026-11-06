@@ -1,0 +1,12 @@
+/* Keep AI view styles independent from the application shell.
+   :where keeps the original component selectors in control of their own layout. */
+.workspace-main.ai-host{height:calc(100vh - var(--desktop-titlebar-height,0px) - 44px);min-height:520px;padding:0;overflow:hidden}
+:where(.zhifu-shell) aside{position:static;inset:auto}
+:where(.zhifu-shell) main{padding:0}
+:where(.zhifu-shell,body.ai-page .el-overlay,body.ai-page .el-popper) header{height:auto;background:transparent;border:0;display:block;justify-content:normal;align-items:normal;padding:0}
+:where(.zhifu-shell,body.ai-page .el-overlay,body.ai-page .el-popper) header>div{display:block;align-items:normal;gap:normal;font-size:inherit}
+:where(.zhifu-shell) .sidebar-footer{padding:0;color:inherit;font-size:inherit}
+:where(.zhifu-shell,body.ai-page .el-overlay,body.ai-page .el-popper){font-family:"Microsoft YaHei","微软雅黑",sans-serif;line-height:1.5;font-weight:normal}
+:where(.zhifu-shell,body.ai-page .el-overlay) :is(h1,h2,h3,h4,h5,h6,p,ul,li){margin:0}
+:where(.zhifu-shell,body.ai-page .el-overlay) :is(p,ul,li){padding:0;list-style:none}
+:where(.zhifu-shell,body.ai-page .el-overlay) svg{vertical-align:-0.15em}

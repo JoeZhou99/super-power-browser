@@ -1,6 +1,7 @@
 package com.superpower.browser.api;
 
 import com.superpower.browser.auth.*;
+import com.superpower.browser.ai.AiTickets;
 import com.superpower.browser.shared.*;
 import com.superpower.browser.extension.ExtensionSessions;
 import jakarta.servlet.*;
@@ -18,9 +19,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
 public class SecurityConfig {
-    @Bean SecurityFilterChain chain(HttpSecurity http,AuthService auth,ExtensionSessions extensions) throws Exception {
+    @Bean SecurityFilterChain chain(HttpSecurity http,AuthService auth,ExtensionSessions extensions,AiTickets tickets) throws Exception {
         return http.csrf(c->c.disable()).sessionManagement(c->c.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(c->c.requestMatchers("/api/auth/login","/api/health").permitAll().anyRequest().authenticated())
+            .authorizeHttpRequests(c->c.requestMatchers("/api/auth/login","/api/health","/api/ai/skills/files/*").permitAll().anyRequest().authenticated())
             .exceptionHandling(c->c.authenticationEntryPoint((req,res,e)->error(res,401,"请先登录")))
             .addFilterBefore(new OncePerRequestFilter() {
                 @Override protected void doFilterInternal(HttpServletRequest req,HttpServletResponse res,FilterChain chain) throws ServletException,IOException {
@@ -30,7 +31,8 @@ public class SecurityConfig {
                             Actor actor;
                             if(req.getRequestURI().startsWith("/extension/")) {
                                 var context=extensions.authenticate(header.substring(7));req.setAttribute("extensionSession",context);actor=context.actor();
-                            } else actor=auth.authenticate(header.substring(7));
+                            } else if(req.getRequestURI().startsWith("/api/ai/gateway/")) actor=tickets.authenticate(header.substring(7),"gateway","");
+                            else actor=auth.authenticate(header.substring(7));
                             SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(actor,null,List.of()));
                         }
                         catch(BusinessException e) { error(res,e.status,e.getMessage());return; }

@@ -1,6 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion><parent><groupId>com.superpower.browser</groupId><artifactId>super-power-browser-server</artifactId><version>0.1.0</version></parent><artifactId>api</artifactId>
   <dependencies>
+    <dependency><groupId>com.superpower.browser</groupId><artifactId>ai</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>com.superpower.browser</groupId><artifactId>core</artifactId><version>${project.version}</version></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-webmvc</artifactId></dependency>
   </dependencies>

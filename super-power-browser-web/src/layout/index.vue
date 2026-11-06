@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed,onMounted,ref,watch} from 'vue';
 import {useRoute,useRouter} from 'vue-router';
-import {House,Shop,Monitor,Wallet,User,Setting,Fold,Expand,Refresh,Close} from '@element-plus/icons-vue';
+import {House,Shop,Monitor,Wallet,User,Setting,Fold,Expand,Refresh,Close,ChatDotRound} from '@element-plus/icons-vue';
 import CompanyInfo from './components/Sidebar/components/CompanyInfo.vue';
 import {usePermissions} from '@/store/modules/permission.store';
 import {useAccount} from '@/store/modules/account.store';
@@ -22,10 +22,11 @@ onMounted(()=>account.load());
     <el-menu router :default-active="route.path" :default-openeds="['shop','device','money','company']" :collapse="collapsed" class="navigation">
       <el-menu-item index="/dashboard"><el-icon><House/></el-icon><template #title>首页</template></el-menu-item>
       <el-sub-menu v-for="group in groups" :key="group.name" :index="group.name"><template #title><el-icon><component :is="group.icon"/></el-icon><span>{{group.title}}</span></template><el-menu-item v-for="child in group.children" :key="child[1]" :index="child[1]">{{child[0]}}</el-menu-item></el-sub-menu>
+      <el-menu-item v-if="permissions.can('ai.use')" index="/zhifuAgent"><el-icon><ChatDotRound/></el-icon><template #title>SuperPower AI</template></el-menu-item>
     </el-menu>
     <div class="sidebar-bottom"><router-link to="/set-center"><el-icon><Setting/></el-icon><span v-if="!collapsed">设置中心</span></router-link><small v-if="!collapsed">SuperPower Browser · 0.1.0</small></div>
   </aside>
   <div class="workspace"><header class="workspace-header"><el-button text :icon="collapsed?Expand:Fold" aria-label="折叠菜单" @click="collapsed=!collapsed"/><div class="workspace-tabs"><div v-for="tab in tabs" :key="tab.path" class="workspace-tab" :class="{active:route.fullPath===tab.path}"><router-link :to="tab.path">{{tab.title}}</router-link><button v-if="tab.path!=='/dashboard'" :aria-label="`关闭${tab.title}页签`" @click="closeTab(tab.path)"><el-icon><Close/></el-icon></button></div></div><el-button text :icon="Refresh" aria-label="刷新当前页面" @click="viewKey++;account.load()"/><el-button text :icon="Setting" aria-label="设置中心" @click="router.push('/set-center')"/></header>
-    <main class="workspace-main"><router-view :key="route.fullPath+viewKey"/></main>
+    <main class="workspace-main" :class="{'ai-host':route.path==='/zhifuAgent'}"><router-view :key="route.fullPath+viewKey"/></main>
   </div></div>
 </template>

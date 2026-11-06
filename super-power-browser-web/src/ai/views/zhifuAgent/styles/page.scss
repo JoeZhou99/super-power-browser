@@ -1,0 +1,32 @@
+.zhifu-page {
+  min-height: 100%;
+  padding: 20px 24px;
+  background: var(--el-bg-color);
+  border-radius: 8px;
+}
+
+.page-header {
+  // display: flex;
+  // align-items: flex-start;
+  // justify-content: space-between;
+  margin-bottom: 12px;
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--el-text-color-primary);
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: var(--el-text-color-secondary);
+  }
+}
+
+.page-tabs {
+  :deep(.el-tabs__header) {
+    margin-bottom: 0;
+  }
+}

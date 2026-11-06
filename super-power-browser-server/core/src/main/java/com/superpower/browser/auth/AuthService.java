@@ -13,7 +13,7 @@ import static com.superpower.browser.shared.BusinessException.require;
 
 @Service
 public class AuthService implements MemberDirectory {
-    public static final Set<String> PERMISSIONS = Set.of("shop.view","shop.create","shop.edit","shop.open","shop.delete","shop.export","shop.grant","device.view","device.edit","device.buy","device.renew","device.export","wallet.view","wallet.recharge","order.view","order.export","member.manage","role.manage");
+    public static final Set<String> PERMISSIONS = Set.of("ai.use","ai.purchase","shop.view","shop.create","shop.edit","shop.open","shop.delete","shop.export","shop.grant","device.view","device.edit","device.buy","device.renew","device.export","wallet.view","wallet.recharge","order.view","order.export","member.manage","role.manage");
     private final AuthRepository repository;
     private final AuditRepository audit;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();

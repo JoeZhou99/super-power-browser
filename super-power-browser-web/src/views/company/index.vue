@@ -9,7 +9,7 @@ import {usePermissions} from '@/store/modules/permission.store';
 const route=useRoute(),permissions=usePermissions(),isRole=computed(()=>route.path.endsWith('/roles'));
 const members=ref<any[]>([]),roles=ref<any[]>([]),nodes=ref<string[]>([]),loading=ref(false),busy=ref(false);
 const query=ref(''),searchType=ref('information'),roleFilter=ref(''),statusFilter=ref(''),page=ref(1),size=ref(20),selectedRows=ref<any[]>([]);
-const labels:Record<string,string>={'shop.view':'查看店铺','shop.create':'创建／复制店铺','shop.edit':'编辑、绑定与常用','shop.open':'打开店铺','shop.delete':'店铺回收与删除','shop.export':'导出店铺','shop.grant':'管理店铺授权','device.view':'查看设备','device.edit':'编辑、检测与回收设备','device.buy':'购买设备','device.renew':'续费与加速','device.export':'导出设备','wallet.view':'查看余额','wallet.recharge':'账户充值','order.view':'查看订单','order.export':'导出订单','member.manage':'成员管理','role.manage':'角色管理'};
+const labels:Record<string,string>={'ai.use':'使用 SuperPower AI','ai.purchase':'订购 AI 套餐','shop.view':'查看店铺','shop.create':'创建／复制店铺','shop.edit':'编辑、绑定与常用','shop.open':'打开店铺','shop.delete':'店铺回收与删除','shop.export':'导出店铺','shop.grant':'管理店铺授权','device.view':'查看设备','device.edit':'编辑、检测与回收设备','device.buy':'购买设备','device.renew':'续费与加速','device.export':'导出设备','wallet.view':'查看余额','wallet.recharge':'账户充值','order.view':'查看订单','order.export':'导出订单','member.manage':'成员管理','role.manage':'角色管理'};
 const memberTypes:Record<number,string>={1:'普通成员',2:'管理员',3:'超级管理员'};
 async function load(){loading.value=true;try{[members.value,roles.value,nodes.value]=await Promise.all([request('/members'),request('/roles'),permissions.can('role.manage')?request('/permission-nodes'):Promise.resolve([])]);}finally{loading.value=false;}}
 onMounted(()=>{load();if(route.query.create)editMember();});

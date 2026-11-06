@@ -12,6 +12,8 @@ if(-not (Test-Path -LiteralPath $accessFile)){
 }
 $access=Get-Content -LiteralPath $accessFile -Raw -Encoding UTF8|ConvertFrom-Json
 $apiUrl='http://127.0.0.1:18080'
+$env:AI_PUBLIC_URL=$apiUrl
+$env:AI_SKILL_STORAGE=Join-Path $previewDir 'ai-skills'
 $kernelManifest=Join-Path $previewDir 'runtime/kernels.json'
 if(Test-Path -LiteralPath $kernelManifest){$env:KERNEL_MANIFEST_PATH=$kernelManifest}
 try{$health=Invoke-RestMethod "$apiUrl/api/health" -TimeoutSec 2}catch{$health=$null}
@@ -35,7 +37,7 @@ if(-not $health){
 if(-not $BackendOnly){
     $desktopDir=Join-Path $projectRoot 'super-power-browser-desktop'
     $electronPath=Join-Path $desktopDir 'node_modules/electron/dist/electron.exe'
-    if(-not (Test-Path -LiteralPath $electronPath)){throw 'Desktop Electron is missing. Run npm ci in super-power-browser-desktop; the old project runtime is not used.'}
+    if(-not (Test-Path -LiteralPath $electronPath)){throw 'Desktop Electron is missing. Run npm ci in super-power-browser-desktop.'}
     Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
     $desktop=Start-Process -FilePath $electronPath -ArgumentList @($desktopDir) -WorkingDirectory $desktopDir -WindowStyle Normal -PassThru
     $desktop.Id|Set-Content -LiteralPath (Join-Path $previewDir 'desktop.pid') -Encoding ASCII
