@@ -13,7 +13,13 @@ watch([()=>props.modelValue,()=>kernels.value],()=>{
 });
 const platforms=['TikTok Shop','亚马逊','Shopee','Lazada','Temu','SHEIN','eBay','沃尔玛','速卖通','Shopify','美客多','Coupang','Allegro','抖店','拼多多','淘宝','快手小店','微信小店','其他平台'];
 onMounted(async()=>{
-  const loadKernels=async()=>{try{const result=await request('/runtime/kernels');const list=result.kernels||result.contents?.win||[];kernels.value=list.filter((k:any)=>(!k.platform||k.platform==='win32')&&(!k.arch||k.arch==='x64')).map((k:any)=>({...k,version:String(k.version),disabled:!!(k.disabled||k.disableWin),recommended:!!(k.recommended||k.isRecommend)}));if(!kernels.value.length)kernelError.value='暂无已发布的内核版本';}catch{kernelError.value='无法获取内核清单，请检查内核资源服务';}};
+  const loadKernels=async()=>{try{
+    const [result,runtime]=await Promise.all([request('/runtime/kernels'),window.api?.runtimePlatform?.()]);
+    const platform=runtime?.platform||(/Mac/.test(navigator.platform)?'darwin':/Win/.test(navigator.platform)?'win32':'');
+    const available=(result.kernels||[]).filter((k:any)=>!k.disabled&&(!platform||k.platform===platform)&&(!runtime?.arch||k.arch===runtime.arch));
+    kernels.value=Array.from(new Map(available.map((k:any)=>[String(k.version),{...k,version:String(k.version),recommended:available.some((v:any)=>v.version===k.version&&v.recommended)}])).values());
+    kernelError.value=kernels.value.length?'':'当前电脑暂无可用内核，请联系管理员发布';
+  }catch{kernelError.value='无法获取内核清单，请检查内核资源服务';}};
   await Promise.all([loadKernels(),permissions.can('shop.grant')?request('/members').then(value=>{members.value=value.filter((m:any)=>m.enabled);}):Promise.resolve()]);
 });
 const ruleMode=computed({get:()=>props.form.fingerprint.accessRules?.mode||'blacklist',set:mode=>{props.form.fingerprint.accessRules={...(props.form.fingerprint.accessRules||{domains:[]}),mode};}});
@@ -39,7 +45,7 @@ function newUa(){const os=props.form.fingerprint.os==='Mac'?'Macintosh; Intel Ma
   <el-form-item label="语言"><el-radio-group v-model="form.fingerprint.languageMode"><el-radio value="ip" disabled>跟随 IP</el-radio><el-radio value="custom">自定义</el-radio></el-radio-group><el-select v-model="form.fingerprint.language" style="width:180px;margin-left:16px"><el-option label="简体中文" value="zh-CN"/><el-option label="English" value="en-US"/><el-option label="日本語" value="ja-JP"/></el-select></el-form-item>
   <el-form-item label="WebGL"><el-radio-group v-model="form.fingerprint.webgl"><el-radio :value="true">开启</el-radio><el-radio :value="false">关闭</el-radio></el-radio-group></el-form-item>
   <el-form-item label="默认浏览器"><el-radio-group :model-value="'Chrome'"><el-radio value="Chrome">Chrome</el-radio><el-radio value="Firefox" disabled>Firefox</el-radio></el-radio-group></el-form-item>
-  <el-form-item label="内核版本" required><el-select v-model="form.kernelVersion" filterable @change="newUa"><el-option v-if="form.kernelVersion&&!kernels.some(k=>k.version===form.kernelVersion)" :value="form.kernelVersion" :label="form.kernelVersion+'（未发布）'" disabled/><el-option v-for="kernel in kernels" :key="kernel.version" :value="kernel.version" :label="kernel.version+(kernel.recommended?'（推荐）':'')" :disabled="kernel.disabled"/></el-select><span v-if="kernelError" class="muted">{{kernelError}}</span></el-form-item>
+  <el-form-item label="内核版本" required><el-select v-model="form.kernelVersion" filterable @change="newUa"><el-option v-if="form.kernelVersion&&!kernels.some(k=>k.version===form.kernelVersion)" :value="form.kernelVersion" :label="form.kernelVersion+'（当前电脑不可用）'" disabled/><el-option v-for="kernel in kernels" :key="kernel.version" :value="kernel.version" :label="kernel.version+(kernel.recommended?'（推荐）':'')" :disabled="kernel.disabled"/></el-select><span v-if="kernelError" class="muted">{{kernelError}}</span></el-form-item>
   <el-form-item label="User Agent"><el-input v-model="form.fingerprint.userAgent" type="textarea" :rows="2"/><el-button link type="primary" @click="newUa">按所选系统和内核生成 UA</el-button></el-form-item>
   <el-form-item label="UA 版本"><el-input :model-value="form.kernelVersion" readonly/></el-form-item>
   <el-form-item label="窗口尺寸"><el-select v-model="form.fingerprint.resolution"><el-option v-for="s in ['1920x1080','1536x864','1440x900','1366x768','2560x1440']" :key="s" :value="s"/></el-select><el-tooltip content="设置浏览器窗口大小；网页读取的屏幕尺寸仍由当前内核和显示器决定"><span class="muted" style="margin-left:12px">窗口大小说明</span></el-tooltip></el-form-item>

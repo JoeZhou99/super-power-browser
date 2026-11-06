@@ -7,7 +7,7 @@
       </div>
     </header>
     <div class="hint">
-      <!-- <span>{{ t("zhifuAgent.scheduled.systemHint") }}</span> -->
+      <span>{{ t("zhifuAgent.scheduled.workspaceOnly") }}</span>
       <el-button type="primary" size="small" :icon="Plus" @click="openEditor()">
         {{ t("zhifuAgent.scheduled.create") }}
       </el-button>

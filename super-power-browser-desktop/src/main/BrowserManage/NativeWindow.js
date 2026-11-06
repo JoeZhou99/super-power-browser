@@ -1,7 +1,14 @@
 // A responsive debugging port does not prove the user can see the window.
 // Only inspect windows owned by the exact process launched for this shop.
 let sharedApi;
+const execFile=require('node:util').promisify(require('node:child_process').execFile);
 class NativeWindow {
+  async revealMac(pid){
+    if(!Number.isInteger(pid)||pid<=0)return false;
+    // AppKit activation targets only the process launched for this shop; no System Events automation.
+    const script=`ObjC.import('AppKit');const app=$.NSRunningApplication.runningApplicationWithProcessIdentifier(${pid});if(!app.isNil()&&!app.terminated){app.unhide;app.activateWithOptions(3);String(Boolean(app.active&&!app.hidden));}else{'false';}`;
+    const {stdout}=await execFile('/usr/bin/osascript',['-l','JavaScript','-e',script],{timeout:2000});return stdout.trim()==='true';
+  }
   load(){
     if(sharedApi)return sharedApi;
     if(this.api)return this.api;
@@ -43,7 +50,8 @@ class NativeWindow {
     return result;
   }
   reveal(pid,iconFile){
-    if(process.platform!=='win32')return true;
+    if(process.platform==='darwin')return this.revealMac(pid);
+    if(process.platform!=='win32')return false;
     const owned=this.windows(pid),window=owned.find(w=>w.title.includes('SuperPower'))||owned[0];if(!window)return false;
     const a=this.load();
     if(iconFile){
@@ -60,6 +68,7 @@ class NativeWindow {
   }
   release(pid){const icon=this.icons?.get(pid);if(icon){this.load().destroyIcon(icon);this.icons.delete(pid);}}
   flash(pid){
+    if(process.platform==='darwin')return this.revealMac(pid).then(visible=>({flashed:false,focused:visible}));
     const window=this.windows(pid).find(w=>w.visible);if(!window)throw new Error('未找到该店铺的浏览器窗口');
     this.flashTimes??=new Map();const now=Date.now(),times=(this.flashTimes.get(pid)||[]).filter(t=>now-t<1000);
     if(times.length>=5)return {skipped:true,reason:'rate-limit'};
@@ -72,6 +81,7 @@ class NativeWindow {
     const previous=this.soundQueue||Promise.resolve();
     const playing=previous.catch(()=>{}).then(async()=>{
       await require('node:fs/promises').access(file);
+      if(process.platform==='darwin'){await execFile('/usr/bin/afplay',[file],{timeout:10000});return {played:true};}
       if(!this.load().playSound(Buffer.from(file+'\0','utf16le'),null,0x20003))throw new Error('消息提示音播放失败');
       await new Promise(resolve=>setTimeout(resolve,650));return {played:true};
     });

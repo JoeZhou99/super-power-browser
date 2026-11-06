@@ -1,3 +1,5 @@
+import { taskInWorkspace } from '../shared/task-workspace.js'
+import { preflightShopModel } from './shop-model-preflight.js'
 import { summarizeShopResults } from './shop-summary.js'
 import { app, dialog, ipcMain, Notification, shell } from "electron"
 import { ConversationStore } from './conversation-store.js'
@@ -8,8 +10,8 @@ import { validateShopConnection } from './cdp-connection.js'
 import { shopExecutionOutcome } from '../shared/tool-outcome.js'
 import { isUserStopError, normalizeTaskShops, taskShopContext, executeTaskForShops } from '../shared/task-shops.js'
 import { CHANNELS } from "../shared/channels.js"
-import { AgentService } from "./agent-service.js"
-import { SettingsStore } from "./settings-store.js"
+import { AgentService, deviceLimitMessage } from "./agent-service.js"
+import { SettingsStore, normalizeRequestHeaders } from "./settings-store.js"
 import { saveSettingsAndSyncChannels } from './settings-channel-sync.js'
 import { SkillService } from "./skill-service.js"
 import { ScheduledTaskService } from "./scheduled-task-service.js"
@@ -34,8 +36,9 @@ export async function startTridentHost({
   conversationDir = dataDir,
   authorize = async () => {},
   authorizeTask = async () => {},
+  prepareModelSettings = settings => settings,
 } = {}) {
-  const settingsStore = new SettingsStore(dataDir)
+  const settingsStore = new SettingsStore(dataDir, { prepareModelSettings })
   const conversationStore = new ConversationStore(conversationDir || app.getPath('userData'))
   const skillService = new SkillService(dataDir)
   const scheduledTaskService = new ScheduledTaskService(dataDir)
@@ -70,7 +73,7 @@ export async function startTridentHost({
   async function runChatShops(input, settings) {
     if (chatShopRuns.has(input.conversationId)) throw new Error('该会话已有店铺任务执行中')
     const shops = normalizeTaskShops(input.shops)
-    const batch = { stopped: false, runners: new Set(), runId: input.runId }
+    const batch = { stopped: false, runners: new Set(), runId: input.runId, deviceLimitError: '' }
     const authorization = { session: agentService.conversationPermissionSet(input.conversationId), task: batch, services: new Set() }
     chatShopRuns.set(input.conversationId, batch)
     const states = shops.map(shop => ({ shop, output: '', status: '等待执行', files: [] }))
@@ -85,6 +88,7 @@ export async function startTridentHost({
     try {
       const result = await executeTaskForShops(shops, async shop => {
         if (batch.stopped) throw new Error('任务已停止')
+        if (batch.deviceLimitError) throw new Error(batch.deviceLimitError)
         const state = states.find(item => item.shop.id === shop.id)
         state.status = '正在连接'
         publish()
@@ -110,6 +114,10 @@ export async function startTridentHost({
               publish()
             } else if (payload.kind === 'error') {
               executionError = payload.message
+              if (deviceLimitMessage(payload.message) && !batch.deviceLimitError) {
+                batch.deviceLimitError = payload.message
+                send(channel, { ...payload, conversationId: input.conversationId })
+              }
             } else if (payload.kind === 'tool-start' || payload.kind === 'tool-end') {
               const file = payload.kind === 'tool-end' && payload.toolName === 'browser_export_excel' ? toolObject(payload.output) : null
               if (file?.ok && file.result?.verified && file.result.path) state.files.push(file.result.path)
@@ -157,6 +165,10 @@ export async function startTridentHost({
             state.output = collapseRepeatedText(state.output) || "任务已停止。"
             return { status: "cancelled", output: state.output, error: "" }
           }
+          if (deviceLimitMessage(cause) && !batch.deviceLimitError) {
+            batch.deviceLimitError = deviceLimitMessage(cause)
+            send(CHANNELS.agentEvent, { kind: 'error', conversationId: input.conversationId, message: batch.deviceLimitError })
+          }
           state.output = `执行失败：${cause.message || String(cause)}`
           state.status = '失败'
           throw cause
@@ -168,7 +180,11 @@ export async function startTridentHost({
           backgroundRunners.delete(runner)
         }
       }, settings.shopConcurrency)
-      if (!batch.stopped && result.status !== 'cancelled') {
+      if (batch.deviceLimitError) {
+        result.status = 'error'
+        result.error = batch.deviceLimitError
+      }
+      if (!batch.stopped && !batch.deviceLimitError && result.status !== 'cancelled') {
         send(CHANNELS.agentEvent, { kind: 'waiting', conversationId: input.conversationId, message: '正在合并本轮所有店铺数据…' })
         try {
           const summary = await summarizeShopResults(input.workspace || settings.workspace, input.conversationId, states)
@@ -232,6 +248,7 @@ export async function startTridentHost({
     for (const item of Array.isArray(repaired) ? repaired : []) send(CHANNELS.scheduledTaskUpdated, item)
     const task = await scheduledTaskService.get(id)
     if (!task || (!task.enabled && !force)) return
+    if (!taskInWorkspace(task, (await settingsStore.getPrivate()).workspace)) return
     if (!force) {
       const due = await scheduledTaskService.dueTasks()
       if (!due.some((item) => item.id === id)) return
@@ -253,6 +270,7 @@ export async function startTridentHost({
         ? `\n\n已选择技能，请直接按以下路径使用，不要在工作区重新搜索同名脚本：\n${selectedSkills.map((skill) => `- ${skill.name}: 读取 ${skill.file || `${skill.path}\\SKILL.md`}；技能目录为 ${skill.path}`).join("\n")}`
         : ""
       const settings = await settingsStore.getPrivate()
+      await preflightShopModel({ shops, settings, getConnection: getBrowserConnection, limitMessage: deviceLimitMessage })
       const states = shops.map(shop => ({ shop, status: '等待执行', output: '', files: [] }))
       const publish = () => send(CHANNELS.scheduledTaskUpdated, {
         ...task, lastStatus: 'running', lastRunAt: task.lastRunAt,
@@ -294,6 +312,7 @@ export async function startTridentHost({
         try {
         if (disposed) throw new Error("任务已停止")
         await authorizeTask()
+        if (!taskInWorkspace(task, (await settingsStore.getPrivate()).workspace)) throw new Error("当前工作区已切换，停止启动此工作区的后续任务")
         const shopResults = shop ? await openTaskShops([shop]) : []
         const shopContext = shop ? taskShopContext([shop], shopResults) : ''
         if (state) { state.status = '正在执行'; publish() }
@@ -512,12 +531,12 @@ export async function startTridentHost({
     })
     handle(CHANNELS.testConnection, async (_event, input) => {
       const saved = await settingsStore.getPrivate()
-      const settings = {
+      const settings = await prepareModelSettings({
         ...saved,
         ...input,
         apiKey: String(input.apiKey || saved.apiKey || "").trim(),
         baseUrl: String(input.baseUrl || saved.baseUrl || "").trim().replace(/\/$/, ""),
-      }
+      })
       if (!settings.apiKey && !["ollama", "lmstudio"].includes(settings.providerId)) {
         return { ok: false, message: "尚未配置 API Key" }
       }
@@ -542,6 +561,8 @@ export async function startTridentHost({
         headers = { ...headers, Authorization: `Bearer ${settings.apiKey}` }
       }
 
+      // 测试连接同样带上设备头。鉴权头放在后面，避免被自定义头覆盖。
+      headers = { ...normalizeRequestHeaders(settings.headers), ...headers }
       try {
         const response = await fetch(url, { headers, signal: AbortSignal.timeout(15000) })
         const body = await response.text()
@@ -603,6 +624,8 @@ export async function startTridentHost({
       }
     })
     handle(CHANNELS.beginShopUsage, async (_event, shops) => {
+      const settings = await settingsStore.getPrivate()
+      await preflightShopModel({ shops: normalizeTaskShops(shops), settings, getConnection: getBrowserConnection, limitMessage: deviceLimitMessage })
       const tokens = {}
       for (const shop of normalizeTaskShops(shops)) tokens[shop.id] = await shopLifecycle.begin(shop.id)
       return tokens
@@ -679,7 +702,9 @@ export async function startTridentHost({
     handle(CHANNELS.saveScheduledTask, (_event, input) => scheduledTaskService.save(input))
     handle(CHANNELS.toggleScheduledTask, (_event, input) => scheduledTaskService.toggle(input.id, input.enabled))
     handle(CHANNELS.deleteScheduledTask, (_event, id) => scheduledTaskService.remove(id))
-    handle(CHANNELS.runScheduledTask, (_event, id) => {
+    handle(CHANNELS.runScheduledTask, async (_event, id) => {
+      const task = await scheduledTaskService.get(id)
+      if (!taskInWorkspace(task, (await settingsStore.getPrivate()).workspace)) throw new Error("仅可执行当前工作区的定时任务")
       void runScheduledTask(id, true).catch(error => send(CHANNELS.agentEvent, {kind: "error", message: error.message}))
       return true
     })
@@ -722,7 +747,9 @@ export async function startTridentHost({
     const repaired = await scheduledTaskService.recoverInterrupted().catch(() => [])
     for (const task of Array.isArray(repaired) ? repaired : []) send(CHANNELS.scheduledTaskUpdated, task)
     const due = await scheduledTaskService.dueTasks().catch(() => [])
-    for (const task of due) void runScheduledTask(task.id).catch(() => {})
+    const settings = await settingsStore.getPrivate().catch(() => null)
+    if (!settings || disposed) return
+    for (const task of due.filter(task => taskInWorkspace(task, settings.workspace))) void runScheduledTask(task.id).catch(() => {})
   }, 15000)
   schedulerTimer.unref?.()
 

@@ -94,6 +94,8 @@ def main():
     publish = sub.add_parser('publish')
     publish.add_argument('manifest', type=Path)
     publish.add_argument('--version', required=True)
+    publish.add_argument('--platform', choices=['win32', 'darwin'])
+    publish.add_argument('--arch', choices=['x64', 'arm64'])
     publish.add_argument('--recommended', action='store_true')
     migrate = sub.add_parser('migrate')
     migrate.add_argument('release_id')
@@ -106,7 +108,7 @@ def main():
     api = ReleaseApi()
     if args.command == 'list':
         for row in api.call('/releases')['items']:
-            print(json.dumps({k: row[k] for k in ('id', 'version', 'fullVersion', 'state', 'recommended', 'storageType', 'sha256')}, ensure_ascii=False))
+            print(json.dumps({k: row[k] for k in ('id', 'version', 'platform', 'arch', 'fullVersion', 'state', 'recommended', 'storageType', 'sha256')}, ensure_ascii=False))
         return
     if args.command == 'disable':
         api.call('/releases/' + args.release_id + '/disable', {})
@@ -123,9 +125,10 @@ def main():
         result = api.call('/releases/' + args.release_id + '/storage/activate', {})
     else:
         manifest = json.loads(args.manifest.read_text(encoding='utf-8'))
-        descriptor = next((d for d in manifest['kernels'] if d['version'] == args.version), None)
-        if descriptor is None:
-            raise ValueError('Version not present in the manifest')
+        matches = [d for d in manifest['kernels'] if str(d['version']) == args.version and (not args.platform or d['platform'] == args.platform) and (not args.arch or d['arch'] == args.arch)]
+        if len(matches) != 1:
+            raise ValueError('Select exactly one release with --version, --platform and --arch')
+        descriptor = matches[0]
         root = args.manifest.resolve().parent
         archive = (root / descriptor['archive']).resolve()
         if not archive.is_relative_to(root):
@@ -135,7 +138,7 @@ def main():
         if row['state'] == 'DRAFT':
             upload(api.call('/releases/' + row['id'] + '/upload', {}), archive)
         result = api.call('/releases/' + row['id'] + '/publish', {'recommended': args.recommended})
-    print(json.dumps({k: result[k] for k in ('id', 'version', 'state', 'recommended', 'storageType')}, ensure_ascii=False))
+    print(json.dumps({k: result[k] for k in ('id', 'version', 'platform', 'arch', 'state', 'recommended', 'storageType')}, ensure_ascii=False))
 
 
 if __name__ == '__main__':

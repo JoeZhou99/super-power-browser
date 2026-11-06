@@ -37,11 +37,12 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('output', type=Path)
     parser.add_argument('--proxy')
+    parser.add_argument('--lock', type=Path, default=Path(__file__).resolve().parent.parent / 'upstream.lock.json')
     args = parser.parse_args()
-    lock = json.loads((Path(__file__).resolve().parent.parent / 'upstream.lock.json').read_text(encoding='utf-8'))
+    lock = json.loads(args.lock.read_text(encoding='utf-8'))
     args.output.mkdir(parents=True, exist_ok=True)
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({'https': args.proxy} if args.proxy else {}))
-    download(opener, lock['downloadUrl'], args.output / 'fingerprint-chromium-144-win-x64.zip', lock['sha256'])
+    download(opener, lock['downloadUrl'], args.output / lock.get('archiveName', 'fingerprint-chromium-144-win-x64.zip'), lock['sha256'])
     download(opener, lock['sourceUrl'], args.output / ('source-' + lock['sourceCommit'] + '.zip'), lock.get('sourceSha256'))
 
 

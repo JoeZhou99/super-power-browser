@@ -1,3 +1,4 @@
+const {createAiDeviceSettings}=require('./AiDeviceIdentity');
 const path=require('node:path');
 const {ipcMain}=require('electron');
 
@@ -59,7 +60,8 @@ class AiHost {
       process.env.TRIDENT_APP_ROOT=root;
       const {startTridentHost}=await this.loadRuntime();
       await valid();
-      const runtime=await startTridentHost({getWindow:()=>this.window,getWebContents:()=>this.window.webContents,
+      const prepareModelSettings=createAiDeviceSettings(this.config.dataPath);
+      const runtime=await startTridentHost({prepareModelSettings,getWindow:()=>this.window,getWebContents:()=>this.window.webContents,
         dataDir:path.join(this.config.dataPath,'ai','accounts',actor.tenantId,actor.id),conversationDir:path.join(this.config.dataPath,'ai'),authorize,authorizeTask:valid,
         getBrowserConnection:id=>this.connection(id),isShopBrowserOpen:async id=>(await this.connection(id)).isopen,
         closeShopBrowser:async(id,expected)=>{const live=await this.connection(id);if(!live.isopen||live.browserInstanceId!==expected.browserInstanceId)return {closed:false,reason:'店铺实例已变化'};await this.browsers.close(id);return {closed:!this.browsers.running.has(id)};}

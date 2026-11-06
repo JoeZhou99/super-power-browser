@@ -59,6 +59,10 @@ import {
   createDefaultSettings,
 } from "@/ai/views/zhifuAgent/constants";
 import {
+  gatewayBase,
+  normalizeModelSource,
+} from "@/ai/views/zhifuAgent/utils/modelSource";
+import {
   collapseRepeatedText,
   mergeStreamText,
   stripThinkingMarkup,
@@ -67,6 +71,7 @@ import {
   normalizeExecutionTimeout,
   normalizeShopConcurrency,
 } from "@/ai/views/zhifuAgent/utils/taskShops";
+import { sameWorkspace } from "@/ai/views/zhifuAgent/utils/taskWorkspace";
 import type {
   ChatMessage,
   Conversation,
@@ -498,7 +503,10 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
   /* ---------------- 定时任务 ---------------- */
   const scheduledTasks = ref<ScheduledTask[]>([]);
   const unreadScheduledCount = computed(
-    () => scheduledTasks.value.filter((task) => task.unread).length
+    () =>
+      scheduledTasks.value.filter(
+        (task) => task.unread && sameWorkspace(task.workspace, workspace.value)
+      ).length
   );
 
   /* ---------------- 技能 ---------------- */
@@ -1120,12 +1128,15 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
   async function selectWorkspace() {
     const selected = await zhifuSelectWorkspace();
     if (!selected) return "";
+    const changed = !sameWorkspace(selected, workspace.value);
     workspace.value = selected;
     persist();
+    // 先停掉其他目录的任务，避免设置保存变慢时旧任务仍到点触发
+    const tasksReady = changed ? loadScheduledTasks().catch(() => {}) : Promise.resolve();
     await zhifuSetWorkspace(selected);
     workspaceSetupOpen.value = false;
     await saveSettings({ workspace: selected });
-    await loadSkills(selected).catch(() => {});
+    await Promise.all([loadSkills(selected).catch(() => {}), tasksReady]);
     return selected;
   }
 
@@ -1154,6 +1165,7 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
       modelId: provider.model,
       baseUrl: provider.baseUrl,
       apiProtocol: provider.protocol,
+      modelSource: "official",
     });
   }
 
@@ -1265,7 +1277,12 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
     await modelKeyChain;
     if (!uid || currentAccountId() !== uid) return;
     return writeElectronSettings(() => {
-      const next: Record<string, any> = { ...settings, ...messageChannelsForElectron(channels) };
+      const modelSource = normalizeModelSource(settings.modelSource, settings.baseUrl);
+      const next: Record<string, any> = {
+        ...settings,
+        modelSource,
+        ...messageChannelsForElectron(channels),
+      };
       delete next.apiKey;
       delete next.hasApiKey;
       delete next.clearApiKey;
@@ -1304,6 +1321,8 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
     ]) {
       delete source[key];
     }
+    delete source.headers;
+    source.modelSource = normalizeModelSource(source.modelSource, source.baseUrl);
     Object.assign(settings, source, { apiKey, clearApiKey: false });
     applyProviderMigration();
   }
@@ -1322,12 +1341,6 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
     } catch {
       // 本地存储不可用时，下次进入仍会按账号重新对齐密钥
     }
-  }
-
-  function gatewayBase(url?: string) {
-    return String(url || "")
-      .trim()
-      .replace(/\/+$/, "");
   }
 
   /**
@@ -1388,7 +1401,7 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
       currentBase === officialBase ||
       currentBase === nextBase;
     if (!usingGateway) return;
-    const patch: Partial<AgentSettings> = { apiKey, hasApiKey: true };
+    const patch: Partial<AgentSettings> = { apiKey, hasApiKey: true, modelSource: "official" };
     if (!settings.hasApiKey) {
       Object.assign(patch, {
         providerId: provider.id,
@@ -1439,8 +1452,9 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
     let apiKey = "";
     let baseUrl = "";
     let modelId = "";
+    let modelSource: AgentSettings["modelSource"] = "official";
     let apiProtocol: AgentSettings["apiProtocol"] = provider.protocol;
-    // The new desktop keeps settings per account. Resolve the selected personal
+    // Settings are isolated per account. Resolve the selected personal
     // model against this account's server list before considering the gateway.
     try {
       const imported: any = await queryUserModelImportedApi({ page: 1, limit: 100 });
@@ -1450,7 +1464,7 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
         gatewayBase(item.apiUrl) === gatewayBase(settings.baseUrl) && String(item.apiKey || "").trim());
       if (selected) {
         writeSettingsOwner(uid);
-        await saveSettings({modelId:selected.modelName,apiKey:selected.apiKey,baseUrl:selected.apiUrl,
+        await saveSettings({modelSource:"own",modelId:selected.modelName,apiKey:selected.apiKey,baseUrl:selected.apiUrl,
           apiProtocol:String(selected.apiProtocol).toLowerCase()==="responses"?"responses":"chat",hasApiKey:true});
         keyReadyUid = uid;
         return;
@@ -1476,6 +1490,7 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
           (item: Record<string, any>) => String(item?.apiKey || "").trim() && String(item?.modelName || "").trim()
         );
         if (own) {
+          modelSource = "own";
           apiKey = String(own.apiKey).trim();
           baseUrl = String(own.apiUrl || "").trim();
           modelId = String(own.modelName).trim();
@@ -1490,7 +1505,8 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
       const listed = await marketModelIds();
       if (currentAccountId() !== uid) return;
       const current = String(settings.modelId || "").trim();
-      if (listed.length && !listed.includes(current)) {
+      // 选中项已被清空时，不要自动补第一个，等用户自己选
+      if (current && listed.length && !listed.includes(current)) {
         modelId = listed[0];
       }
     }
@@ -1508,7 +1524,7 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
     const resetModel =
       Boolean(modelId) ||
       Boolean(nextBase && currentBase !== nextBase && currentBase !== officialBase);
-    const patch: Partial<AgentSettings> = { apiKey, hasApiKey: true };
+    const patch: Partial<AgentSettings> = { apiKey, hasApiKey: true, modelSource };
     if (resetModel) {
       Object.assign(patch, {
         providerId: provider.id,
@@ -1539,6 +1555,8 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
         patch.executionTimeoutMinutes ?? settings.executionTimeoutMinutes
       ),
     };
+    const modelSource = normalizeModelSource(payload.modelSource, payload.baseUrl);
+    payload.modelSource = modelSource;
     const localSettings: Record<string, any> = {
       ...payload,
       ...messageChannelsForElectron(),
@@ -1553,6 +1571,7 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
       delete localSettings.hasApiKey;
     }
     const local = await writeElectronSettings(localSettings);
+    if (local) delete local.headers;
     const hasApiKey =
       (Boolean(settings.hasApiKey) || Boolean(String(payload.apiKey || "").trim())) &&
       !patch.clearApiKey;
@@ -1562,6 +1581,7 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
       clearApiKey: false,
       userName: payload.userName,
       agentName: payload.agentName,
+      modelSource,
       shopConcurrency: payload.shopConcurrency,
       conversationConcurrency: payload.conversationConcurrency,
       executionTimeoutMinutes: payload.executionTimeoutMinutes,
@@ -1629,7 +1649,7 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
   }
 
   async function loadSkillStore(params: { keyword?: string } = {}) {
-    const res: any = await getSkillStoreList({ page: 1, limit: 100, source: 0, ...params });
+    const res: any = await getSkillStoreList({ page: 1, limit: 100, ...params });
     skillStoreCatalog.value = pickList<SkillStoreItem>(res);
     return skillStoreCatalog.value;
   }
@@ -1787,6 +1807,8 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
   }
 
   let scheduledQueue: Promise<unknown> = Promise.resolve();
+  /** 已经写过「不在当前目录、停止执行」的任务，避免执行进度反复把开关写回去 */
+  const pausedAwayIds = new Set<string>();
 
   /** 本机任务文件不能并行写，否则后一次会覆盖前一次 */
   function enqueueScheduled<T>(job: () => Promise<T>) {
@@ -1888,6 +1910,8 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
       let ownersChanged = false;
       const visible: ScheduledTask[] = [];
       const enabledWrites: ScheduledTask[] = [];
+      const activeWorkspace = workspace.value;
+      pausedAwayIds.clear();
       for (const raw of local) {
         const task = normalizeScheduledTask(raw);
         if (!task.id) continue;
@@ -1914,7 +1938,16 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
           conversationOwners
         );
         const wanted = record ? record.ownerEnabled : (task.ownerEnabled ?? Boolean(task.enabled));
-        const shouldRun = Boolean(uid) && accountId === uid && wanted;
+        // Expired one-time tasks remain history; account restoration must not re-enable them.
+        const onceAt =
+          task.frequency === "once"
+            ? new Date(task.date + "T" + task.time + ":00").getTime()
+            : null;
+        const expiredOnce = onceAt !== null && (!Number.isFinite(onceAt) || onceAt <= Date.now());
+        // 列表只显示当前目录，但调度器看的是文件里的 enabled。目录不对就关掉，切回来再按原来的开关打开
+        const runsHere =
+          Boolean(activeWorkspace.trim()) && sameWorkspace(task.workspace, activeWorkspace);
+        const shouldRun = Boolean(uid) && accountId === uid && wanted && !expiredOnce && runsHere;
         if (accountId && Boolean(task.enabled) !== shouldRun) {
           enabledWrites.push({
             ...task,
@@ -1923,16 +1956,23 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
             enabled: shouldRun,
           });
         }
+        if (task.id && !runsHere) pausedAwayIds.add(task.id);
         if (uid && accountId === uid) {
           visible.push({ ...task, accountId, ownerEnabled: wanted, enabled: shouldRun });
         }
       }
       if (ownersChanged) writeScheduledOwners(owners);
+      if (currentAccountId() !== uid || !sameWorkspace(workspace.value, activeWorkspace)) {
+        return scheduledTasks.value;
+      }
       const failed = await applyScheduledEnabled(uid, enabledWrites);
-      if (currentAccountId() !== uid) return scheduledTasks.value;
+      if (currentAccountId() !== uid || !sameWorkspace(workspace.value, activeWorkspace)) {
+        return scheduledTasks.value;
+      }
       if (failed.size) {
         for (const item of visible) {
           if (!item.id || !failed.has(item.id)) continue;
+          pausedAwayIds.delete(item.id);
           const raw = local.find((entry) => String(entry?.id || "") === item.id);
           if (raw) item.enabled = Boolean(normalizeScheduledTask(raw).enabled);
         }
@@ -2113,10 +2153,42 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
       if (owner) scheduledTasks.value = scheduledTasks.value.filter((item) => item.id !== task.id);
       return;
     }
+    const wanted = recorded?.ownerEnabled ?? task.ownerEnabled ?? Boolean(task.enabled);
+    const runsHere =
+      Boolean(workspace.value.trim()) && sameWorkspace(task.workspace, workspace.value);
+    // 旧目录的任务跑起来后会把 enabled 写回 true，这里立刻再关掉
+    if (!runsHere && task.enabled && task.id && !pausedAwayIds.has(task.id)) {
+      pausedAwayIds.add(task.id);
+      const snapshot = task;
+      const existing = scheduledTasks.value.find((item) => item.id === snapshot.id);
+      void enqueueScheduled(async () => {
+        if (currentAccountId() !== uid) {
+          pausedAwayIds.delete(snapshot.id!);
+          return;
+        }
+        if (Boolean(workspace.value.trim()) && sameWorkspace(snapshot.workspace, workspace.value)) {
+          pausedAwayIds.delete(snapshot.id!);
+          return;
+        }
+        try {
+          await writeScheduledTask({
+            ...existing,
+            ...snapshot,
+            accountId: owner,
+            ownerEnabled: existing?.ownerEnabled ?? wanted,
+            enabled: false,
+          });
+        } catch {
+          pausedAwayIds.delete(snapshot.id!);
+        }
+      });
+    }
+    if (runsHere && task.id) pausedAwayIds.delete(task.id);
     const stored: ScheduledTask = {
       ...task,
       accountId: owner,
-      ownerEnabled: recorded?.ownerEnabled ?? task.ownerEnabled ?? Boolean(task.enabled),
+      ownerEnabled: wanted,
+      enabled: runsHere ? Boolean(task.enabled) : false,
     };
     applyScheduledReadMarks([stored]);
     upsertScheduledTask(stored);

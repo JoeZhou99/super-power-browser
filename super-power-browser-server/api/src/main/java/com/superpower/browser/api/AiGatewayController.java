@@ -41,9 +41,21 @@ public class AiGatewayController {
         try{
             usageId=subscriptions.reserve(a,model,data.length+output);
             String suffix=protocol.equals("responses")?"/responses":"/chat/completions";
-            var request=HttpRequest.newBuilder(URI.create(text(upstream,"baseUrl")+suffix)).timeout(Duration.ofMinutes(15)).header("Content-Type","application/json").header("Authorization","Bearer "+text(upstream,"apiKey")).POST(HttpRequest.BodyPublishers.ofByteArray(data)).build();
-            var response=client.send(request,HttpResponse.BodyHandlers.ofInputStream());
+            var request=HttpRequest.newBuilder(URI.create(text(upstream,"baseUrl")+suffix)).timeout(Duration.ofMinutes(15)).header("Content-Type","application/json").header("Authorization","Bearer "+text(upstream,"apiKey")).POST(HttpRequest.BodyPublishers.ofByteArray(data));
+            forwardDeviceHeaders(req,request);
+            var response=client.send(request.build(),HttpResponse.BodyHandlers.ofInputStream());
             try(InputStream input=response.body()){
+                if(response.statusCode()<200||response.statusCode()>=300){
+                    var deadline=DEADLINES.schedule(()->{try{input.close();}catch(IOException ignored){}},20,TimeUnit.SECONDS);
+                    try{
+                        var error=deviceError(new String(input.readNBytes(16384),StandardCharsets.UTF_8));
+                        if(!error.isEmpty()){
+                            res.setStatus(response.statusCode()>=400&&response.statusCode()<500?response.statusCode():502);
+                            res.setHeader("Cache-Control","no-store");res.setContentType("application/json;charset=UTF-8");
+                            res.getOutputStream().write(json(Map.of("error",error)).getBytes(StandardCharsets.UTF_8));return;
+                        }
+                    }finally{deadline.cancel(false);}
+                }
                 require(response.statusCode()>=200&&response.statusCode()<300,response.statusCode()==429?429:502,"官方模型上游暂不可用（"+response.statusCode()+"）");
                 started=true;res.setStatus(200);res.setHeader("Cache-Control","no-store");res.setHeader("X-Accel-Buffering","no");res.setContentType(stream?"text/event-stream;charset=UTF-8":"application/json;charset=UTF-8");
                 var timer=DEADLINES.schedule(()->{try{input.close();}catch(IOException ignored){}},15,TimeUnit.MINUTES);
@@ -61,6 +73,24 @@ public class AiGatewayController {
             }
         }catch(InterruptedException e){Thread.currentThread().interrupt();throw new BusinessException(503,"模型请求被中断");}
         finally{try{if(usageId!=null)subscriptions.settle(usageId,usage.known?usage.input:started?data.length:0,usage.known?usage.output:started?output:0,!usage.known,success);}finally{capacity.release();}}
+    }
+    static void forwardDeviceHeaders(jakarta.servlet.http.HttpServletRequest req,HttpRequest.Builder request){
+        for(String name:List.of("X-AI-Device-Id","X-AI-Device-Info")){
+            String value=req.getHeader(name);if(value==null)continue;value=value.trim();
+            int max=name.equals("X-AI-Device-Id")?128:4000;
+            if(!value.isEmpty()&&value.length()<=max&&value.chars().allMatch(c->c>=32&&c<=126))request.header(name,value);
+        }
+    }
+    static Map<String,String> deviceError(String body){
+        try{
+            Map<String,Object> data=object(body);
+            Object nested=data.get("error");String code=nested instanceof Map<?,?> error?String.valueOf(error.get("code")):text(data,"code");
+            return switch(code){
+                case "ai_device_device_id_required" -> Map.of("code",code,"message","AI 设备信息尚未就绪，请重新启动客户端后重试。");
+                case "ai_device_limit_reached" -> Map.of("code",code,"message","AI 在线设备名额已满，请稍后重试或联系管理员释放设备");
+                default -> Map.of();
+            };
+        }catch(RuntimeException ignored){return Map.of();}
     }
     static class Usage {
         long input,output;boolean known,completed;

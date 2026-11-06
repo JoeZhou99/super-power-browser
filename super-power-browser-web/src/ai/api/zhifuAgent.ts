@@ -400,6 +400,7 @@ export type ApiProtocol = "chat" | "responses";
 export type ReasoningEffort = "low" | "medium" | "high" | "xhigh";
 
 export interface AgentSettings {
+  modelSource?: "official" | "own";
   providerId: string;
   providerName: string;
   modelId: string;

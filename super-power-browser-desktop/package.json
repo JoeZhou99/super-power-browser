@@ -8,7 +8,8 @@
     "dev": "npm run build && electron .",
     "start": "electron .",
     "build": "node scripts/build.cjs",
-    "build:win": "npm run build && electron-builder --win --x64"
+    "build:win": "npm run build && electron-builder --win --x64",
+    "build:mac": "npm run build && node scripts/mac-icon.cjs && electron-builder --mac --x64 --arm64"
   },
   "dependencies": {
     "adm-zip": "0.5.16",
@@ -54,6 +55,15 @@
     "win": {
       "icon": "branding/app.ico",
       "target": "nsis"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.business",
+      "icon": "branding/app.icns",
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
     }
   }
 }

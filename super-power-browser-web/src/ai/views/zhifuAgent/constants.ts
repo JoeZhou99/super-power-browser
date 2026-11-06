@@ -65,6 +65,7 @@ export const createDefaultSettings = (): AgentSettings => ({
   providerName: MODEL_PROVIDERS[0].name,
   modelId: MODEL_PROVIDERS[0].model,
   baseUrl: MODEL_PROVIDERS[0].baseUrl,
+  modelSource: "official",
   apiKey: "",
   apiProtocol: MODEL_PROVIDERS[0].protocol,
   hasApiKey: false,

@@ -45,7 +45,7 @@ class BrowserHost {
     while(Date.now()<deadline){
       check(signal);
       if(run.child?.exitCode!==null&&run.child?.exitCode!==undefined)throw new Error('浏览器进程已退出');
-      if(this.windows.reveal(run.child?.pid,run.iconPath)){run.windowVisible=true;return;}
+      if(await this.windows.reveal(run.child?.pid,run.iconPath)){run.windowVisible=true;return;}
       await pause(100,signal);
     }
     throw new Error('浏览器已启动，但主窗口未能显示，请重新打开');
@@ -57,7 +57,7 @@ class BrowserHost {
     const localReady=localGeo().then(value=>(local=value),()=>local);
     const environment=await this.api.request(`/environments/${id}/launch-config`,{signal});check(signal);
     mark('configuration');
-    const profile=path.join(this.config.profiles,id,environment.kernelVersion);
+    const profile=path.join(this.config.profiles,id,process.platform==='win32'?environment.kernelVersion:`${process.platform}-${process.arch}-${environment.kernelVersion}`);
     const kernel=await this.kernels.ensure(environment.kernelVersion,state=>this.preparing.set(id,state),{signal});check(signal);
     mark('kernel');
     const executable=kernel.executable;
@@ -65,7 +65,7 @@ class BrowserHost {
     compileFingerprint(environment,kernel);
     await fs.mkdir(profile,{recursive:true});await fs.mkdir(this.config.downloads,{recursive:true});
     const iconPath=path.join(profile,'superpower.ico');
-    await fs.copyFile(path.join(this.config.resources,'branding/app.ico'),iconPath);
+    if(process.platform==='win32')await fs.copyFile(path.join(this.config.resources,'branding/app.ico'),iconPath);
     check(signal);
     const proxy=new Server({port:0,host:'127.0.0.1',prepareRequestFunction:()=>({upstreamProxyUrl:upstream(environment.proxy)})});
     const run={status:'starting',startupTimings,networkController:new AbortController(),notifications:environment.fingerprint.notifications!==false,kernelVersion:kernel.version,proxy,profile,iconPath,child:null,port:await freePort(),debuggerUrl:null};

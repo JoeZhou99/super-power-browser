@@ -371,7 +371,9 @@ export default {
       "pasteFailed": "图片粘贴失败",
       "maxFiles": "每条消息最多添加 {count} 个文件",
       "fileTooLarge": "文件 {name} 需小于 50MB",
-      "selectFileFailed": "文件选择失败"
+      "selectFileFailed": "文件选择失败",
+      "modelRequired": "请先选择模型",
+      "modelUnavailable": "当前会话的模型已不可用，请重新选择模型"
     },
     "modes": {
       "title": "权限模式",
@@ -667,7 +669,9 @@ export default {
       "redeemCodeRequired": "请输入技能口令",
       "redeemCodeInvalid": "口令格式应为 a1b2-c3d4-e5f6-7890",
       "redeemLookupFirst": "请先获取技能",
-      "redeemSuccess": "已添加到我的技能"
+      "redeemSuccess": "已添加到我的技能",
+      "invalidUploadVersion": "请输入有效版本号，例如 1.0.0",
+      "invalidPackageMetadata": "技能包的 _meta.json 格式无效，请修正后重试"
     },
     "scheduled": {
       "title": "定时任务",
@@ -753,7 +757,8 @@ export default {
       "formConfigure": "配置",
       "formEnabled": "创建后立即启用",
       "formSave": "保存任务",
-      "formSaveAndView": "保存并查看"
+      "formSaveAndView": "保存并查看",
+      "workspaceOnly": "仅执行当前工作区的定时任务，切换工作区后自动暂停其他目录的任务。"
     },
     "settings": {
       "title": "设置",

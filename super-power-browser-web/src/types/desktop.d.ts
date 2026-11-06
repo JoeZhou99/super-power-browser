@@ -1,5 +1,6 @@
 interface Window {
   api?:{
+    runtimePlatform?():Promise<{platform:string;arch:string}>;
     setSession(token:string):Promise<void>;
     onLoggedOut?(callback:()=>void):()=>void;
     openBrowser(id:string):Promise<{status:string}>;

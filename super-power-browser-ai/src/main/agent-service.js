@@ -1,3 +1,5 @@
+import { needsDeviceHeader, connectionHeaders } from '../shared/model-connection.js'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { PLAN_MODE_PROMPT, planToolAllowed } from './plan-mode.js'
 import { ClineCore } from "@cline/sdk"
 import { randomUUID } from "node:crypto"
@@ -43,7 +45,32 @@ const safeClone = (value) => {
   }
 }
 
+export function deviceLimitMessage(error, depth = 0) {
+  if (!error || depth > 6) return ''
+  if (typeof error === 'object') {
+    if (error.code === 'ai_device_device_id_required') return 'AI 设备信息尚未就绪，请重新启动客户端后重试。'
+    if (error.code === 'ai_device_limit_reached') return String(error.message || 'AI 在线设备名额已满，请稍后重试或联系管理员释放设备')
+    for (const key of ['error', 'cause', 'responseBody', 'data', 'message']) {
+      if (error[key] && error[key] !== error) {
+        const message = deviceLimitMessage(error[key], depth + 1)
+        if (message) return message
+      }
+    }
+    return ''
+  }
+  const text = String(error)
+  if (text.includes('ai_device_device_id_required') || text.includes('AI 设备信息尚未就绪')) return 'AI 设备信息尚未就绪，请重新启动客户端后重试。'
+  try { const parsed = JSON.parse(text); if (parsed && typeof parsed === 'object') return deviceLimitMessage(parsed, depth + 1) } catch {}
+  if (/该账号\s*AI\s*功能仅支持.*台设备同时在线/u.test(text)) return text
+  if (text.includes('ai_device_limit_reached') || text.includes('AI 在线设备名额已满')) {
+    return text.match(/AI 在线设备名额已满[^"\n}]*/u)?.[0] || 'AI 在线设备名额已满，请稍后重试或联系管理员释放设备'
+  }
+  return ''
+}
+
 export const formatAgentError = (error, errorClass) => {
+  const limitMessage = deviceLimitMessage(error)
+  if (limitMessage) return limitMessage
   const message = String(error?.message || error || "").trim()
   const code = `${errorClass || ""} ${message}`.toLowerCase()
   if (code.includes('consecutive identical calls') || code.includes('stopping to avoid a loop')) {
@@ -61,6 +88,9 @@ export const formatAgentError = (error, errorClass) => {
   return message || "模型响应异常"
 }
 
+/** 官方网关缺少 X-AI-Device-Id 时的提示，不把请求头名称暴露给用户。 */
+const DEVICE_COMPONENT_MISSING = "AI 设备信息尚未就绪，请重新启动客户端后重试。"
+
 export class AgentService {
   constructor(send, skillService = null, { unattended = false, authorization = null } = {}) {
     this.unattended = unattended
@@ -74,6 +104,7 @@ export class AgentService {
       send(channel, { ...payload, ...(run ? { conversationId: run.conversationId, runId: run.runId } : {}) })
     }
     this.skillService = skillService
+    this.requestContext = new AsyncLocalStorage()
     this.core = null
     this.sessions = new Map()
     this.sessionSkillSignatures = new Map()
@@ -90,6 +121,24 @@ export class AgentService {
     this.sessionFinishes = new Map()
   }
 
+  async fetchModel(url, options, transport = globalThis.fetch) {
+    const run = this.requestContext.getStore()
+    if (run?.controller.signal.aborted) throw new Error(run.executionError || '任务已停止')
+    const response = await transport(url, options)
+    if (!response.ok) {
+      const body = await response.clone().text()
+      const message = deviceLimitMessage(body)
+      if (message && run && this.activeRuns.has(run)) {
+        run.executionError = message
+        this.send('agent:event', {kind:'error', conversationId:run.conversationId, message})
+        run.reject(new Error(message))
+        this.stop(run.conversationId).catch(() => {})
+        throw new Error(message)
+      }
+    }
+    return response
+  }
+
   async ensureCore() {
     if (this.core) return this.core
     if (this.corePromise) return this.corePromise
@@ -97,6 +146,7 @@ export class AgentService {
     this.core = await ClineCore.create({
       clientName: BRAND.clientName,
       backendMode: "local",
+      fetch: (url, options) => this.fetchModel(url, options),
       capabilities: {
         requestToolApproval: (request) => this.requestApproval(request),
       },
@@ -304,6 +354,10 @@ export class AgentService {
           for (const item of parsed) {
             if (item.type === "error") {
               if (run) run.executionError = formatAgentError(item.error, item.errorClass)
+              if (run && deviceLimitMessage(item.error)) {
+                run.reject(new Error(run.executionError))
+                this.stop(run.conversationId).catch(() => {})
+              }
               this.send("agent:event", {
                 kind: "error",
                 sessionId: event.payload.sessionId,
@@ -480,7 +534,7 @@ export class AgentService {
       },
     })
     const result = await withExecutionTimeout(
-      () => Promise.race([toolTimeout, delivery, this.runInternal({ ...input, mode: input.mode || 'yolo' })]),
+      () => Promise.race([toolTimeout, delivery, this.requestContext.run(activeRun, () => this.runInternal({ ...input, mode: input.mode || 'yolo' }))]),
       minutes * 60000,
       async () => {
         const sessionId = this.sessions.get(input.conversationId)
@@ -522,6 +576,11 @@ export class AgentService {
     if (!settings.apiKey && settings.providerId !== "ollama" && settings.providerId !== "lmstudio") {
       throw new Error("请先配置 API Key")
     }
+    // 缺设备头时先在本地失败。请求一旦发出，网关会返回 ai_device_device_id_required，而且可能要等连接结束才看到。
+    if (needsDeviceHeader(settings) && !String(settings.headers?.["X-AI-Device-Id"] || "").trim()) {
+      throw new Error(DEVICE_COMPONENT_MISSING)
+    }
+    const headers = connectionHeaders(settings)
 
     const core = await this.ensureCore()
     const turn = [...this.activeRuns].find(run => run.conversationId === conversationId)
@@ -583,11 +642,13 @@ export class AgentService {
       this.sessionWorkspaces.set(sessionId, workspace)
       this.sessionModes.set(sessionId, mode)
       this.sessionEnabledSkills.set(sessionId, new Set(enabledSkills.map((name) => name.toLocaleLowerCase())))
+      // 后续轮次复用会话时也要带上最新请求头，否则设备头只在首轮生效。
       await core.updateSessionConnection(sessionId, {
         providerId,
         modelId: settings.modelId,
         apiKey: settings.apiKey || undefined,
         baseUrl: settings.baseUrl || undefined,
+        headers,
         reasoningEffort,
       })
       if (turn.controller.signal.aborted) throw new Error('任务已停止')
@@ -610,6 +671,8 @@ export class AgentService {
       modelId: settings.modelId,
       apiKey: settings.apiKey || undefined,
       baseUrl: settings.baseUrl || undefined,
+      // 首轮创建会话时把附加请求头交给 SDK，由它写到模型 HTTP 请求上。
+      headers,
       reasoningEffort,
       systemPrompt: SYSTEM_PROMPT,
       workspaceRoot: workspace,

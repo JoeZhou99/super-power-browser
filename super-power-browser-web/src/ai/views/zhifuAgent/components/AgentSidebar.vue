@@ -405,6 +405,7 @@ function planExpireDate(value?: string | null) {
 
 async function loadPlan() {
   const uid = accountId.value;
+  if (!uid) return;
   try {
     await refreshPlanAccess();
     // 请求回来时已经换成别的账号，这份结果丢掉
@@ -464,6 +465,7 @@ watch(accountId, (uid, prev) => {
   if (prev == null || uid === prev) return;
   benefitVisible.value = false;
   benefitPrompted.value = false;
+  if (!uid) return;
   void loadPlan();
 });
 

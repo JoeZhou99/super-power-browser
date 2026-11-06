@@ -140,12 +140,13 @@
       v-model="uploadVisible"
       class="upload-dialog"
       :title="reuploadId ? t('zhifuAgent.skills.reupload') : t('zhifuAgent.skills.uploadSkill')"
-      width="560px"
+      width="600px"
       top="5vh"
       append-to-body
       @closed="resetUpload"
     >
       <el-upload
+        v-if="!localSkill"
         class="upload-drop"
         drag
         accept=".zip,application/zip"
@@ -163,7 +164,12 @@
           {{ uploadFile?.name || t("zhifuAgent.skills.chooseFile") }}
         </span>
       </el-upload>
-      <el-form v-loading="uploadPreviewing" class="upload-form" label-position="top">
+      <el-form
+        v-loading="uploadPreviewing"
+        class="upload-form"
+        label-position="left"
+        label-width="108px"
+      >
         <el-form-item :label="t('zhifuAgent.skills.skillName')">
           <el-input
             :model-value="uploadSkillName"
@@ -182,7 +188,7 @@
           />
         </el-form-item>
         <el-form-item :label="t('zhifuAgent.skills.uploadVersion')">
-          <el-input :model-value="uploadVersion" disabled :placeholder="DEFAULT_SKILL_VERSION" />
+          <el-input v-model="uploadVersion" maxlength="32" :placeholder="DEFAULT_SKILL_VERSION" />
         </el-form-item>
         <el-form-item :label="t('zhifuAgent.skills.sceneCategory')">
           <el-select
@@ -270,7 +276,8 @@ import {
   type SkillStoreListParams,
 } from "@/ai/api/zhifuAgent";
 import { errorMessage, useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
-import { zhifuGetPathForFile, zhifuPreviewSkillFile } from "@/ai/utils/electronApi";
+import { zhifuGetPathForFile, zhifuGetSkill, zhifuPreviewSkillFile } from "@/ai/utils/electronApi";
+import type { DisplaySkill } from "../../type";
 import SkillShareDialog from "./SkillShareDialog.vue";
 import {
   fileToBase64,
@@ -285,7 +292,7 @@ import {
   useInstalledSkillInChat,
 } from "../skillListShared";
 
-const emit = defineEmits<{ error: [message: string] }>();
+const emit = defineEmits<{ error: [message: string]; changed: [] }>();
 const props = defineProps<{ showCreateTip?: boolean; reviewStatus?: number }>();
 
 const store = useZhifuAgentStore();
@@ -303,6 +310,8 @@ const uploadCategoryId = ref<number>();
 const uploadSubCategoryId = ref<number>();
 const uploadScope = ref<1 | 2>(2);
 const uploadFile = ref<File | null>(null);
+/** 从本地技能上传时记下原技能，提交时用它打包，不必再选文件 */
+const localSkill = ref<DisplaySkill | null>(null);
 const uploadSkillName = ref("");
 const uploadSkillDescription = ref("");
 /** 上传技能的版本号。优先读技能包 _meta.json，没有则用默认值 */
@@ -449,6 +458,19 @@ async function openUpload() {
   void ensureCategories();
 }
 
+/** 本地技能上传云端：打开和上传技能一样的弹窗，并带上当前技能内容 */
+function openFromLocal(skill: DisplaySkill) {
+  resetUpload();
+  localSkill.value = skill;
+  uploadSkillName.value = skill.name || "";
+  uploadSkillDescription.value = skill.description || "";
+  uploadVersion.value = normalizeSkillVersion(skill.version);
+  uploadCategoryId.value = skill.category_id || undefined;
+  uploadSubCategoryId.value = skill.sub_category_id || undefined;
+  uploadVisible.value = true;
+  void ensureCategories();
+}
+
 function openReupload(skill: SkillStoreItem) {
   resetUpload();
   reuploadId.value = skill.id;
@@ -476,6 +498,7 @@ function resetUpload() {
   uploadSubCategoryId.value = undefined;
   uploadScope.value = 2;
   uploadFile.value = null;
+  localSkill.value = null;
   uploadSkillName.value = "";
   uploadSkillDescription.value = "";
   uploadVersion.value = DEFAULT_SKILL_VERSION;
@@ -537,16 +560,112 @@ async function readPackageVersion(file: File) {
   }
 }
 
+/** 版本号去掉开头的 v，没有时用默认版本 */
+function normalizeSkillVersion(value?: string) {
+  const version = String(value || "")
+    .trim()
+    .replace(/^v(?=\d)/i, "");
+  return version || DEFAULT_SKILL_VERSION;
+}
+
+/** 只把弹窗里改过的版本写进技能包，名称和描述保持原文件 */
+async function withEditedSkillVersion(file: File, version: string) {
+  if (!file.name.toLowerCase().endsWith(".zip")) return file;
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const skillEntry = Object.values(zip.files)
+    .filter(item => !item.dir && /(?:^|[/\\])SKILL\.md$/i.test(item.name))
+    .sort((left, right) => left.name.split(/[/\\]/).length - right.name.split(/[/\\]/).length)[0];
+  if (!skillEntry) throw new Error(t("zhifuAgent.skills.shareContentEmpty"));
+  const expectedMetaPath = skillEntry.name.replace(/SKILL\.md$/i, "_meta.json");
+  const metaEntry = Object.values(zip.files).find(item => !item.dir && item.name.toLowerCase() === expectedMetaPath.toLowerCase());
+  const metaPath = metaEntry?.name || expectedMetaPath;
+  let data: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(metaEntry ? await metaEntry.async("string") : "{}");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid metadata");
+    data = parsed;
+  } catch {
+    throw new Error(t("zhifuAgent.skills.invalidPackageMetadata"));
+  }
+  data.version = version;
+  zip.file(metaPath, JSON.stringify(data, null, 2));
+  const blob = await zip.generateAsync({ type: "blob" });
+  return new File([blob], file.name, { type: "application/zip" });
+}
+
+/** 把本地技能目录打成上传用的压缩包 */
+async function buildLocalSkillZip(skill: DisplaySkill) {
+  const details = await zhifuGetSkill({
+    id: String(skill.id),
+    scope: skill.scope,
+    workspace: store.workspace,
+    includeFiles: true,
+  });
+  const content = String(details?.content || "");
+  const files = (details?.files || []).filter((item) => {
+    const path = String(item?.path || "")
+      .replace(/\\/g, "/")
+      .replace(/^\/+/, "");
+    return path && path !== ".." && !path.startsWith("../") && !path.split("/").includes("..");
+  });
+  if (!content.trim() && !files.length) throw new Error(t("zhifuAgent.skills.shareContentEmpty"));
+  const JSZip = (await import("jszip")).default;
+  const zip = new JSZip();
+  let hasSkillFile = false;
+  for (const item of files) {
+    const path = String(item.path).replace(/\\/g, "/").replace(/^\/+/, "");
+    if (/(^|\/)skill\.md$/i.test(path)) hasSkillFile = true;
+    zip.file(path, item.data, { base64: true });
+  }
+  if (!hasSkillFile) zip.file("SKILL.md", content);
+  const blob = await zip.generateAsync({ type: "blob" });
+  const base = skill.name.replace(/[\\/:*?"<>|]+/g, "-").trim() || "skill";
+  return new File([blob], `${base}.zip`, { type: "application/zip" });
+}
+
 async function submitUpload() {
-  if (!uploadFile.value) {
+  if (!localSkill.value && !uploadFile.value) {
     ElMessage.warning(t("zhifuAgent.skills.chooseFile"));
+    return;
+  }
+  if (localSkill.value && !store.workspace) {
+    ElMessage.warning(t("zhifuAgent.chat.noWorkspace"));
+    return;
+  }
+  uploadVersion.value = normalizeSkillVersion(uploadVersion.value);
+  if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(uploadVersion.value)) {
+    ElMessage.warning(t("zhifuAgent.skills.invalidUploadVersion"));
     return;
   }
   uploading.value = true;
   const updatingId = reuploadId.value;
+  let file = uploadFile.value;
+  try {
+    if (localSkill.value) file = await buildLocalSkillZip(localSkill.value);
+    if (file) {
+      file = await withEditedSkillVersion(
+        file,
+        uploadVersion.value.trim() || DEFAULT_SKILL_VERSION
+      );
+    }
+  } catch (cause) {
+    uploading.value = false;
+    ElMessage.error(
+      cause instanceof Error && cause.message
+        ? cause.message
+        : t("zhifuAgent.skills.shareContentEmpty")
+    );
+    return;
+  }
+  if (!file) {
+    uploading.value = false;
+    ElMessage.warning(t("zhifuAgent.skills.chooseFile"));
+    return;
+  }
   try {
     const data = new FormData();
-    data.append("file", uploadFile.value);
+    data.append("file", file);
     data.append("version", uploadVersion.value.trim() || DEFAULT_SKILL_VERSION);
     data.append("category_id", String(uploadCategoryId.value || 0));
     data.append("sub_category_id", String(uploadSubCategoryId.value || 0));
@@ -561,6 +680,7 @@ async function submitUpload() {
     }
     uploadVisible.value = false;
     await load();
+    if (!updatingId) emit("changed");
     ElMessage.success(
       updatingId ? t("zhifuAgent.skills.reuploadSuccess") : t("zhifuAgent.skills.uploadSuccess")
     );
@@ -673,6 +793,7 @@ async function deleteSkill(skill: SkillStoreItem) {
     await deleteSkillStore(skill.id);
     await store.loadBoundSkillStore().catch(() => {});
     await load();
+    emit("changed");
     ElMessage.success(t("zhifuAgent.skills.deleteSuccess"));
   } catch {
     // 接口异常已由 request 统一提示
@@ -692,7 +813,7 @@ function ensureCategories() {
   });
 }
 
-defineExpose({ openUpload, uploading, reload: load });
+defineExpose({ openUpload, openFromLocal, uploading, reload: load });
 
 onMounted(() => {
   if (store.workspace) store.loadSkills().catch(() => {});
@@ -783,7 +904,7 @@ onMounted(() => {
 
 .review-line {
   display: flex;
-  gap: 10px;
+  gap: 16px;
   align-items: center;
   min-width: 0;
 }
@@ -824,6 +945,7 @@ onMounted(() => {
     font-weight: 500;
   }
 }
+
 
 .upload-drop {
   width: 100%;

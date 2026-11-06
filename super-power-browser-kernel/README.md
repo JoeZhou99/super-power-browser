@@ -2,6 +2,8 @@
 
 当前 Windows x64 使用 `adryfish/fingerprint-chromium` 的 `144.0.7559.132` 预编译包。版本元数据由数据库管理，ZIP 可放在本地或私有 S3。生产配置与发布流程见 [生产分发说明](PRODUCTION.md)。
 
+Windows / Mac Intel / Apple Silicon 的版本筛选、自动安装、资源准备与发布步骤见 [跨平台内核说明](MACOS.md)。当前 Mac 的原生验证和正式资源发布仍需在 Mac 上完成。
+
 ## 来源与构建资源
 
 [upstream.lock.json](upstream.lock.json) 固定上游地址、源码提交、源码包和二进制 SHA-256。源码提交为 `831623f2965e34554304caabfc3a1e4e3741db1f`。源码包包含构建仓库与补丁集；完整 Chromium 源码需按上游流程获取。Chromium、上游及第三方许可证和声明须随对应资源保留。

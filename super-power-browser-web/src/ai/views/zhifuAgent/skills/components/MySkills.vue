@@ -135,7 +135,12 @@
                       : t("zhifuAgent.skills.enablePlugin")
                   }}
                 </el-dropdown-item>
-                <el-dropdown-item :icon="Upload" command="upload" :disabled="skill.invalid">
+                <el-dropdown-item
+                  v-if="!isUploaded(skill)"
+                  :icon="Upload"
+                  command="upload"
+                  :disabled="skill.invalid"
+                >
                   {{ t("zhifuAgent.skills.uploadCloud") }}
                 </el-dropdown-item>
                 <el-dropdown-item :icon="EditPen" command="edit">
@@ -157,6 +162,7 @@
       :review-status="reviewStatus"
       :show-create-tip="showCreateTip"
       @error="(message) => emit('error', message)"
+      @changed="loadUploadedNames"
     />
     <SkillEditorDialog v-model="editorOpen" :skill="editingSkill" @saved="reload" />
     <SkillTrialDialog v-model="trialSkill" />
@@ -177,11 +183,11 @@ import {
   TurnOff,
   Open,
 } from "@element-plus/icons-vue";
-import { unbindSkillStore } from "@/ai/api/zhifuAgent";
+import { getUploadedSkillStoreList, unbindSkillStore } from "@/ai/api/zhifuAgent";
 import { errorMessage, skillIdentity, useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
 import { zhifuInstallSkill, zhifuToggleSkill, zhifuUninstallSkill } from "@/ai/utils/electronApi";
 import type { DisplaySkill } from "../../type";
-import { useInstalledSkillInChat } from "../skillListShared";
+import { readSkillPage, useInstalledSkillInChat } from "../skillListShared";
 import SkillEditorDialog from "./SkillEditorDialog.vue";
 import SkillShareDialog from "./SkillShareDialog.vue";
 import UploadedSkills from "./UploadedSkills.vue";
@@ -219,6 +225,7 @@ function onSourceTab(tab: string | number | boolean | undefined) {
     return;
   }
   reload();
+  loadUploadedNames();
 }
 
 const editorOpen = ref(false);
@@ -243,6 +250,33 @@ const skills = computed(() => {
     `${skill.name} ${skill.description || ""}`.toLocaleLowerCase().includes(query)
   );
 });
+
+/** 已经在「我上传的」里的技能名称，用来隐藏上传云端 */
+const uploadedNames = ref(new Set<string>());
+
+/** 本地技能是否已经上传到云端 */
+function isUploaded(skill: DisplaySkill) {
+  return uploadedNames.value.has(skillIdentity(skill.name));
+}
+
+/** 拉取当前账号已上传的技能名称 */
+async function loadUploadedNames() {
+  const names = new Set<string>();
+  let pageNo = 1;
+  let hasMore = true;
+  while (hasMore && pageNo <= 10) {
+    const res = await getUploadedSkillStoreList({ page: pageNo, limit: 100 }).catch(() => null);
+    if (!res) break;
+    const page = readSkillPage(res, pageNo, 100);
+    for (const item of page.list) {
+      const identity = skillIdentity(item.name);
+      if (identity) names.add(identity);
+    }
+    hasMore = page.hasNext && page.list.length > 0;
+    pageNo += 1;
+  }
+  uploadedNames.value = names;
+}
 
 function showError(cause: unknown) {
   statusType.value = "error";
@@ -354,14 +388,9 @@ function handleSkillCommand(command: string, skill: DisplaySkill) {
   if (command === "delete") uninstall(skill);
 }
 
-async function uploadToCloud(skill: DisplaySkill) {
-  if (skill.invalid) return;
-  try {
-    const uploaded = await shareDialogRef.value?.uploadToCloud(skill);
-    if (uploaded) await uploadedSkillsRef.value?.reload();
-  } catch (cause) {
-    showError(cause);
-  }
+function uploadToCloud(skill: DisplaySkill) {
+  if (skill.invalid || isUploaded(skill)) return;
+  uploadedSkillsRef.value?.openFromLocal(skill);
 }
 
 function openTrial(skill: DisplaySkill) {
@@ -377,6 +406,7 @@ async function openShare(skill: DisplaySkill) {
   sharingId.value = skillKey(skill);
   try {
     await shareDialogRef.value?.open(skill);
+    await loadUploadedNames();
   } finally {
     sharingId.value = "";
   }
@@ -405,7 +435,10 @@ watch(
   { immediate: true }
 );
 
-onMounted(reload);
+onMounted(() => {
+  reload();
+  loadUploadedNames();
+});
 
 async function openUpload() {
   sourceTab.value = "uploaded";

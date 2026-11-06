@@ -76,7 +76,7 @@ public class KernelStorage {
     }
     public Map<String,Object> download(Map<String,Object> entry){
         var result=new LinkedHashMap<String,Object>();result.put("sha256",entry.get("sha256"));result.put("archiveBytes",entry.get("archiveBytes"));
-        if(text(entry,"storageType").equals("LOCAL")){localFile(entry);result.put("downloadPath","/runtime/kernels/"+text(entry,"version")+"/archive");return result;}
+        if(text(entry,"storageType").equals("LOCAL")){localFile(entry);result.put("downloadPath",KernelDescriptor.route(entry)+"/archive");return result;}
         s3();
         try{
             var request=GetObjectRequest.builder().bucket(settings.getBucket()).key(text(entry,"storageKey"));

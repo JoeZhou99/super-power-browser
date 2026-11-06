@@ -4,3 +4,4 @@ dist/
 resources/web/
 .env
 runtime.config.json
+branding/app.icns

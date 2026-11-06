@@ -15,7 +15,6 @@
         <el-dropdown-item disabled class="menu-head">
           <div class="menu-head-inner">
             <div class="menu-title">{{ t("zhifuAgent.composer.chooseModel") }}</div>
-            <div class="menu-desc">{{ t("zhifuAgent.composer.systemModelHint") }}</div>
           </div>
         </el-dropdown-item>
         <div class="menu-scroll">
@@ -62,6 +61,7 @@
 
 <script setup lang="ts">
 import { ArrowDown, Check } from "@element-plus/icons-vue";
+import { ElMessage } from "element-plus";
 import selectModelIcon from "@/ai/assets/icons/selectModel.svg";
 import customModelIcon from "@/ai/assets/icons/customModel.svg";
 import { queryUserModelImportedApi } from "@/ai/api/modelManage";
@@ -182,7 +182,8 @@ function loadModelUser() {
   return promise;
 }
 
-async function loadModels() {
+/** 拉取官方模型和自有模型。切到历史会话时核对当前选中项，不可用就清掉，不自动换一个 */
+async function loadModels(loadOptions?: { clearIfMissing?: boolean }) {
   const seq = ++loadSeq;
   const uid = accountId.value;
   const stale = () => seq !== loadSeq || accountId.value !== uid;
@@ -214,10 +215,27 @@ async function loadModels() {
     userResult.status === "fulfilled";
   const hasUsableModel =
     options.value.some((item) => item.apiKey) || (Boolean(sharedApiKey) && marketItems.length > 0);
+  if (loadOptions?.clearIfMissing) {
+    if (!listsReady) return;
+    const currentModelId = String(store.settings.modelId || "").trim();
+    const selected = options.value.find((item) => item.id === selectedId.value && item.apiKey);
+    if (selected) {
+      await applyListedModelKey();
+    } else if (currentModelId && !stale()) {
+      await store.saveSettings({ modelId: "" });
+      ElMessage.warning(t("zhifuAgent.composer.modelUnavailable"));
+    }
+    if (!hasUsableModel && !stale() && store.settings.hasApiKey) {
+      await store.saveSettings({ apiKey: "", clearApiKey: true });
+    }
+    return;
+  }
   if (!hasUsableModel && listsReady && store.settings.hasApiKey) {
     await store.saveSettings({ apiKey: "", clearApiKey: true });
     return;
   }
+  // 已经清空的选择留给用户自己点，避免打开下拉时又自动选上一个
+  if (!String(store.settings.modelId || "").trim()) return;
   if (options.value.length) {
     const selected = options.value.find((item) => item.id === selectedId.value);
     const next = selected?.apiKey ? selected : options.value.find((item) => item.apiKey);
@@ -247,6 +265,7 @@ async function applyListedModelKey() {
     baseUrl: current.baseUrl || store.settings.baseUrl,
     apiProtocol: current.apiProtocol,
     hasApiKey: true,
+    modelSource: current.source,
   });
 }
 
@@ -264,6 +283,7 @@ async function selectModel(model: ModelOption) {
     baseUrl: model.baseUrl || store.settings.baseUrl,
     apiProtocol: model.apiProtocol,
     hasApiKey: Boolean(model.apiKey),
+    modelSource: model.source,
   });
 }
 
@@ -302,6 +322,16 @@ watch(accountId, (uid, prev) => {
   options.value = [];
   loadModels().catch(() => {});
 });
+
+watch(
+  () => store.activeId,
+  (id, previous) => {
+    if (!id || !previous || id === previous) return;
+    loadModels({ clearIfMissing: true }).catch((cause) => {
+      store.error = errorMessage(cause);
+    });
+  }
+);
 
 onMounted(() => {
   loadModels().catch(() => {});

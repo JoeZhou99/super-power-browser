@@ -6,12 +6,15 @@ import { basename, dirname, extname, join, relative, resolve } from "node:path"
 import { tmpdir } from "node:os"
 import { parseSkillConfigFromMarkdown } from "@cline/sdk"
 
+/** 安装目录名。保留中文，只去掉空格和符号，避免不同中文名被收成同一个英文目录 */
 export const normalizeSkillId = (value) => {
   const slug = String(value || "")
     .trim()
     .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/[^\p{L}\p{N}._-]+/gu, "-")
+    .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "")
+    .replace(/[. ]+$/g, "")
   return slug || "local-skill"
 }
 

@@ -25,17 +25,18 @@ public class KernelCatalog {
     public Object list(){
         var items=repository.all().stream().filter(e->text(e,"state").equals("PUBLISHED")).map(e->{
             var d=object(text(e,"descriptor"));d.put("recommended",flag(e,"recommended"));
-            d.put("downloadDescriptorPath","/runtime/kernels/"+text(e,"version")+"/download");return d;
+            d.put("downloadDescriptorPath",KernelDescriptor.route(e)+"/download");return d;
         }).toList();return Map.of("schemaVersion",1,"source","database","kernels",items);
     }
-    private Map<String,Object> published(String version){
+    private Map<String,Object> published(String version,String platform,String arch){
+        KernelDescriptor.platform(platform,arch);
         require(KernelDescriptor.version(version),400,"内核版本不合法");
-        var e=repository.find(version,"win32","x64").orElseThrow(()->new BusinessException(404,"内核版本未发布"));
+        var e=repository.find(version,platform,arch).orElseThrow(()->new BusinessException(404,"内核版本未发布"));
         require(text(e,"state").equals("PUBLISHED"),404,"内核版本未发布或已停用");return e;
     }
-    public Path archive(String version){return storage.localFile(published(version));}
-    public void requirePublished(String version){published(version);}
-    public Object download(String version){return storage.download(published(version));}
+    public Path archive(String version,String platform,String arch){return storage.localFile(published(version,platform,arch));}
+    public void requirePublished(String version){require(KernelDescriptor.version(version),400,"内核版本不合法");require(repository.all().stream().anyMatch(e->text(e,"version").equals(version)&&text(e,"state").equals("PUBLISHED")),404,"内核版本未发布或已停用");}
+    public Object download(String version,String platform,String arch){return storage.download(published(version,platform,arch));}
     public Object adminList(Actor a){publisher(a);return Map.of("items",repository.all());}
     public Object create(Actor a,Map<String,Object> body){
         publisher(a);var d=KernelDescriptor.validate(body);String key=storage.objectKey(d);

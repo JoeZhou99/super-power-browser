@@ -3,7 +3,8 @@ const path=require('node:path');
 const {app}=require('electron');
 function configuration(){
   const root=app.isPackaged?path.dirname(app.getPath('exe')):path.resolve(__dirname,'../../..');
-  const file=path.join(root,'runtime.config.json');
+  // Signed Mac app bundles stay immutable; deployment/user configuration lives in userData.
+  const file=path.join(app.isPackaged&&process.platform==='darwin'?app.getPath('userData'):root,'runtime.config.json');
   const supplied=fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):{};
   const dataPath=path.resolve(supplied.dataPath||app.getPath('userData'));
   const apiUrl=process.env.SPB_API_URL||supplied.apiUrl||'http://127.0.0.1:8080';

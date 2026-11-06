@@ -1,3 +1,5 @@
+import { normalizeModelSource, normalizeRequestHeaders, connectionHeaders } from '../shared/model-connection.js'
+export { normalizeRequestHeaders } from '../shared/model-connection.js'
 import { app, safeStorage } from "electron"
 import { BRAND, normalizeAgentName } from "../shared/brand.js"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
@@ -36,7 +38,8 @@ const defaults = {
 }
 
 export class SettingsStore {
-  constructor(dataDir = "") {
+  constructor(dataDir = "", { prepareModelSettings = settings => settings } = {}) {
+    this.prepareModelSettings = prepareModelSettings
     this.filePath = join(dataDir || app.getPath("userData"), "settings.json")
   }
 
@@ -90,6 +93,9 @@ export class SettingsStore {
       executionTimeoutMinutes: normalizeExecutionTimeout(data.executionTimeoutMinutes),
       apiKey: "",
       hasApiKey: Boolean(data.encryptedApiKey),
+      modelSource: normalizeModelSource(data.modelSource, data.baseUrl),
+      // 请求头含设备标识，只留在主进程，公开读取不返回。
+      headers: undefined,
       feishuAppSecret: "",
       hasFeishuAppSecret: Boolean(data.encryptedFeishuAppSecret),
       dingTalkClientSecret: "",
@@ -113,7 +119,7 @@ export class SettingsStore {
         ? "responses"
         : "chat"
     )
-    return {
+    return this.prepareModelSettings({
       ...defaults,
       ...data,
       agentName: normalizeAgentName(data.agentName),
@@ -122,6 +128,9 @@ export class SettingsStore {
       conversationConcurrency: normalizeShopConcurrency(data.conversationConcurrency),
       executionTimeoutMinutes: normalizeExecutionTimeout(data.executionTimeoutMinutes),
       apiKey: this.decrypt(data.encryptedApiKey),
+      modelSource: normalizeModelSource(data.modelSource, data.baseUrl),
+      // 仅主进程解密设置后使用，对话和测试连接都从这里取附加请求头。
+      headers: connectionHeaders(data),
       feishuAppSecret: this.decrypt(data.encryptedFeishuAppSecret),
       dingTalkClientSecret: this.decrypt(data.encryptedDingTalkClientSecret),
       weComSecret: this.decrypt(data.encryptedWeComSecret),
@@ -131,16 +140,18 @@ export class SettingsStore {
       encryptedDingTalkClientSecret: undefined,
       encryptedWeComSecret: undefined,
       encryptedWechatAppSecret: undefined,
-    }
+    })
   }
 
   async save(input) {
     const previous = await this.readRaw()
-    const next = {
+    const next = await this.prepareModelSettings({
       providerId: String(input.providerId || defaults.providerId),
       providerName: String(input.providerName || "自定义模型"),
       modelId: String(input.modelId || "").trim(),
       baseUrl: String(input.baseUrl || "").trim(),
+      modelSource: normalizeModelSource(input.modelSource ?? previous.modelSource, input.baseUrl),
+      headers: normalizeRequestHeaders(input.headers ?? previous.headers),
       apiProtocol: input.apiProtocol === "responses" ? "responses" : "chat",
       reasoningEffort: String(input.reasoningEffort || "medium"),
       userName: String(input.userName || "你").trim() || "你",
@@ -180,7 +191,8 @@ export class SettingsStore {
       encryptedWechatAppSecret: input.wechatAppSecret
         ? this.encrypt(String(input.wechatAppSecret).trim())
         : previous.encryptedWechatAppSecret || "",
-    }
+    })
+    next.headers = connectionHeaders(next)
     if (input.clearApiKey) next.encryptedApiKey = ""
     if (input.clearFeishuAppSecret) next.encryptedFeishuAppSecret = ""
     if (input.clearDingTalkClientSecret) next.encryptedDingTalkClientSecret = ""

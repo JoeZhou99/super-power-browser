@@ -2,6 +2,8 @@
 
 版本元数据保存在数据库 `kernel_release`，包括版本、完整构建号、系统/架构、SHA-256、文件大小、逐文件校验清单、对象 key、对象版本号和发布状态。生产使用 MySQL；当前本机预览仍使用 H2。ZIP 不存入数据库，存放在私有 S3 兼容 bucket，客户端取得短时效地址后直接下载。
 
+Windows 和 Mac 的分平台资源准备见 [MACOS.md](MACOS.md)。发布同一版本的不同包时，使用 `--platform win32|darwin --arch x64|arm64` 明确选择目标。
+
 当前支持 AWS S3 与 S3 兼容协议的服务端点，例如 MinIO。其他厂商需确认其 S3 API、条件 PUT、校验头和版本读取兼容性；没有把 OSS/COS 的原生 SDK 当作已适配。私有 S3 签名链接不能直接换成任意 CDN 域名，CDN 鉴权需另行适配。
 
 ## 服务端配置
@@ -69,7 +71,7 @@ python super-power-browser-kernel/scripts/release.py migrate <release-id> .local
 ## 客户端接口
 
 1. `GET /api/runtime/kernels`：数据库中的已发布版本和不可变校验信息，不携带存储密钥或长期下载链接。
-2. `GET /api/runtime/kernels/{version}/download`：检查登录、开店权限和发布状态，返回本地归档接口或短时效对象存储 URL。
+2. `GET /api/runtime/kernels/{version}/{platform}/{arch}/download`（Windows 兼容 `{version}/download`）：检查登录、开店权限和发布状态，返回本地归档接口或短时效对象存储 URL。
 3. 客户端直接下载；外部请求不带应用 Bearer token。链接过期时重新取地址，继续 Range 下载，最后执行包及逐文件 SHA-256 校验。
 
 后端升级后需同步部署支持 `downloadDescriptorPath` 的桌面客户端。生产客户端的 `apiUrl` 必须指向正式 HTTPS API，而非当前开发用的 `127.0.0.1:18080`；正式后端也不会自动从这台开发电脑读取 ZIP。

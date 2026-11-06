@@ -3,15 +3,10 @@ const {createReadStream}=require('node:fs');
 const path=require('node:path');
 const {createHash,randomUUID}=require('node:crypto');
 const AdmZip=require('adm-zip');
+const {inside,supported,validateLayout,extractZip}=require('./KernelPackage');
 const {cancelled,check,waitFor,pause}=require('./Cancellation');
 
 const versionPattern=/^\d{2,3}(?:\.\d+){0,3}$/;
-function inside(root,name){
-  if(typeof name!=='string'||!name||/[\x00-\x1f:]/.test(name)||name.includes('\\')||name.split('/').some(part=>!part||/[. ]$/.test(part)||/^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part)))throw new Error('内核资源路径不合法');
-  const target=path.resolve(root,name),relative=path.relative(root,target);
-  if(!relative||relative.startsWith('..')||path.isAbsolute(relative))throw new Error('内核资源路径越界');
-  return target;
-}
 async function hash(file,algorithm='sha256',signal){
   const digest=createHash(algorithm);
   check(signal);
@@ -41,7 +36,10 @@ function normalizeCatalog(raw){
 function validateDescriptor(entry){
   if(!entry||!versionPattern.test(String(entry.version)))throw new Error('内核版本不合法');
   if(!['legacy','fingerprint-chromium/1'].includes(entry.protocol))throw new Error('该内核配置协议尚未接通');
+  if(!supported(entry.platform,entry.arch))throw new Error('当前系统或芯片架构不支持此内核');
   inside(path.resolve('.'),entry.executable);
+  if(entry.protocol==='fingerprint-chromium/1')validateLayout(entry.files,entry.symlinks,entry.executableFiles,entry.executable);
+  if(entry.platform==='darwin'&&(!/^.+[.]app\/Contents\/MacOS\/[^/]+$/.test(entry.executable)||!entry.executableFiles?.includes(entry.executable)))throw new Error('Mac 内核缺少应用程序或可执行权限清单');
   if(entry.sha256&&!/^[a-f0-9]{64}$/i.test(entry.sha256))throw new Error('内核 SHA-256 不合法');
   if(entry.md5&&!/^[a-f0-9]{32}$/i.test(entry.md5))throw new Error('内核 MD5 不合法');
   if(!entry.sha256&&!entry.md5)throw new Error('内核资源未提供校验值');
@@ -52,6 +50,13 @@ async function verifyDirectory(root,entry,signal,verified){
   try{
     check(signal);
     await plainPath(root,inside(root,entry.executable));
+    for(const [name,target] of Object.entries(entry.symlinks||{})){
+      const file=inside(root,name);await plainPath(root,path.dirname(file));
+      if(!(await fs.lstat(file)).isSymbolicLink()||await fs.readlink(file)!==target)return false;
+      const relative=path.relative(await fs.realpath(root),await fs.realpath(file));
+      if(!relative||relative.startsWith('..')||path.isAbsolute(relative))return false;
+    }
+    if(process.platform==='darwin')for(const name of entry.executableFiles||[])if(!((await plainPath(root,inside(root,name))).mode&0o111n))return false;
     let records=entry.files,algorithm='sha256';
     if(!records){
       if(entry.protocol!=='legacy')return false;
@@ -84,10 +89,10 @@ async function verifyDirectory(root,entry,signal,verified){
 }
 
 class KernelManager{
-  constructor(config,api,{inUse=()=>false,fetcher=fetch}={}){this.root=config.corePath;this.api=api;this.inUse=inUse;this.fetcher=fetcher;this.pending=new Map();this.verified=new Map();}
+  constructor(config,api,{inUse=()=>false,fetcher=fetch,platform=process.platform,arch=process.arch}={}){this.platform=platform;this.arch=arch;this.root=config.corePath;this.api=api;this.inUse=inUse;this.fetcher=fetcher;this.pending=new Map();this.verified=new Map();}
   async list(signal){
     const entries=normalizeCatalog(await this.api.request('/runtime/kernels',{signal}));
-    return entries.filter(item=>(item.platform||'win32')===process.platform&&(item.arch||'x64')===process.arch);
+    return entries.filter(item=>(item.platform||'win32')===this.platform&&(item.arch||'x64')===this.arch);
   }
   async ensure(version,progress=()=>{},{signal}={}){
     check(signal);
@@ -123,6 +128,11 @@ class KernelManager{
     }
     throw new Error('等待内核安装超时');
   }
+  routes(entry,action){
+    const routes=[`/runtime/kernels/${entry.version}/${entry.platform}/${entry.arch}/${action}`];
+    if(entry.platform==='win32'&&entry.arch==='x64')routes.push(`/runtime/kernels/${entry.version}/${action}`);
+    return routes;
+  }
   async download(entry,file,report,signal){
     const algorithm=entry.sha256?'sha256':'md5',expected=(entry.sha256||entry.md5).toLowerCase();
     check(signal);if(await exists(file)&&await hash(file,algorithm,signal)===expected)return;
@@ -132,12 +142,12 @@ class KernelManager{
       check(signal);
       let location=entry;
       if(entry.downloadDescriptorPath){
-        if(!/^\/runtime\/kernels\/\d{2,3}(?:\.\d+){0,3}\/download$/.test(entry.downloadDescriptorPath))throw new Error('内核下载配置地址不合法');
+        if(!this.routes(entry,'download').includes(entry.downloadDescriptorPath))throw new Error('内核下载配置地址不合法');
         location=await this.api.request(entry.downloadDescriptorPath,{signal});
         if(location.sha256!==entry.sha256||location.archiveBytes!==entry.archiveBytes)throw new Error('内核下载资源与选定版本不一致');
       }
       const url=location.downloadPath?new URL('/api'+location.downloadPath,this.api.base):new URL(location.downloadUrl);
-      if(location.downloadPath&&(!/^\/runtime\/kernels\/\d{2,3}(?:\.\d+){0,3}\/archive$/.test(location.downloadPath)||url.origin!==ownOrigin))throw new Error('内核下载地址不合法');
+      if(location.downloadPath&&(!this.routes(entry,'archive').includes(location.downloadPath)||url.origin!==ownOrigin))throw new Error('内核下载地址不合法');
       if(url.username||url.password||url.hash)throw new Error('内核下载地址不能包含用户凭据或片段');
       if(url.protocol!=='https:'&&!(url.protocol==='http:'&&['127.0.0.1','localhost','[::1]'].includes(url.hostname)))throw new Error('内核下载必须使用 HTTPS');
       const offset=await fs.stat(partial).then(stat=>stat.size).catch(error=>{if(error.code==='ENOENT')return 0;throw error;});
@@ -168,15 +178,16 @@ class KernelManager{
   }
   async install(version,report,signal){
     check(signal);
-    if(process.platform!=='win32'||process.arch!=='x64')throw new Error('当前启动适配器仅支持 Windows x64');
+    if(!supported(this.platform,this.arch))throw new Error('当前支持 Windows x64、Mac Intel 和 Apple Silicon');
     report({stage:'checking',percent:null,message:'检查内核版本与文件'});
     const selected=(await this.list(signal)).find(item=>String(item.version)===version&&!item.disabled);
     check(signal);
     if(!selected)throw new Error(`内核 ${version} 尚未发布或已停用，请选择资源清单中的版本`);
     const entry=validateDescriptor(selected);
     await fs.mkdir(this.root,{recursive:true});await plainPath(this.root,this.root);
-    const target=inside(this.root,version);
-    const release=await this.acquire(version,report,signal);let stage;
+    const installName=this.platform==='win32'?version:`${this.platform}-${this.arch}-${version}`;
+    const target=inside(this.root,installName);
+    const release=await this.acquire(installName,report,signal);let stage;
     try{
       if(await verifyDirectory(target,entry,signal,this.verified)){report({stage:'ready',percent:100,message:'内核已就绪'});return {...entry,executable:inside(target,entry.executable)};}
       if(this.inUse(version))throw new Error('内核需要修复，请先关闭使用该版本的店铺');
@@ -185,18 +196,10 @@ class KernelManager{
       await this.download(entry,archive,report,signal);check(signal);
       report({stage:'extracting',percent:null,message:'正在解压内核'});
       stage=path.join(this.root,`.install-${version}-${randomUUID()}`);await fs.mkdir(stage);
-      const zip=new AdmZip(archive);let bytes=0;const seen=new Set();
-      for(const file of zip.getEntries()){
-        const name=file.entryName.replace(/\/$/,'');if(!name)continue;
-        inside(stage,name);const key=name.toLowerCase();if(seen.has(key))throw new Error('内核压缩包包含重复文件');seen.add(key);
-        if(((file.attr>>>16)&0xf000)===0xa000)throw new Error('内核压缩包不能包含符号链接');
-        bytes+=file.header.size;if(bytes>4*1024**3)throw new Error('内核解压大小超过限制');
-      }
-      // AdmZip performs decompression synchronously; yielding before it exposes the stage to the UI.
-      await pause(0,signal);zip.extractAllTo(stage,false);check(signal);
+      await pause(0,signal);await extractZip(new AdmZip(archive),stage,entry,signal);check(signal);
       report({stage:'verifying',percent:null,message:'校验内核文件完整性'});
       if(!await verifyDirectory(stage,entry,signal))throw new Error('解压后的内核文件不完整或校验失败');
-      await fs.writeFile(path.join(stage,'.spb-installation.json'),JSON.stringify({version,protocol:entry.protocol,archiveHash:entry.sha256||entry.md5,installedAt:new Date().toISOString(),requiresLegacyAuthorization:entry.protocol==='legacy'}),{mode:0o600});
+      await fs.writeFile(path.join(stage,'.spb-installation.json'),JSON.stringify({version,platform:entry.platform,arch:entry.arch,protocol:entry.protocol,archiveHash:entry.sha256||entry.md5,installedAt:new Date().toISOString(),requiresLegacyAuthorization:entry.protocol==='legacy'}),{mode:0o600});
       const previous=path.join(this.root,`.previous-${version}-${randomUUID()}`),hadPrevious=await exists(target);
       check(signal);
       if(hadPrevious){await plainPath(this.root,target);await fs.rename(target,previous);}

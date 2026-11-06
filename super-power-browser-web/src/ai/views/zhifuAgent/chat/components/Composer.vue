@@ -12,6 +12,15 @@
     </el-button>
 
     <el-alert
+      v-if="!store.conversationStorageReady && !store.error"
+      class="error-banner"
+      type="info"
+      title="正在初始化 AI 服务和会话记录，请稍候…"
+      :closable="false"
+      show-icon
+    />
+
+    <el-alert
       v-if="store.error"
       class="error-banner"
       type="error"

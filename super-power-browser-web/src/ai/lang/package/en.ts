@@ -371,7 +371,9 @@ export default {
       "pasteFailed": "Failed to paste the image",
       "maxFiles": "Up to {count} files per message",
       "fileTooLarge": "File {name} must be under 50MB",
-      "selectFileFailed": "Failed to select files"
+      "selectFileFailed": "Failed to select files",
+      "modelRequired": "Please select a model first",
+      "modelUnavailable": "This conversation’s model is unavailable. Please select a model."
     },
     "modes": {
       "title": "Permission mode",
@@ -667,7 +669,9 @@ export default {
       "redeemCodeRequired": "Enter a skill code",
       "redeemCodeInvalid": "Use a code like a1b2-c3d4-e5f6-7890",
       "redeemLookupFirst": "Look up the skill first",
-      "redeemSuccess": "Added to my skills"
+      "redeemSuccess": "Added to my skills",
+      "invalidUploadVersion": "Enter a valid version, for example 1.0.0",
+      "invalidPackageMetadata": "The skill package has invalid _meta.json. Please correct it and retry."
     },
     "scheduled": {
       "title": "Scheduled tasks",
@@ -753,7 +757,8 @@ export default {
       "formConfigure": "Configure",
       "formEnabled": "Enable after creation",
       "formSave": "Save task",
-      "formSaveAndView": "Save and view"
+      "formSaveAndView": "Save and view",
+      "workspaceOnly": "Only tasks in the current workspace run. Tasks in other workspaces are paused."
     },
     "settings": {
       "title": "Settings",

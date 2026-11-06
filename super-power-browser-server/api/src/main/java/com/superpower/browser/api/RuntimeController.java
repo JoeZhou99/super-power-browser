@@ -19,12 +19,12 @@ public class RuntimeController {
         if(!a.permissions().contains("shop.create")&&!a.permissions().contains("shop.edit"))a.allow("shop.open");
         return catalog.list();
     }
-    @GetMapping("/kernels/{version}/archive") ResponseEntity<FileSystemResource> archive(@AuthenticationPrincipal Actor a,@PathVariable String version) {
+    @GetMapping({"/kernels/{version}/archive","/kernels/{version}/{platform}/{arch}/archive"}) ResponseEntity<FileSystemResource> archive(@AuthenticationPrincipal Actor a,@PathVariable String version,@PathVariable(required=false) String platform,@PathVariable(required=false) String arch) {
         a.allow("shop.open");
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(new FileSystemResource(catalog.archive(version)));
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).body(new FileSystemResource(catalog.archive(version,platform==null?"win32":platform,arch==null?"x64":arch)));
     }
-    @GetMapping("/kernels/{version}/download") ResponseEntity<Object> download(@AuthenticationPrincipal Actor a,@PathVariable String version) {
-        a.allow("shop.open");return ResponseEntity.ok().header("Cache-Control","no-store").body(catalog.download(version));
+    @GetMapping({"/kernels/{version}/download","/kernels/{version}/{platform}/{arch}/download"}) ResponseEntity<Object> download(@AuthenticationPrincipal Actor a,@PathVariable String version,@PathVariable(required=false) String platform,@PathVariable(required=false) String arch) {
+        a.allow("shop.open");return ResponseEntity.ok().header("Cache-Control","no-store").body(catalog.download(version,platform==null?"win32":platform,arch==null?"x64":arch));
     }
     @GetMapping("/releases") Object releases(@AuthenticationPrincipal Actor a){return catalog.adminList(a);}
     @PostMapping("/releases") Object create(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object> body){return catalog.create(a,body);}

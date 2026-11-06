@@ -105,6 +105,10 @@ export function useAgentRun() {
   async function sendPrompt(payload: SendPromptPayload) {
     if (!canSend(payload) || store.running) return false;
     store.error = "";
+    if (!String(store.settings.modelId || "").trim()) {
+      store.error = t("zhifuAgent.composer.modelRequired");
+      return false;
+    }
     await store.ensureModelKeySaved();
     if (!store.workspace) {
       await store.selectWorkspace().catch((cause) => {

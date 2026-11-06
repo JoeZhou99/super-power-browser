@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "provider": "fingerprint-chromium",
+  "version": "148",
+  "fullVersion": "148.0.7778.215",
+  "protocol": "fingerprint-chromium/1",
+  "platform": "darwin",
+  "repository": "https://github.com/adryfish/fingerprint-chromium",
+  "sourceCommit": "13b89eae304123f0710f2d33fd0816a2f61d7ffc",
+  "sourceUrl": "https://codeload.github.com/adryfish/fingerprint-chromium/zip/13b89eae304123f0710f2d33fd0816a2f61d7ffc",
+  "downloadUrl": "https://github.com/adryfish/fingerprint-chromium/releases/download/148.0.7778.215/ungoogled-chromium_148.0.7778.215-1.1_macos.dmg",
+  "sha256": "b72f091e2e1a7583eed389c4b8e3534ed355e568af8c8bbf8fc30a25e23ca679",
+  "archiveBytes": 140187500,
+  "archiveName": "fingerprint-chromium-148-mac.dmg",
+  "verifiedAt": "2026-11-06",
+  "verification": "Release API metadata only. Architecture must be checked from the mounted app before preparing a release; no native Mac execution has been tested.",
+  "license": "BSD-3-Clause; preserve upstream and Chromium third-party notices"
+}
