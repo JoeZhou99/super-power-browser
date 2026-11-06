@@ -1,2 +1,7 @@
 .logImgContainer .logImg img{width:220px;height:auto;object-fit:contain}
 .logImgContainer .logImg{padding:8px 0 14px}
+
+.userInfoStyle .rightMainInfo,.userInfoStyle .rightBoxStyle{min-width:0}
+.userInfoStyle .rightBoxStyle .equipment-code-item .text{flex:1;min-width:0;max-width:200px}
+.userInfoStyle .rightBoxStyle .itemStyle.equipment-code-item .equipment-code-result{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+.userInfoStyle .rightBoxStyle .equipment-code-item .equipment-code-copy{vertical-align:middle}

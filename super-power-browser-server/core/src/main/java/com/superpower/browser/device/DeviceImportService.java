@@ -11,7 +11,7 @@ public class DeviceImportService {
     private final DeviceService devices;
     public DeviceImportService(DeviceService devices){this.devices=devices;}
     // Each call crosses the DeviceService transaction boundary. Invalid rows do
-    // not roll back successful rows, matching the legacy upload result contract.
+    // not roll back successful rows; each row reports its own result.
     public Map<String,Object> importBatch(Actor actor,List<Map<String,Object>> rows){
         actor.allow("device.edit");require(!rows.isEmpty()&&rows.size()<=30,400,"每批请提交 1—30 台设备");
         var errors=new ArrayList<Map<String,Object>>();var ids=new ArrayList<String>();int index=0;

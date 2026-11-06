@@ -1,6 +1,7 @@
 const https=require('node:https');
 const {isIP}=require('node:net');
 const {HttpsProxyAgent}=require('https-proxy-agent');
+const {check}=require('../runtime/Cancellation');
 
 function publicIp(value){
   if(!isIP(value))return '';
@@ -40,10 +41,13 @@ function requestJson(url,agent,signal){return new Promise((resolve,reject)=>{
     response.on('error',reject);response.on('end',()=>{try{if(response.statusCode!==200)throw new Error('检测服务暂不可用');resolve(parseResponse(body));}catch(error){reject(error);}});
   });request.on('error',reject);
 });}
-// Same selection rule as the legacy localGeo collector: first usable response,
+// Select the first usable response,
 // replaced by the first IP/country pair confirmed by two services.
-async function collectGeo({proxyUrl,expectedIp='',timeout=5000,providers=proxyUrl?proxyProviders:localProviders,request=requestJson}={}){
+async function collectGeo({proxyUrl,expectedIp='',timeout=5000,providers=proxyUrl?proxyProviders:localProviders,request=requestJson,firstValid=false,signal}={}){
+  check(signal);
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
+  const abort=()=>controller.abort(signal.reason);
+  signal?.addEventListener('abort',abort,{once:true});if(signal?.aborted)abort();
   const agent=proxyUrl?new HttpsProxyAgent(proxyUrl):new https.Agent();
   const observed=new Set(),responses=[];let first=null,confirmed=null;
   try{
@@ -53,18 +57,20 @@ async function collectGeo({proxyUrl,expectedIp='',timeout=5000,providers=proxyUr
       if(!first||(!first.country_code&&geo.country_code))first=geo;
       responses[index]={...geo,source:new URL(url).hostname};
       const key=geo.country_code+'|'+geo.ip;
-      if(!proxyUrl&&geo.country_code&&observed.has(key)){confirmed=geo;controller.abort();}else observed.add(key);
+      if(proxyUrl&&firstValid&&(!expectedIp||canonical(geo.ip)===canonical(expectedIp))){confirmed??=geo;controller.abort();}
+      else if(!proxyUrl&&geo.country_code&&observed.has(key)){confirmed=geo;controller.abort();}else observed.add(key);
     }));
+    check(signal);
     if(proxyUrl){
-      // 旧插件固定设备按多检测地址中任意一次匹配判定；回环入口按
+      // 固定设备按多检测地址中任意一次匹配判定；回环入口按
       // 配置顺序选择真实检测结果，不拿设备配置 IP 伪造“实际检测”。
       const valid=responses.filter(Boolean),matched=expectedIp&&valid.find(geo=>canonical(geo.ip)===canonical(expectedIp));
-      const value=matched||valid[0];
+      const value=matched||(firstValid?confirmed:null)||valid[0];
       return value?{...value,available:true,multipleExits:new Set(valid.map(geo=>canonical(geo.ip))).size>1,observations:valid.map(({source,ip})=>({source,ip}))}:{available:false,message:'暂未获取出口 IP'};
     }
     const value=confirmed||first;
     return value?{...value,available:true}:{available:false,message:'暂未获取出口 IP'};
-  }finally{clearTimeout(timer);agent.destroy();}
+  }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);agent.destroy();}
 }
 let localCache=null,localPending=null;
 async function localGeo(){

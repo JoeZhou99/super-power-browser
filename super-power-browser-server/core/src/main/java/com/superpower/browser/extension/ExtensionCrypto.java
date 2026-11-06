@@ -6,7 +6,7 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.*;
 import com.superpower.browser.shared.BusinessException;
 
-/** Legacy wire encoding only. Database encryption uses SecretCipher and APP_DATA_KEY. */
+/** Plugin wire encoding only. Database encryption uses SecretCipher and APP_DATA_KEY. */
 public final class ExtensionCrypto {
     private ExtensionCrypto() {}
     public static String encode(String value) { return transform(value,true); }

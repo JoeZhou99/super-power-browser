@@ -5070,7 +5070,7 @@
       return;
     }
     if (!Array.isArray(y0) || y0.length === 0) {
-      a0("请先在站斧创建网页分组", "error");
+      a0("请先在 SuperPower 创建网页分组", "error");
       return;
     }
     const u = {
@@ -5221,7 +5221,7 @@
   }
   function fa(r) {
     if (y0.length == 0) {
-      a0("请先在站斧创建网页分组", "error");
+      a0("请先在 SuperPower 创建网页分组", "error");
       return;
     } else {
       Array.isArray(r) && r.length > 0;

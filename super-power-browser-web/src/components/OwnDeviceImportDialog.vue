@@ -26,7 +26,7 @@ async function choose(file:any){
 <template>
   <el-dialog :model-value="modelValue" title="导入编辑自有设备" width="600px" :close-on-click-modal="false" :close-on-press-escape="!busy" :show-close="!busy" @update:model-value="emit('update:modelValue',$event)">
     <p>注意：</p><p>1、下载模板：如未下载模板，请先下载 <el-button link type="primary" :icon="Download" @click="downloadOwnDeviceTemplate">下载模板（.xlsx）</el-button></p>
-    <p class="muted">2、按模板填写设备信息，红色字段必填，每次最多 300 台。支持旧版模板。</p>
+    <p class="muted">2、按模板填写设备信息，红色字段必填，每次最多 300 台。支持首行表头或首行说明、第二行表头的模板。</p>
     <p class="muted">3、相同地址和端口更新已有自有设备；新地址新增设备。编辑时密码留空保留原密码。</p>
     <el-upload drag :disabled="busy" :auto-upload="false" :show-file-list="false" accept=".xlsx" :on-change="choose"><el-icon class="el-icon--upload"><UploadFilled/></el-icon><div>将文件拖到此处，或 <em>点击上传</em></div></el-upload>
     <div v-if="total" aria-live="polite"><p>{{filename}}</p><el-progress :percentage="Math.round(processed/total*100)"/><p>共 {{total}} 台，成功 {{success}} 台，失败 {{failed}} 台<span v-if="busy">，正在处理…</span></p><div class="import-errors"><p v-for="(error,index) in errors" :key="index">{{error}}</p></div></div>

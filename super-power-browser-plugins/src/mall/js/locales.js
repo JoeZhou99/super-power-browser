@@ -3282,7 +3282,7 @@ var jr = {
 };
 const Gr = {
     check: {
-      page_title: "-多平台·多账号·提速运营系统",
+      page_title: " · 环境检查",
       title: "应用中心",
       website: "网站",
       extension: "插件",
@@ -3492,7 +3492,7 @@ const Gr = {
   },
   Kr = {
     check: {
-      page_title: "zhanfubrowser-Multi platform, multi account and speed up operation system",
+      page_title: " · Environment check",
       title: "App Center",
       website: "Website",
       extension: "Extension",

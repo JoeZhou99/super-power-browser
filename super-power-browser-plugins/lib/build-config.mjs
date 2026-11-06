@@ -7,7 +7,7 @@ export function validateBuildConfig(input = {}) {
     const u = new URL(text);
     if (u.username || u.password || u.search || u.hash || !['http:', 'https:'].includes(u.protocol)) throw new Error('接口地址不合法');
     if (u.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(u.hostname)) throw new Error('远程接口必须使用 HTTPS');
-    if (mode === 'superpower' && /(^|\.)zhanfubrowser\.com$/i.test(u.hostname)) throw new Error('新项目模式不能连接旧平台服务');
+    if (mode === 'superpower' && /(^|\.)zhanfubrowser\.com$/i.test(u.hostname)) throw new Error('SuperPower Browser 构建不能使用此服务域名');
   }
   if (new URL(authOrigin).pathname !== '/') throw new Error('authOrigin 必须为不带路径的源地址');
   return { mode, apiBase: apiBase.replace(/\/$/, ''), authOrigin: new URL(authOrigin).origin, version: '0.3.1' };

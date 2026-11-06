@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import static com.superpower.browser.shared.Data.*;
 import static com.superpower.browser.shared.BusinessException.require;
 
-/** Optional explicit migration of the development file catalog into the database. */
+/** Optional import of the development file catalog into the database. */
 @Component
 public class KernelBootstrap implements ApplicationRunner {
     private final KernelCatalog catalog;private final String manifest;

@@ -15418,7 +15418,7 @@
         (l.id = "zf-two-step-modal"),
         (l.innerHTML = `
       <div class="zf-two-step-dialog">
-        <div class="zf-two-step-title"><span class="zf-two-step-icon">!</span><span>站斧自动填充验证码服务</span></div>
+        <div class="zf-two-step-title"><span class="zf-two-step-icon">!</span><span>SuperPower 验证码辅助</span></div>
         <div class="zf-two-step-text">
           <div>确认开启后，您将享受以下服务：</div>
           <div>1. 系统将为您自动填充一次性密码</div>
@@ -15712,7 +15712,7 @@
         secret: r,
         getServerTime: () => this.getServerTimeMs(),
         account: this.account || "",
-        title: "站斧验证码服务",
+        title: "SuperPower 验证码辅助",
         pages: [
           {
             domain: o.domain || "",

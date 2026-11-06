@@ -1,4 +1,4 @@
-// Runs before the recovered worker. Never clear or replace a browser proxy
+// Runs before the extension worker. Never clear or replace a browser proxy
 // before authenticated startup configuration and the host contract are valid.
 const bytes = text => Uint8Array.from(atob(text), c => c.charCodeAt(0));
 const utf8 = new TextEncoder();

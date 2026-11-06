@@ -23,7 +23,7 @@ export function validateBootstrap(config) {
 
 export function encodeBootstrap(config) {
   validateBootstrap(config);
-  // The native client and the recovered browser code expect 32 ASCII bytes,
+  // The desktop and browser configuration codecs expect 32 ASCII bytes,
   // with little-endian offsets into a shared random string.
   const random = randomBytes(160).toString('hex');
   const configOffset = 32, socketOffset = 192;

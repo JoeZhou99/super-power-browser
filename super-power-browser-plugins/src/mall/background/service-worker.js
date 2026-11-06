@@ -88,7 +88,7 @@ const ve = {
     return new Promise((e, t) => {
       try {
         chrome.storage.local.get("adsBookmarkStr", (o) => {
-          let n = o.adsBookmarkStr || "站斧推荐";
+          let n = o.adsBookmarkStr || "SuperPower 推荐";
           (console.log("🚀 ~ createPromotionFolder ~ adsBookmarkStr:", o),
             this.adsBookmark.forEach((r) => {
               (n.includes(r.title) || (this.addAdsBookmarkList.push(r), (n = n + "," + r.title)),
@@ -219,7 +219,7 @@ function Se(e = []) {
   return (
     e.forEach((n) => {
       const r = `${n.url}-${n.title}`;
-      !o.has(r) && n.title !== "站斧推荐" && (t.push(n), o.add(r));
+      !o.has(r) && n.title !== "SuperPower 推荐" && (t.push(n), o.add(r));
     }),
     console.log(t),
     t

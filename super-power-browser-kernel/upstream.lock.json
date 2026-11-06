@@ -14,7 +14,5 @@
   "platform": "win32",
   "arch": "x64",
   "license": "BSD-3-Clause; see upstream and Chromium third-party notices",
-  "verifiedAt": "2026-11-04",
-  "legacySupportedVersions": ["126", "130", "137", "140", "144", "150"],
-  "legacyRecommendedVersion": "137"
+  "verifiedAt": "2026-11-04"
 }

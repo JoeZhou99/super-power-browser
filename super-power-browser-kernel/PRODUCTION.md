@@ -24,7 +24,7 @@ KERNEL_S3_ALLOW_HTTP=false
 KERNEL_URL_MINUTES=15
 ```
 
-发布人员必须同时是企业所有者且被服务器 UUID 白名单指定，普通租户所有者不会自动获得全平台发布权限。用户 UUID 可从其登录响应的 `user.id` 获取；不要把用户名当作 UUID。每次创建、发布、停用和迁移都记录审计事件。
+发布人员必须同时是企业所有者且被服务器 UUID 白名单指定，普通租户所有者不会自动获得全平台发布权限。用户 UUID 可从其登录响应的 `user.id` 获取；不要把用户名当作 UUID。每次创建、发布、停用和转存都记录审计事件。
 
 后端使用 AWS SDK 默认凭据链，优先通过部署工作负载角色授予存储权限。需要静态凭据时通过密钥管理注入 `AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY`，临时凭据还需 `AWS_SESSION_TOKEN`；这些值只进入服务端环境，不放入 Web、Electron、清单或 Git。签发者至少需要指定前缀的 `s3:PutObject`、`s3:GetObject`、`s3:GetObjectVersion` 权限，bucket 应保持私有。若使用额外的 KMS 加密，需相应密钥权限。
 
@@ -52,11 +52,11 @@ python super-power-browser-kernel/scripts/release.py disable <release-id>
 python super-power-browser-kernel/scripts/release.py enable <release-id> --recommended
 ```
 
-推荐状态在数据库锁内修改，每个系统/架构最多一个推荐版本。停用后不再签发新的下载地址；已发出的地址可能在原有效期内继续使用，已运行的店铺不会因此被强制关闭。已配置店铺不会自动切版本；涉及真实店铺时需要单独安排 profile 和指纹迁移。
+推荐状态在数据库锁内修改，每个系统/架构最多一个推荐版本。停用后不再签发新的下载地址；已发出的地址可能在原有效期内继续使用，已运行的店铺不会因此被强制关闭。已配置店铺不会自动切版本；涉及真实店铺时需要单独安排 浏览数据备份和指纹配置调整。
 
-## 当前本地资源迁到对象存储
+## 本地资源转存对象存储
 
-开发环境的 `KERNEL_MANIFEST_PATH` 仅作为显式首次导入入口。新 API 已从数据库读版本；已有行不会被本地文件覆盖，也不会在重启时自动恢复被停用的版本。
+开发环境的 `KERNEL_MANIFEST_PATH` 仅作为显式首次导入入口。API 从数据库读取版本；已有行不会被本地文件覆盖，也不会在重启时自动恢复被停用的版本。
 
 部署了 S3 配置并配置发布账号后，先 `list` 找到 144 的 release ID，再执行：
 
@@ -64,7 +64,7 @@ python super-power-browser-kernel/scripts/release.py enable <release-id> --recom
 python super-power-browser-kernel/scripts/release.py migrate <release-id> .local-preview/runtime/kernel-144-win-x64.zip
 ```
 
-迁移先上传并验证对象，成功后在事务内切换数据库的存储位置，保留版本 ID、摘要、发布状态和推荐状态。失败时仍使用本地包。确认客户端从对象存储下载后可移除 `KERNEL_MANIFEST_PATH`；不要立即删除旧包，保留运维回滚所需资源。
+转存先上传并验证对象，成功后在事务内切换数据库的存储位置，保留版本 ID、摘要、发布状态和推荐状态。失败时仍使用本地包。确认客户端从对象存储下载后可移除 `KERNEL_MANIFEST_PATH`；不要立即删除旧包，保留运维回滚所需资源。
 
 ## 客户端接口
 
@@ -72,11 +72,11 @@ python super-power-browser-kernel/scripts/release.py migrate <release-id> .local
 2. `GET /api/runtime/kernels/{version}/download`：检查登录、开店权限和发布状态，返回本地归档接口或短时效对象存储 URL。
 3. 客户端直接下载；外部请求不带应用 Bearer token。链接过期时重新取地址，继续 Range 下载，最后执行包及逐文件 SHA-256 校验。
 
-后端升级后需同步部署支持 `downloadDescriptorPath` 的新桌面客户端。生产客户端的 `apiUrl` 必须指向正式 HTTPS API，而非当前开发用的 `127.0.0.1:18080`；正式后端也不会自动从这台开发电脑读取 ZIP。
+后端升级后需同步部署支持 `downloadDescriptorPath` 的桌面客户端。生产客户端的 `apiUrl` 必须指向正式 HTTPS API，而非当前开发用的 `127.0.0.1:18080`；正式后端也不会自动从这台开发电脑读取 ZIP。
 
 ## 验证范围
 
-数据库发布流程和并发推荐、权限拒绝、不可变版本、错误文件拒绝、签名上传下载、对象版本固定、本地迁移保留停用状态均有自动测试。测试使用 H2 MySQL 模式和本地 S3 HTTP 协议夹具，不等于已验证真实云厂商。客户端已验证链接过期刷新、断点续传、跨域不携带登录令牌及下载资源身份不一致时拒绝。
+数据库发布流程和并发推荐、权限拒绝、不可变版本、错误文件拒绝、签名上传下载、对象版本固定、本地转存保留停用状态均有自动测试。测试使用 H2 MySQL 模式和本地 S3 HTTP 协议夹具，不等于已验证真实云厂商。客户端已验证链接过期刷新、断点续传、跨域不携带登录令牌及下载资源身份不一致时拒绝。
 
 真实生产 bucket、IAM/密钥、HTTPS 网络、MySQL 实例和目标供应商兼容性仍需部署环境配置与验收；当前未向任何真实云 bucket 上传，也没有新建付费云资源。
 

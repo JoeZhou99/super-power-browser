@@ -1,6 +1,6 @@
 // All uploaded proxies must prove connectivity through this shop's forwarding
 // proxy. Static public endpoints match their IP; local gateways and dynamic
-// proxies require a public exit. No legacy own-device bypass remains.
+// proxies require a public exit.
 export function networkPresentation(source){
   const replace=(before,after)=>{if(!source.includes(before))throw new Error('环境检测展示适配点发生变化：'+before.slice(0,70));source=source.replaceAll(before,after);};
   replace('ipInfo: {},','ipInfo: {},\n        spNetwork: {ip:"正在获取…",pending:false,message:""},');
@@ -14,6 +14,9 @@ export function networkPresentation(source){
       async checkIpHandle() {
         if(this.spNetwork.pending)return;
         this.spNetwork.pending=true;this.spNetwork.ip="正在获取…";this.checkIp=false;this.loadIp=true;
+        chrome.runtime.sendMessage({type:'sp:local-network-info'}).then(local=>{
+          if(local?.available)this.localGeo=[local.country_name,local.region_name,local.city_name].filter(Boolean).join(" ")||local.ip||"暂未获取";
+        }).catch(()=>{});
         let info;
         try{info=await chrome.runtime.sendMessage({type:'sp:network-info'});}catch{}
         this.spNetwork.pending=false;

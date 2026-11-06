@@ -25,8 +25,8 @@ export function installDesktopAdapter(){
   };
   globalThis.__SP_EVENT__=(action,args={})=>globalThis.__SP_RPC__({action,args:JSON.stringify(args)});
   chrome.runtime.onMessage.addListener((message,sender,reply)=>{
-    if(message?.type==='sp:network-info'&&sender.id===chrome.runtime.id&&sender.url?.startsWith(chrome.runtime.getURL(''))){
-      globalThis.__SP_EVENT__('GetNetworkInfo').then(result=>reply(result.returnObj),()=>reply({exit:{available:false,message:'暂未获取出口 IP'}}));
+    if(['sp:network-info','sp:local-network-info'].includes(message?.type)&&sender.id===chrome.runtime.id&&sender.url?.startsWith(chrome.runtime.getURL(''))){
+      globalThis.__SP_EVENT__(message.type==='sp:local-network-info'?'GetLocalNetworkInfo':'GetNetworkInfo').then(result=>reply(result.returnObj),()=>reply({exit:{available:false,message:'暂未获取出口 IP'}}));
       return true;
     }
     if(message?.type!=='sp:native'||sender.id!==chrome.runtime.id||!sender.url?.startsWith(chrome.runtime.getURL('')))return;

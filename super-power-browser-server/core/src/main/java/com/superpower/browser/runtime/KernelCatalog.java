@@ -42,7 +42,7 @@ public class KernelCatalog {
         return transaction.execute(status->{
             repository.lock();var existing=repository.find(text(d,"version"),text(d,"platform"),text(d,"arch"));
             if(existing.isPresent()){
-                var entry=existing.get();require(KernelDescriptor.validate(object(text(entry,"descriptor"))).equals(d)&&text(entry,"storageType").equals("S3"),409,"此版本已固定到其他资源或配置；本地资源可通过存储迁移入口转入对象存储");return entry;
+                var entry=existing.get();require(KernelDescriptor.validate(object(text(entry,"descriptor"))).equals(d)&&text(entry,"storageType").equals("S3"),409,"此版本已固定到其他资源或配置；本地资源可通过存储切换入口转入对象存储");return entry;
             }
             String id=id();repository.insert(id,d,"S3",key,a.id());audit.record(a,"kernel.create",id,Map.of("version",d.get("version"),"sha256",d.get("sha256")));return repository.get(id);
         });

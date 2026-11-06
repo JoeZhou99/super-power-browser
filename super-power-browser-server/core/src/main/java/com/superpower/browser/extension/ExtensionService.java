@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import static com.superpower.browser.shared.Data.*;
 import static com.superpower.browser.shared.BusinessException.require;
 
-/** Compatibility boundary for the recovered helpers. All state belongs to the new database. */
+/** Business API for the built-in browser helpers. State is stored in the application database. */
 @Service
 public class ExtensionService {
     private final ExtensionDocuments documents;private final EnvironmentService shops;private final DeviceAccess devices;

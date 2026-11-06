@@ -35,7 +35,7 @@ export async function verify(distribution) {
       }
       if (file.endsWith('.html')) for (const match of text.matchAll(/(?:src|href)=["']([^"']+)["']/g)) await check(absolute, match[1]);
       if (file.endsWith('.css')) for (const match of text.matchAll(/url\(["']?([^)'"\s]+)["']?\)/g)) await check(absolute, match[1]);
-      if (report.mode === 'superpower' && /(?:https?|wss?):\/\/(?:[\w-]+\.)*zhanfubrowser\.com(?=[/"'`\s?]|$)/.test(text)) throw new Error(`存在旧服务直连地址: ${file}`);
+      if (report.mode === 'superpower' && /(?:https?|wss?):\/\/(?:[\w-]+\.)*zhanfubrowser\.com(?=[/"'`\s?]|$)/.test(text)) throw new Error(`发布包包含禁止直连的服务域名: ${file}`);
     }
   }
   if (result.missing.length) throw new Error(`缺少资源:\n${result.missing.join('\n')}`);

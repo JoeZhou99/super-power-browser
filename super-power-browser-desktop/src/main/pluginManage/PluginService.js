@@ -22,7 +22,7 @@ async function preparePlugins(resources,profile,{environment,session,websocketPo
       await atomic(path.join(target,'.spb-package.json'),JSON.stringify({sha256:checksum}));
     }
     const build=await json(path.join(target,'runtime/build.json'),{});
-    if(build.mode!=='superpower')throw new Error('请先构建新项目插件包，禁止加载旧后台插件');
+    if(build.mode!=='superpower')throw new Error('请先构建 SuperPower Browser 内置插件包');
     await atomic(path.join(target,'runtime/endpoint.json'),JSON.stringify({apiBase:new URL('/extension',apiUrl).href,authOrigin:new URL(apiUrl).origin}));
     const manifest=await json(path.join(target,'manifest.json'),{});
     if(!manifest.key)throw new Error('内置插件缺少固定身份公钥');
@@ -45,7 +45,7 @@ async function preparePlugins(resources,profile,{environment,session,websocketPo
       prefs.extensions.ui??={};prefs.extensions.ui.developer_mode=true;
       prefs.credentials_enable_service=environment.fingerprint.rememberPassword!==false;
       prefs.profile??={};prefs.profile.default_content_setting_values??={};
-      // 旧版的开关控制 HTTPS 通知是否自动允许；关闭时恢复浏览器询问。
+      // 此开关控制 HTTPS 通知是否自动允许；关闭时由浏览器询问。
       prefs.profile.default_content_setting_values.notifications=0;
       prefs.profile.content_settings??={};prefs.profile.content_settings.exceptions??={};
       prefs.profile.content_settings.exceptions.notifications??={};

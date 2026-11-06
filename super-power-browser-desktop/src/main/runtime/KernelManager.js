@@ -22,16 +22,18 @@ async function exists(file){try{await fs.access(file);return true;}catch(error){
 async function plainPath(root,file){
   const relative=path.relative(root,file);
   if(relative.startsWith('..')||path.isAbsolute(relative))throw new Error('内核文件越界');
-  let current=root;
+  let current=root,stat;
   for(const segment of ['',...relative.split(path.sep).filter(Boolean)]){
     if(segment)current=path.join(current,segment);
-    const stat=await fs.lstat(current);
+    stat=await fs.lstat(current,{bigint:true});
     if(stat.isSymbolicLink())throw new Error('内核目录不能包含链接或重解析目录');
   }
+  return stat;
 }
+const fileStamp=stat=>[stat.dev,stat.ino,stat.mode,stat.size,stat.mtimeNs,stat.ctimeNs].join(':');
 function normalizeCatalog(raw){
   if(Array.isArray(raw?.kernels))return raw.kernels;
-  // Compatibility with the old chromium_list_v5 response, including platform gates.
+  // Accept the chromium_list_v5 response shape with platform availability checks.
   const list=raw?.contents?.win;
   if(!Array.isArray(list))throw new Error('内核版本清单格式不正确');
   return list.map(item=>({version:String(item.version),platform:'win32',arch:'x64',protocol:'legacy',executable:'zhanfubrowser.exe',downloadUrl:item.link,md5:item.md5,recommended:!!item.isRecommend,disabled:!!item.disableWin,requiresLegacyAuthorization:true}));
@@ -46,7 +48,7 @@ function validateDescriptor(entry){
   if(!entry.downloadDescriptorPath&&!entry.downloadPath&&!entry.downloadUrl)throw new Error('内核资源未配置下载地址');
   return {...entry,version:String(entry.version)};
 }
-async function verifyDirectory(root,entry,signal){
+async function verifyDirectory(root,entry,signal,verified){
   try{
     check(signal);
     await plainPath(root,inside(root,entry.executable));
@@ -63,8 +65,15 @@ async function verifyDirectory(root,entry,signal){
     const checked=await Promise.allSettled(Array.from({length:Math.min(4,files.length)},async()=>{
       for(;;){const record=files[index++];if(!record)return;const [name,expected]=record;
         if(typeof expected!=='string'||!(algorithm==='sha256'?/^[a-f0-9]{64}$/i:/^[a-f0-9]{32}$/i).test(expected))throw new Error('内核文件校验表不合法');
-        const file=inside(root,name);await plainPath(root,file);
-        if(await hash(file,algorithm,signal)!==expected.toLowerCase())throw new Error('内核文件校验失败');
+        const file=inside(root,name),stat=await plainPath(root,file),stamp=fileStamp(stat),digest=expected.toLowerCase();
+        if(!stat.isFile())throw new Error('内核资源不是普通文件');
+        const cached=verified?.get(file);
+        // Reuse only hashes verified in this process, with unchanged file identity and timestamps.
+        if(cached?.stamp===stamp&&cached.algorithm===algorithm&&cached.digest===digest)continue;
+        verified?.delete(file);
+        if(await hash(file,algorithm,signal)!==digest)throw new Error('内核文件校验失败');
+        if(fileStamp(await fs.lstat(file,{bigint:true}))!==stamp)throw new Error('校验期间内核文件已改变');
+        verified?.set(file,{stamp,algorithm,digest});
       }
     }));
     check(signal);if(checked.some(result=>result.status==='rejected'))return false;
@@ -75,7 +84,7 @@ async function verifyDirectory(root,entry,signal){
 }
 
 class KernelManager{
-  constructor(config,api,{inUse=()=>false,fetcher=fetch}={}){this.root=config.corePath;this.api=api;this.inUse=inUse;this.fetcher=fetcher;this.pending=new Map();this.catalog=null;}
+  constructor(config,api,{inUse=()=>false,fetcher=fetch}={}){this.root=config.corePath;this.api=api;this.inUse=inUse;this.fetcher=fetcher;this.pending=new Map();this.verified=new Map();}
   async list(signal){
     const entries=normalizeCatalog(await this.api.request('/runtime/kernels',{signal}));
     return entries.filter(item=>(item.platform||'win32')===process.platform&&(item.arch||'x64')===process.arch);
@@ -169,7 +178,7 @@ class KernelManager{
     const target=inside(this.root,version);
     const release=await this.acquire(version,report,signal);let stage;
     try{
-      if(await verifyDirectory(target,entry,signal)){report({stage:'ready',percent:100,message:'内核已就绪'});return {...entry,executable:inside(target,entry.executable)};}
+      if(await verifyDirectory(target,entry,signal,this.verified)){report({stage:'ready',percent:100,message:'内核已就绪'});return {...entry,executable:inside(target,entry.executable)};}
       if(this.inUse(version))throw new Error('内核需要修复，请先关闭使用该版本的店铺');
       const downloads=path.join(this.root,'.downloads');await fs.mkdir(downloads,{recursive:true});await plainPath(this.root,downloads);
       const archive=path.join(downloads,version+'-'+(entry.sha256||entry.md5).toLowerCase()+'.zip');

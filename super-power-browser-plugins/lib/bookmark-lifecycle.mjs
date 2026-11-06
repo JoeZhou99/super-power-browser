@@ -1,4 +1,4 @@
-// Keep the legacy tree format and events, but finish restore before exposing
+// Keep the bookmark tree format and events, but finish restore before exposing
 // the shop. Otherwise the asynchronous initial restore can erase a new bookmark.
 export function bookmarkLifecycle(source) {
   function replace(before,after){if(!source.includes(before))throw new Error('书签同步适配点发生变化');source=source.replace(before,after);}

@@ -21,7 +21,7 @@ export async function installAccessPolicy(){
     }else add('block',{requestDomains:policy.domains});
     for(const prefix of policy.exceptions||[])add('allow',{regexFilter:'^'+prefix.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')},1000002);
   }
-  // Session rules are separate from the helper's legacy dynamic-rule updates.
+  // Session rules are separate from the helper's dynamic-rule updates.
   const existing=await chrome.declarativeNetRequest.getSessionRules();
   await chrome.declarativeNetRequest.updateSessionRules({removeRuleIds:existing.filter(r=>r.id>=firstId).map(r=>r.id),addRules:rules});
   chrome.webNavigation.onErrorOccurred.addListener(details=>{

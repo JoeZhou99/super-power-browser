@@ -51,9 +51,15 @@ class BrowserHost {
     throw new Error('浏览器已启动，但主窗口未能显示，请重新打开');
   }
   async start(id,signal){
+    const started=performance.now(),startupTimings={},mark=name=>{startupTimings[name]=Math.round(performance.now()-started);};
+    let local={available:false},initialNetwork;
+    // Local geolocation is display information and must not delay the shop window.
+    const localReady=localGeo().then(value=>(local=value),()=>local);
     const environment=await this.api.request(`/environments/${id}/launch-config`,{signal});check(signal);
+    mark('configuration');
     const profile=path.join(this.config.profiles,id,environment.kernelVersion);
     const kernel=await this.kernels.ensure(environment.kernelVersion,state=>this.preparing.set(id,state),{signal});check(signal);
+    mark('kernel');
     const executable=kernel.executable;
     this.preparing.set(id,{version:kernel.version,stage:'starting',percent:null,message:'正在准备店铺环境'});
     compileFingerprint(environment,kernel);
@@ -62,23 +68,30 @@ class BrowserHost {
     await fs.copyFile(path.join(this.config.resources,'branding/app.ico'),iconPath);
     check(signal);
     const proxy=new Server({port:0,host:'127.0.0.1',prepareRequestFunction:()=>({upstreamProxyUrl:upstream(environment.proxy)})});
-    const run={status:'starting',notifications:environment.fingerprint.notifications!==false,kernelVersion:kernel.version,proxy,profile,iconPath,child:null,port:await freePort(),debuggerUrl:null};
+    const run={status:'starting',startupTimings,networkController:new AbortController(),notifications:environment.fingerprint.notifications!==false,kernelVersion:kernel.version,proxy,profile,iconPath,child:null,port:await freePort(),debuggerUrl:null};
     this.running.set(id,run);
     try{
-      check(signal);await proxy.listen();check(signal);
-      run.session=await this.api.request(`/environments/${id}/extension-sessions`,{method:'POST',body:{},signal});check(signal);
+      check(signal);
       const extensionRequest=async(route,body)=>{
         const timeout=AbortSignal.timeout(10000);
         const response=await fetch(new URL('/extension'+route,this.config.apiUrl),{method:body===undefined?'GET':'POST',headers:{Authorization:`Bearer ${run.session.token}`,'Content-Type':'application/json'},body:body===undefined?undefined:JSON.stringify(body),signal:signal?AbortSignal.any([signal,timeout]):timeout,redirect:'error'});
         const result=await response.json();if(!response.ok||result.errorCode)throw new Error(result.message||'插件后台请求失败');return result;
       };
-      const saved=await extensionRequest('/bootstrap');
-      const local=await waitFor(localGeo(),signal);check(signal);
+      const probeSignal=signal?AbortSignal.any([signal,run.networkController.signal]):run.networkController.signal;
+      const probeNetwork=()=>collectGeo({proxyUrl:'http://127.0.0.1:'+proxy.port,expectedIp:expectedExit(environment.proxy),firstValid:true,signal:probeSignal});
+      const preparations=await Promise.allSettled([
+        (async()=>{await proxy.listen();check(signal);initialNetwork={at:Date.now(),promise:probeNetwork().catch(()=>({available:false,message:'代理出口检测失败'}))};})(),
+        (async()=>{run.session=await this.api.request('/environments/'+id+'/extension-sessions',{method:'POST',body:{},signal});check(signal);return extensionRequest('/bootstrap');})()
+      ]);
+      check(signal);const failed=preparations.find(result=>result.status==='rejected');if(failed)throw failed.reason;
+      const saved=preparations[1].value;mark('services');
       run.bridge=new DesktopBridge({id,proxy:environment.proxy,onAction:async(action,args)=>{
         if(action==='GetNetworkInfo'){
-          run.networkProbe??=collectGeo({proxyUrl:`http://127.0.0.1:${proxy.port}`,expectedIp:expectedExit(environment.proxy)}).then(exit=>{run.networkChecked=true;return {local,exit,...validateExit(environment.proxy,exit)};}).finally(()=>{run.networkProbe=null;});
+          const prepared=initialNetwork;initialNetwork=null;
+          run.networkProbe??=(prepared&&Date.now()-prepared.at<10000?prepared.promise:probeNetwork()).then(exit=>{run.networkChecked=true;mark('network');return {local,exit,...validateExit(environment.proxy,exit)};}).finally(()=>{run.networkProbe=null;});
           return run.networkProbe;
         }
+        if(action==='GetLocalNetworkInfo')return waitFor(localReady,signal);
         if(action==='UpdateMallCookie'||action==='UploadCookies')return (await extensionRequest('/api/v1/bindMall/setCookie',{mallId:id,cookie:args.cookie||''})).data;
         if(action==='CheckCompleted')return (await extensionRequest('/api/v1/bindMall/setAccessStatus',{mallId:id,status:1})).data;
         if(action==='UploadCache')throw new Error('完整浏览器缓存同步尚未配置；Cookie 已独立同步');
@@ -88,10 +101,11 @@ class BrowserHost {
       const websocketPort=await run.bridge.listen();
       check(signal);
       const plugins=await preparePlugins(this.config.resources,profile,{environment,session:run.session,websocketPort,proxyUrl:`http://127.0.0.1:${proxy.port}`,apiUrl:this.config.apiUrl,cookie:saved.cookie,localGeo:local.available?local:null});
+      mark('plugins');
       run.bridge.configure(plugins.bundle,Object.values(plugins.pluginIdMap));
       const {args}=await prepareLaunch(environment,{kernel,profile,proxyUrl:`http://127.0.0.1:${proxy.port}`,plugins:plugins.dirs,debugPort:run.port,downloads:this.config.downloads});
       check(signal);
-      const child=spawn(executable,args,{cwd:path.dirname(executable),windowsHide:false,stdio:'ignore'});run.child=child;
+      const child=spawn(executable,args,{cwd:path.dirname(executable),windowsHide:false,stdio:'ignore'});run.child=child;mark('process');
       let exited=false,spawnError;
       child.once('error',error=>{spawnError=error;});child.once('exit',code=>{exited=true;run.exitCode=code;void this.cleanup(id,run).catch(()=>{});});
       const deadline=Date.now()+20000;
@@ -102,14 +116,15 @@ class BrowserHost {
         await pause(250,signal);
       }
       if(!run.debuggerUrl)throw new Error('内核启动超时，未获得可验证的运行状态');
-      await this.reveal(run,signal);
+      await this.reveal(run,signal);mark('window');
       await this.writeJournal();
       await waitFor(activatePlugins(run,Object.values(plugins.pluginIdMap),signal),signal);check(signal);
+      mark('activation');
       const pluginDeadline=Date.now()+60000;
       while(!run.bridge.ready&&!run.networkChecked&&Date.now()<pluginDeadline){check(signal);if(exited)throw new Error(`内核提前退出（${run.exitCode}）`);await pause(250,signal);}
       check(signal);
       if(!run.bridge.ready&&!run.networkChecked)throw new Error(run.bridge.connected?'插件未发起环境检测，请查看插件启动状态':'店铺插件未连接桌面，请查看插件启动状态');
-      run.status='running';await this.writeJournal();return {status:'running'};
+      run.status='running';mark('ready');await this.writeJournal();return {status:'running'};
     }catch(error){run.startError=error.message;if(run.child&&!run.child.killed){if(run.debuggerUrl)await cdp(run.debuggerUrl,'Browser.close').catch(()=>{});if(run.child.exitCode===null)run.child.kill();}await this.cleanup(id,run);throw error;}
   }
   async desktopAction(id,action){
@@ -128,7 +143,8 @@ class BrowserHost {
   async cleanup(id,expected){
     const run=this.running.get(id);if(!run||(expected&&run!==expected))return;if(run.cleaning)return run.cleaning;
     run.cleaning=(async()=>{
-      await fs.writeFile(path.join(run.profile,'runtime-diagnostics.json'),JSON.stringify({exitCode:run.exitCode,startError:run.startError,connected:run.bridge?.connected,ready:run.bridge?.ready,events:run.bridge?.events,at:new Date().toISOString()},null,2)).catch(()=>{});
+      run.networkController?.abort(cancelled());
+      await fs.writeFile(path.join(run.profile,'runtime-diagnostics.json'),JSON.stringify({startupTimings:run.startupTimings,exitCode:run.exitCode,startError:run.startError,connected:run.bridge?.connected,ready:run.bridge?.ready,events:run.bridge?.events,at:new Date().toISOString()},null,2)).catch(()=>{});
       await Promise.allSettled([run.proxy.close(true),run.bridge?.close(),run.session?this.api.request(`/environments/${id}/extension-sessions/${run.session.id}`,{method:'DELETE'}):Promise.resolve()]);
       try{await clearBootstrap(run.profile);}finally{this.running.delete(id);this.windows.release(run.child?.pid);await this.writeJournal();}
     })();return run.cleaning;
