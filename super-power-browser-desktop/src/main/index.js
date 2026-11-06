@@ -4,6 +4,7 @@ const {Server}=require('proxy-chain');
 const {configuration}=require('./model/InitData');
 const {ApiClient}=require('./services/ApiClient');
 const {serveWeb}=require('./services/WebServer');
+const {registerWindowControls}=require('./services/WindowControls');
 const {AiHost}=require('./services/AiHost');
 const {BrowserHost,upstream}=require('./BrowserManage/BrowserHost');
 const {collectGeo,validateExit,expectedExit}=require('./pluginManage/NetworkInfo');
@@ -17,13 +18,14 @@ else app.whenReady().then(async()=>{
   await browsers.recover();
   const local=await serveWeb(app.isPackaged?path.join(process.resourcesPath,'web'):path.join(config.resources,'resources/web'),config.apiUrl);
   const pageUrl=config.webUrl||local.url;
-  const window=new BrowserWindow({width:1440,height:940,minWidth:1100,minHeight:720,title:'SuperPower Browser',icon:path.join(config.resources,'branding/app.ico'),backgroundColor:'#edf2ff',titleBarStyle:'hidden',titleBarOverlay:{color:'#eaf0ff',symbolColor:'#344f7e',height:44},webPreferences:{preload:path.join(__dirname,'../preload/index.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  const window=new BrowserWindow({width:1440,height:940,minWidth:1100,minHeight:720,title:'SuperPower Browser',icon:path.join(config.resources,'branding/app.ico'),backgroundColor:'#f4f6fb',frame:false,webPreferences:{preload:path.join(__dirname,'../preload/index.js'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   window.setMenuBarVisibility(false);
   const origin=new URL(pageUrl).origin;
   const ai=new AiHost({api,browsers,config,window,origin});
   window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   window.webContents.on('will-navigate',(event,url)=>{if(new URL(url).origin!==origin)event.preventDefault();});
   function handle(name,fn){ipcMain.handle(`spb:${name}`,(event,...args)=>{if(event.sender!==window.webContents||!event.senderFrame||new URL(event.senderFrame.url).origin!==origin)throw new Error('请求来源不合法');return fn(...args);});}
+  registerWindowControls(window,handle);
   handle('setSession',async token=>{if(typeof token!=='string'||token.length>500)throw new Error('登录凭据不合法');if(api.token!==token){await ai.stop();if(api.token)await browsers.closeAll();api.token=token;}});
   handle('openBrowser',async id=>{try{const result=await browsers.open(id);window.webContents.send('spb:shopStatus',await ai.connection(id));return result;}catch(error){window.webContents.send('spb:shopStatus',{browserId:id,isopen:false});throw error;}});handle('closeBrowser',id=>browsers.close(id));handle('closeAll',()=>browsers.closeAll());handle('browserStates',()=>browsers.states());
   handle('runtimePlatform',()=>({platform:process.platform,arch:process.arch}));

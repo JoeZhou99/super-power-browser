@@ -19,8 +19,9 @@ public class EnvironmentService {
     private final DeviceAccess devices;
     private final AuditRepository audit;
     private final KernelCatalog kernels;
-    public EnvironmentService(EnvironmentRepository repository,MemberDirectory members,DeviceAccess devices,AuditRepository audit,KernelCatalog kernels) {
-        this.repository=repository; this.members=members; this.devices=devices; this.audit=audit;this.kernels=kernels;
+    private final PlatformCatalog platforms;
+    public EnvironmentService(EnvironmentRepository repository,MemberDirectory members,DeviceAccess devices,AuditRepository audit,KernelCatalog kernels,PlatformCatalog platforms) {
+        this.repository=repository; this.members=members; this.devices=devices; this.audit=audit;this.kernels=kernels;this.platforms=platforms;
     }
     public Map<String,Object> get(Actor a,String id,String permission) { a.allow(permission); return repository.get(a,id); }
     public Map<String,Object> list(Actor a,String category,String query,int page,int size,boolean recycled) {
@@ -44,6 +45,8 @@ public class EnvironmentService {
         else { previous=get(a,environmentId,"shop.edit"); require(!flag(previous,"recycled"),409,"请先恢复店铺"); }
         var input=new HashMap<>(request);
         input.put("name",required(input,"name",100));
+        platforms.applySelection(input,previous);
+        require(!text(input,"startUrl").isBlank()&&!text(input,"startUrl").equals("https://"),400,"请选择平台站点，或填写自定义网站地址");
         String url=required(input,"startUrl",2000);
         try { URI uri=URI.create(url); require(Set.of("http","https").contains(uri.getScheme()) && uri.getHost()!=null,400,"店铺地址必须是 HTTP 或 HTTPS 地址"); }
         catch(IllegalArgumentException e) { throw new BusinessException(400,"店铺地址不合法"); }
@@ -74,7 +77,7 @@ public class EnvironmentService {
         require(Set.of("account","remark","fingerprint","device","grants").containsAll(fields),400,"不支持的复制字段");
         var input=new HashMap<String,Object>();
         input.put("name",required(request,"name",100));
-        for(String key:List.of("platform","startUrl","kernelVersion"))input.put(key,source.get(key));
+        for(String key:List.of("platform","platformSiteId","startUrl","kernelVersion"))input.put(key,source.get(key));
         input.put("fingerprint",fields.contains("fingerprint")?object(text(source,"fingerprint")):Map.of("language","zh-CN","timezone","Asia/Shanghai","webRtc","disabled","webgl",true,"resolution","1920x1080","os","Windows"));
         if(fields.contains("account"))for(String key:List.of("accountName","accountPassword"))input.put(key,source.get(key));
         if(fields.contains("remark"))input.put("remark",source.get("remark"));

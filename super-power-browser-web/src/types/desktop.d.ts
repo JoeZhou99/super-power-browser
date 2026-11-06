@@ -1,6 +1,9 @@
 interface Window {
   api?:{
     runtimePlatform?():Promise<{platform:string;arch:string}>;
+    windowState?():Promise<{maximized:boolean;fullScreen:boolean}>;
+    windowControl?(action:'minimize'|'toggleMaximize'|'close'):Promise<void>;
+    onWindowState?(callback:(state:{maximized:boolean;fullScreen:boolean})=>void):()=>void;
     setSession(token:string):Promise<void>;
     onLoggedOut?(callback:()=>void):()=>void;
     openBrowser(id:string):Promise<{status:string}>;

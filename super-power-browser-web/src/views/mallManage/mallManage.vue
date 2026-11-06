@@ -70,7 +70,29 @@ async function batch(action:string){
     <el-table-column v-if="visibleColumns.includes('grants')" label="授权人员" min-width="150"><template #default="{row}"><button v-if="permissions.can('shop.grant')" class="table-link" @click="openGrants(row)">{{row.grantedNames||'去授权'}}</button><span v-else>{{row.grantedNames||'—'}}</span></template></el-table-column>
     <el-table-column v-if="visibleColumns.includes('remark')" prop="remark" label="备注" min-width="130" show-overflow-tooltip/>
     <el-table-column v-if="visibleColumns.includes('updated')" label="更新时间" min-width="175"><template #default="{row}"><div class="table-sub">创建人：{{row.creatorName}}</div>{{date(row.updatedAt||row.createdAt)}}</template></el-table-column>
-    <el-table-column label="操作" width="195" fixed="right"><template #default="{row}"><template v-if="!recycled"><el-button v-if="permissions.can('shop.open')" type="primary" plain size="small"  :loading="states[row.id] === 'closing'" @click="states[row.id]==='running'||opening[row.id]||states[row.id]==='starting'?close(row):open(row)">{{states[row.id]==='running'?'关闭店铺':opening[row.id]||states[row.id]==='starting'?'取消打开':'打开店铺'}}</el-button><div v-if="progress[row.id]" class="table-sub" role="status">{{progress[row.id].message}}<span v-if="progress[row.id].percent!==null"> {{progress[row.id].percent}}%</span></div><el-dropdown trigger="click"><el-button link type="primary">更多<el-icon><ArrowDown/></el-icon></el-button><template #dropdown><el-dropdown-menu><el-dropdown-item v-if="states[row.id]==='running'&&permissions.can('shop.open')" @click="open(row)">显示浏览器窗口</el-dropdown-item><el-dropdown-item v-if="permissions.can('shop.edit')" @click="edit(row)">编辑店铺</el-dropdown-item><el-dropdown-item v-if="permissions.can('shop.edit')&&permissions.can('device.view')" @click="openBinding(row)">绑定 / 解绑设备</el-dropdown-item><el-dropdown-item v-if="permissions.can('shop.grant')" @click="openGrants(row)">授权成员</el-dropdown-item><el-dropdown-item v-if="permissions.can('shop.create')" @click="copy(row)">复制店铺</el-dropdown-item><el-dropdown-item v-if="permissions.can('shop.edit')" @click="favorite(row)">{{row.favorite?'取消常用':'设为常用'}}</el-dropdown-item><el-dropdown-item v-if="permissions.can('shop.delete')" divided @click="recycle(row)">删除店铺</el-dropdown-item></el-dropdown-menu></template></el-dropdown></template><template v-else><el-button v-if="permissions.can('shop.delete')" link type="primary" @click="restore(row)">恢复店铺</el-button><el-button v-if="permissions.can('shop.delete')" link type="danger" @click="recycle(row)">永久删除</el-button></template></template></el-table-column><template #empty><el-empty :description="recycled?'回收站暂无店铺':'暂无店铺数据'" :image-size="90"/></template>
+    <el-table-column label="操作" width="195" fixed="right">
+      <template #default="{row}">
+        <div v-if="!recycled" class="shop-actions">
+          <div class="shop-row-actions">
+            <el-button v-if="permissions.can('shop.open')" class="shop-open-button" type="primary" plain :loading="states[row.id]==='closing'" @click="states[row.id]==='running'||opening[row.id]||states[row.id]==='starting'?close(row):open(row)">{{states[row.id]==='running'?'关闭店铺':opening[row.id]||states[row.id]==='starting'?'取消打开':'打开店铺'}}</el-button>
+            <el-dropdown trigger="click" popper-class="shop-actions-menu">
+              <el-button class="shop-more-button" text aria-label="更多店铺操作"><span>更多</span><el-icon><ArrowDown/></el-icon></el-button>
+              <template #dropdown><el-dropdown-menu>
+                <el-dropdown-item v-if="states[row.id]==='running'&&permissions.can('shop.open')" @click="open(row)">显示浏览器窗口</el-dropdown-item>
+                <el-dropdown-item v-if="permissions.can('shop.edit')" @click="edit(row)">编辑店铺</el-dropdown-item>
+                <el-dropdown-item v-if="permissions.can('shop.edit')&&permissions.can('device.view')" @click="openBinding(row)">绑定 / 解绑设备</el-dropdown-item>
+                <el-dropdown-item v-if="permissions.can('shop.grant')" @click="openGrants(row)">授权成员</el-dropdown-item>
+                <el-dropdown-item v-if="permissions.can('shop.create')" @click="copy(row)">复制店铺</el-dropdown-item>
+                <el-dropdown-item v-if="permissions.can('shop.edit')" @click="favorite(row)">{{row.favorite?'取消常用':'设为常用'}}</el-dropdown-item>
+                <el-dropdown-item v-if="permissions.can('shop.delete')" divided @click="recycle(row)">删除店铺</el-dropdown-item>
+              </el-dropdown-menu></template>
+            </el-dropdown>
+          </div>
+          <div v-if="progress[row.id]" class="shop-action-progress" role="status">{{progress[row.id].message}}<span v-if="progress[row.id].percent!==null"> {{progress[row.id].percent}}%</span></div>
+        </div>
+        <div v-else class="shop-row-actions"><el-button v-if="permissions.can('shop.delete')" link type="primary" @click="restore(row)">恢复店铺</el-button><el-button v-if="permissions.can('shop.delete')" link type="danger" @click="recycle(row)">永久删除</el-button></div>
+      </template>
+    </el-table-column><template #empty><el-empty :description="recycled?'回收站暂无店铺':'暂无店铺数据'" :image-size="90"/></template>
   </el-table>
   <div class="table-pagination"><div class="batch-actions"><span class="muted">已选 {{selected.length}} 个</span><template v-if="!recycled"><el-button v-if="permissions.can('shop.open')" size="small" :disabled="!selected.length" @click="batch('open')">批量打开</el-button><el-button v-if="permissions.can('shop.open')" size="small" :disabled="!selected.length" @click="batch('close')">批量关闭</el-button><el-button v-if="permissions.can('shop.delete')" size="small" :disabled="!selected.length" @click="batch('recycle')">批量删除</el-button></template><template v-else><el-button size="small" :disabled="!selected.length" @click="batch('restore')">批量恢复</el-button><el-button size="small" :disabled="!selected.length" @click="batch('delete')">永久删除</el-button></template></div><el-pagination v-model:current-page="page" v-model:page-size="size" :page-sizes="[20,50,100]" :total="total" layout="total,sizes,prev,pager,next,jumper" @current-change="load" @size-change="page=1;load()"/></div>
 </section>
