@@ -36,12 +36,14 @@ public class DeviceService implements DeviceAccess {
             if(!input.containsKey("password")) input.put("password",text(previous,"password"));
             for(String key:List.of("webType","protocolFamily","mapIp","mapPort"))input.putIfAbsent(key,previous.get(key));
         }
-        String host=required(input,"host",255),protocol=required(input,"protocol",10);
+        String host=ProxySettings.host(required(input,"host",255)),protocol=required(input,"protocol",10).toLowerCase(Locale.ROOT);
         long port=number(input,"port");
-        require(Set.of("http","https","socks5").contains(protocol),400,"支持 HTTP、HTTPS 和 SOCKS5 代理");
+        require(Set.of("http","https","socks5","ssh").contains(protocol),400,"支持 HTTP、HTTPS、SOCKS5 和 SSH 代理");
         require(port>0 && port<=65535,400,"端口范围为 1—65535");
         require(!host.contains("/") && !host.contains("@") && !host.contains(" "),400,"请输入不带协议的代理主机地址");
         input.put("host",host); input.put("protocol",protocol);
+        require(text(input,"username").length()<=255&&text(input,"remark").length()<=1000&&text(input,"region").length()<=150,400,"代理账号、备注或地区超出长度限制");
+        require(!protocol.equals("ssh")||!text(input,"username").isBlank(),400,"SSH 代理需要填写用户名");
         input.putIfAbsent("webType",2);input.putIfAbsent("protocolFamily",host.contains(":")?2:1);input.putIfAbsent("mapIp","");input.putIfAbsent("mapPort",0);
         require(Set.of(1L,2L).contains(number(input,"webType")),400,"请选择动态或静态网络");
         require(Set.of(1L,2L).contains(number(input,"protocolFamily")),400,"IP 类型只能为 IPv4 或 IPv6");

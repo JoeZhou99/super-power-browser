@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {computed,nextTick,onMounted,ref,watch} from 'vue';
 import {useRoute,useRouter} from 'vue-router';
-import {House,Shop,Monitor,Wallet,User,Setting,Fold,Expand,Refresh,Close,ChatDotRound} from '@element-plus/icons-vue';
+import {House,Shop,Monitor,Connection,Wallet,User,Setting,Fold,Expand,Refresh,Close,ChatDotRound} from '@element-plus/icons-vue';
 import CompanyInfo from './components/Sidebar/components/CompanyInfo.vue';
 import WindowControls from '@/components/WindowControls.vue';
 import {usePermissions} from '@/store/modules/permission.store';
@@ -12,10 +12,11 @@ const MAX_OPEN_TABS=6;
 let tabVisit=0;
 const collapsed=ref(false),viewKey=ref(0),tabs=ref([{path:'/dashboard',title:'首页',lastVisited:0}]);
 const tabsElement=ref<HTMLElement>();
-function tabIcon(path:string){return path.startsWith('/mall')?Shop:path.startsWith('/agentIp')?Monitor:path.startsWith('/money')?Wallet:path.startsWith('/companyManage')?User:path.startsWith('/zhifuAgent')?ChatDotRound:path.startsWith('/dashboard')?House:Setting;}
+function tabIcon(path:string){return path.startsWith('/mall')?Shop:path.startsWith('/agentIp')?Monitor:path.startsWith('/proxy')?Connection:path.startsWith('/money')?Wallet:path.startsWith('/companyManage')?User:path.startsWith('/zhifuAgent')?ChatDotRound:path.startsWith('/dashboard')?House:Setting;}
 const groups=computed(()=>[
   {name:'shop',title:'店铺管理',icon:Shop,children:[['店铺管理','/mall/mallManage','shop.view'],['回收站','/mall/recycle','shop.view']]},
-  {name:'device',title:'设备管理',icon:Monitor,children:[['设备管理','/agentIp/all','device.view'],['购买设备','/agentIp/aggregateBuy3','device.buy'],['回收站','/agentIp/recycle','device.view']]},
+  {name:'device',title:'设备管理',icon:Monitor,children:[['设备列表','/agentIp/all','device.view'],['购买设备','/agentIp/aggregateBuy3','device.buy'],['设备回收站','/agentIp/recycle','device.view']]},
+  {name:'proxy',title:'代理管理',icon:Connection,children:[['代理列表','/proxy/list','device.view'],['动态代理','/proxy/dynamic','device.view']]},
   {name:'money',title:'费用管理',icon:Wallet,children:[['账户充值','/money/recharge','wallet.recharge|wallet.view'],['订单管理','/money/order','order.view']]},
   {name:'company',title:'成员管理',icon:User,children:[['成员管理','/companyManage/membersMamanger','member.manage|role.manage'],['角色权限','/companyManage/roles','role.manage|member.manage']]}
 ].map(g=>({...g,children:g.children.filter(c=>c[2]!.split('|').some(p=>permissions.can(p)))})).filter(g=>g.children.length));
@@ -37,7 +38,7 @@ onMounted(()=>account.load());
 </script>
 <template>
   <div class="shell" :class="{collapsed}"><aside class="sidebar"><CompanyInfo/>
-    <el-menu router :default-active="route.path" :default-openeds="['shop','device','money','company']" :collapse="collapsed" class="navigation">
+    <el-menu router :default-active="route.path==='/proxy/recycle'?'/proxy/list':route.path" :default-openeds="['shop','device','proxy','money','company']" :collapse="collapsed" class="navigation">
       <el-menu-item index="/dashboard"><el-icon><House/></el-icon><template #title>首页</template></el-menu-item>
       <el-sub-menu v-for="group in groups" :key="group.name" :index="group.name"><template #title><el-icon><component :is="group.icon"/></el-icon><span>{{group.title}}</span></template><el-menu-item v-for="child in group.children" :key="child[1]" :index="child[1]">{{child[0]}}</el-menu-item></el-sub-menu>
       <el-menu-item v-if="permissions.can('ai.use')" index="/zhifuAgent"><el-icon><ChatDotRound/></el-icon><template #title>SuperPower AI</template></el-menu-item>

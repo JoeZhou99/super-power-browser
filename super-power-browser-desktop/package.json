@@ -8,16 +8,18 @@
     "dev": "npm run build && electron .",
     "start": "electron .",
     "build": "node scripts/build.cjs",
+    "test:proxy": "node --test scripts/proxy-runtime.test.cjs",
     "build:win": "npm run build && electron-builder --win --x64",
     "build:mac": "npm run build && node scripts/mac-icon.cjs && electron-builder --mac --x64 --arm64"
   },
   "dependencies": {
+    "@super-power-browser/ai": "file:../super-power-browser-ai",
     "adm-zip": "0.5.16",
+    "https-proxy-agent": "7.0.6",
     "koffi": "2.12.3",
     "proxy-chain": "^2.5.0",
-    "https-proxy-agent": "7.0.6",
-    "ws": "8.18.2",
-    "@super-power-browser/ai": "file:../super-power-browser-ai"
+    "ssh2": "1.17.0",
+    "ws": "8.18.2"
   },
   "devDependencies": {
     "electron": "35.7.5",

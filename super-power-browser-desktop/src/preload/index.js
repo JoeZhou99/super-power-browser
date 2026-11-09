@@ -1,5 +1,5 @@
 const {contextBridge,ipcRenderer}=require('electron');
-const methods=['runtimePlatform','windowState','windowControl','setSession','openBrowser','closeBrowser','closeAll','browserStates','browserProgress','settings','clearCache','checkUpdate','checkProxy'];
+const methods=['runtimePlatform','windowState','windowControl','setSession','openBrowser','closeBrowser','closeAll','browserStates','browserProgress','settings','clearCache','checkUpdate','checkProxy','rotateProxy'];
 contextBridge.exposeInMainWorld('api',{
   ...Object.fromEntries(methods.map(name=>[name,(...args)=>ipcRenderer.invoke(`spb:${name}`,...args)])),
   onWindowState(callback){if(typeof callback!=='function')throw new Error('回调不合法');const handler=(_event,state)=>callback(state);ipcRenderer.on('spb:windowState',handler);return ()=>ipcRenderer.removeListener('spb:windowState',handler);},

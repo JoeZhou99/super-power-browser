@@ -2,7 +2,7 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const net=require('node:net');
 const {spawn}=require('node:child_process');
-const {Server}=require('proxy-chain');
+const {ProxyRuntime,upstream}=require('../services/ProxyRuntime');
 const WebSocket=require('ws');
 const {preparePlugins,clearBootstrap}=require('../pluginManage/PluginService');
 const {DesktopBridge}=require('../pluginManage/DesktopBridge');
@@ -14,7 +14,6 @@ const {KernelManager}=require('../runtime/KernelManager');
 const {cancelled,check,waitFor,pause}=require('../runtime/Cancellation');
 
 async function freePort(){const server=net.createServer();await new Promise((resolve,reject)=>server.once('error',reject).listen(0,'127.0.0.1',resolve));const port=server.address().port;await new Promise(resolve=>server.close(resolve));return port;}
-function upstream(proxy){const host=proxy.host.includes(':')?`[${proxy.host}]`:proxy.host;const url=new URL(`${proxy.protocol}://${host}:${proxy.port}`);url.username=proxy.username||'';url.password=proxy.password||'';return url.href;}
 async function cdp(url,method){return new Promise((resolve,reject)=>{const socket=new WebSocket(url);const timer=setTimeout(()=>{socket.terminate();reject(new Error('浏览器响应超时'));},8000);const finish=(error,value)=>{clearTimeout(timer);socket.close();error?reject(error):resolve(value);};socket.on('open',()=>socket.send(JSON.stringify({id:1,method})));socket.on('message',raw=>{const reply=JSON.parse(raw);if(reply.id===1)finish(reply.error?new Error(reply.error.message):null,reply.result);});socket.on('error',error=>finish(error));socket.on('close',()=>{if(method==='Browser.close')finish(null,{});});});}
 class BrowserHost {
   constructor(config,api,{onApplicationAction,onActionError=()=>{}}={}){this.config=config;this.api=api;this.onApplicationAction=onApplicationAction;this.onActionError=onActionError;this.windows=new NativeWindow();this.running=new Map();this.pending=new Map();this.starting=new Map();this.preparing=new Map();this.journal=path.join(config.dataPath,'running-independent.json');this.kernels=new KernelManager(config,api,{inUse:version=>[...this.running.values()].some(run=>run.kernelVersion===version)});}
@@ -67,7 +66,7 @@ class BrowserHost {
     const iconPath=path.join(profile,'superpower.ico');
     if(process.platform==='win32')await fs.copyFile(path.join(this.config.resources,'branding/app.ico'),iconPath);
     check(signal);
-    const proxy=new Server({port:0,host:'127.0.0.1',prepareRequestFunction:()=>({upstreamProxyUrl:upstream(environment.proxy)})});
+    const proxy=new ProxyRuntime(environment.proxy,{signal});
     const run={status:'starting',startupTimings,networkController:new AbortController(),notifications:environment.fingerprint.notifications!==false,kernelVersion:kernel.version,proxy,profile,iconPath,child:null,port:await freePort(),debuggerUrl:null};
     this.running.set(id,run);
     try{

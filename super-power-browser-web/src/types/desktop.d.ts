@@ -14,7 +14,8 @@ interface Window {
     settings():Promise<{version:string;userData:string;corePath:string;downloads:string;cacheBytes:number}>;
     clearCache():Promise<{removed:number;skipped:string[]}>;
     checkUpdate():Promise<{version:string;available:boolean}>;
-    checkProxy(id:string):Promise<{connected:boolean;message:string}>;
+    checkProxy(id:string):Promise<{connected:boolean;ip:string;countryName?:string;latencyMs?:number;message:string;saved?:boolean}>;
+    rotateProxy?(id:string):Promise<{connected:boolean;ip:string;countryName?:string;latencyMs?:number;message:string;saved?:boolean;rotationRequested?:boolean}>;
   }
 }
 declare module 'qrcode';

@@ -31,6 +31,6 @@ function newUa(){const os=props.form.fingerprint.os==='Mac'?'Macintosh; Intel Ma
       <ShopInfoFields :form="form" :members="members" :active="modelValue"/>
       <BrowserEnvironmentFields :form="form" :kernels="kernels" :kernel-error="kernelError" @new-ua="newUa"/>
     </div>
-    <template #footer><el-button v-if="permissions.can('device.view')&&permissions.can('shop.edit')" type="primary" :loading="saving" @click="emit('save',true)">保存并绑定设备</el-button><el-button @click="emit('update:modelValue',false)">取消</el-button><el-button :loading="saving" @click="emit('save',false)">保存</el-button></template>
+    <template #footer><el-button v-if="permissions.can('device.view')&&permissions.can('shop.edit')" type="primary" :loading="saving" @click="emit('save',true)">保存并配置网络</el-button><el-button @click="emit('update:modelValue',false)">取消</el-button><el-button :loading="saving" @click="emit('save',false)">保存</el-button></template>
   </el-dialog>
 </template>

@@ -15,11 +15,36 @@ class DeviceRepository {
     DeviceRepository(Db db,SecretCipher secrets) { this.db=db;this.secrets=secrets; }
     private static final String PUBLIC="d.id,d.name,d.ip_type,d.protocol,d.host,d.port,d.username,d.remark,d.region,d.web_type,d.protocol_family,d.map_ip,d.map_port,d.expires_at,d.auto_renew,d.recycled,d.created_at,d.package_id,d.acceleration_expires_at,(SELECT COUNT(*) FROM environment e WHERE e.device_id=d.id AND e.recycled=FALSE) AS bound_count";
     private static final String SCOPE="d.tenant_id=? AND (?=TRUE OR d.created_by=? OR EXISTS(SELECT 1 FROM environment e WHERE e.device_id=d.id AND e.tenant_id=d.tenant_id AND e.recycled=FALSE AND (e.owner_id=? OR EXISTS(SELECT 1 FROM environment_grant g WHERE g.environment_id=e.id AND g.user_id=?))))";
+    private static final String PROXY_PUBLIC=PUBLIC+",d.provider,CASE WHEN d.change_ip_url<>'' THEN TRUE ELSE FALSE END AS has_change_ip_url,d.check_connected,d.check_ip,d.check_country_name,d.check_latency_ms,d.check_message,d.checked_at";
     private List<Object> scopeArgs(Actor a) { return new ArrayList<>(List.of(a.tenantId(),a.owner(),a.id(),a.id(),a.id())); }
     Map<String,Object> get(Actor a, String id, boolean credentials) {
         var args=scopeArgs(a); args.add(id);
         var result=one(db.select("SELECT "+(credentials?"d.*":PUBLIC)+" FROM device d WHERE "+SCOPE+" AND d.id=?",args.toArray()));
         if(credentials)result.put("password",secrets.decrypt(text(result,"password")));return result;
+    }
+    Map<String,Object> proxy(Actor a,String id,boolean credentials) {
+        var args=scopeArgs(a);args.add(id);
+        var result=one(db.select("SELECT "+(credentials?"d.*":PROXY_PUBLIC)+" FROM device d WHERE "+SCOPE+" AND d.ip_type=2 AND d.id=?",args.toArray()));
+        if(credentials){result.put("password",secrets.decrypt(text(result,"password")));result.put("changeIpUrl",secrets.decrypt(text(result,"changeIpUrl")));}
+        return result;
+    }
+    Map<String,Object> proxies(Actor a,int webType,String protocol,String query,int page,int size,boolean recycled) {
+        String where=SCOPE+" AND d.ip_type=2 AND d.recycled=?";var args=scopeArgs(a);args.add(recycled);
+        if(webType!=0){where+=" AND d.web_type=?";args.add(webType);}
+        if(!protocol.isEmpty()){where+=" AND d.protocol=?";args.add(protocol);}
+        where+=" AND (d.name LIKE ? OR d.host LIKE ? OR d.username LIKE ? OR d.region LIKE ? OR d.remark LIKE ? OR d.provider LIKE ?)";
+        for(int i=0;i<6;i++)args.add("%"+query+"%");
+        long total=((Number)one(db.select("SELECT COUNT(*) AS total FROM device d WHERE "+where,args.toArray())).get("total")).longValue();
+        args.add(size);args.add(((long)page-1)*size);
+        return Map.of("items",rows(db.select("SELECT "+PROXY_PUBLIC+" FROM device d WHERE "+where+" ORDER BY d.created_at DESC,d.id DESC LIMIT ? OFFSET ?",args.toArray())),"total",total);
+    }
+    void proxyMetadata(String id,Map<String,Object> input,boolean resetCheck) {
+        var expiry=ProxySettings.expiry(text(input,"expiresAt"));
+        db.execute("UPDATE device SET provider=?,change_ip_url=?,expires_at=? WHERE id=? AND ip_type=2",text(input,"provider"),secrets.encryptPayload(text(input,"changeIpUrl")),expiry==null?null:Timestamp.from(expiry),id);
+        if(resetCheck)db.execute("UPDATE device SET check_connected=NULL,check_ip='',check_country_name='',check_latency_ms=NULL,check_message='',checked_at=NULL WHERE id=?",id);
+    }
+    void proxyCheck(String id,Map<String,Object> input) {
+        db.execute("UPDATE device SET check_connected=?,check_ip=?,check_country_name=?,check_latency_ms=?,check_message=?,checked_at=CURRENT_TIMESTAMP WHERE id=? AND ip_type=2",input.get("connected"),text(input,"ip"),text(input,"countryName"),input.get("latencyMs"),text(input,"message"),id);
     }
     Map<String,Object> list(Actor a,int type,String category,String query,int page,int size,boolean recycled) {
         String where=SCOPE+" AND d.ip_type=? AND d.recycled=? AND (d.name LIKE ? OR d.host LIKE ? OR d.region LIKE ? OR d.remark LIKE ?)";

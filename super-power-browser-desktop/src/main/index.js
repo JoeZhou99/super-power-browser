@@ -1,13 +1,12 @@
 const {app,BrowserWindow,ipcMain,dialog}=require('electron');
 const path=require('node:path');
-const {Server}=require('proxy-chain');
 const {configuration}=require('./model/InitData');
 const {ApiClient}=require('./services/ApiClient');
 const {serveWeb}=require('./services/WebServer');
 const {registerWindowControls}=require('./services/WindowControls');
 const {AiHost}=require('./services/AiHost');
-const {BrowserHost,upstream}=require('./BrowserManage/BrowserHost');
-const {collectGeo,validateExit,expectedExit}=require('./pluginManage/NetworkInfo');
+const {BrowserHost}=require('./BrowserManage/BrowserHost');
+const {ProxyChecks}=require('./services/ProxyChecks');
 const {cacheFolders,clearCache}=require('./module/SettingsModule');
 app.setName('super-power-browser');
 if(process.platform==='win32')app.setAppUserModelId('com.superpower.browser');
@@ -33,7 +32,9 @@ else app.whenReady().then(async()=>{
   handle('settings',async()=>({version:app.getVersion(),userData:config.profiles,corePath:config.corePath,downloads:config.downloads,cacheBytes:(await cacheFolders(config.profiles)).reduce((n,c)=>n+c.bytes,0)}));
   handle('clearCache',()=>clearCache(config.profiles,new Set([...browsers.running.keys(),...browsers.pending.keys()])));
   handle('checkUpdate',async()=>{const {manifestUrl}=await api.request('/runtime/updates');if(!manifestUrl)throw new Error('尚未配置更新服务');const url=new URL(manifestUrl);if(url.protocol!=='https:')throw new Error('更新地址必须使用 HTTPS');const manifest=await (await fetch(url,{signal:AbortSignal.timeout(10000)})).json();if(!/^\d+\.\d+\.\d+$/.test(manifest.version))throw new Error('更新版本格式不正确');const current=app.getVersion().split('.').map(Number),next=manifest.version.split('.').map(Number);let available=false;for(let i=0;i<3;i++){if(next[i]!==current[i]){available=next[i]>current[i];break;}}return {version:manifest.version,available};});
-  handle('checkProxy',async id=>{const proxy=await api.request(`/devices/${id}/connection`);const server=new Server({port:0,host:'127.0.0.1',prepareRequestFunction:()=>({upstreamProxyUrl:upstream(proxy)})});await server.listen();try{const exit=await collectGeo({proxyUrl:`http://127.0.0.1:${server.port}`,expectedIp:expectedExit(proxy)}),result=validateExit(proxy,exit);return {connected:result.allowed,ip:exit.ip||'',message:result.allowed?`代理连接成功，检测 IP：${exit.ip}${exit.country_name?'（'+exit.country_name+'）':''}${exit.multipleExits?'；不同检测地址返回不同出口，请检查代理分流规则':''}`:result.message};}finally{await server.close(true);}});
+  const proxyChecks=new ProxyChecks(api);
+  handle('checkProxy',id=>proxyChecks.check(id));
+  handle('rotateProxy',id=>proxyChecks.changeIp(id));
   const monitor=setInterval(()=>{browsers.enforceAccess().catch(()=>{});ai.enforceAccess().catch(()=>{});},10000);
   let quitting=false,shutdown=null,applicationTask=null;
   async function finishQuit(relaunch=false){
