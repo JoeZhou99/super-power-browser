@@ -1,3 +1,5 @@
+import { readableError } from "../../utils/userError";
+
 const OPEN_TIMEOUT_MS = 60000;
 const CDP_READY_TIMEOUT_MS = 15000;
 
@@ -15,6 +17,27 @@ export interface MallOpenResult {
   reused?: boolean;
 }
 
+export function mallOpenFailure(
+  shop: { id: string | number; name?: string },
+  cause: unknown
+): MallOpenResult {
+  const reason = readableError(String((cause as { message?: unknown })?.message || cause || "未知错误"));
+  return {
+    ok: false,
+    mallId: String(shop.id),
+    status: "failed",
+    message: `店铺「${shop.name || shop.id}」（ID：${shop.id}）打开失败：${reason}`,
+  };
+}
+
+/** Already contains shop context; generic error translation would discard the affected shops. */
+export class MallOpenError extends Error {
+  constructor(results: MallOpenResult[]) {
+    super(results.filter((result) => !result.ok).map((result) => result.message).join("\n"));
+    this.name = "MallOpenError";
+  }
+}
+
 interface WebDriverStatus {
   browserInstanceId?: string;
   isopen?: boolean;
@@ -22,6 +45,7 @@ interface WebDriverStatus {
   WebDriverPort?: number;
   KernalNumber?: number;
   cdpUrl?: string;
+  error?: string;
 }
 
 interface ShopPageWindow {
@@ -42,7 +66,10 @@ const pendingOpens = new Map<
   { timer: number; resolve: (_data: WebDriverStatus) => void; reject: (_error: Error) => void }
 >();
 const openedMalls = new Map<string, MallOpenResult>();
-const openingMalls = new Map<string, Promise<MallOpenResult>>();
+const openingMalls = new Map<string, {
+  promise: Promise<MallOpenResult>;
+  assertCurrent?: () => void;
+}>();
 let activeWindow: ShopPageWindow | null = null;
 let listeningWindow: ShopPageWindow | null = null;
 
@@ -107,7 +134,7 @@ function subscribeWebDriverStatus(pageWindow: ShopPageWindow) {
     pendingOpens.delete(browserId);
     window.clearTimeout(waiter.timer);
     if (data?.isopen === true) waiter.resolve(data);
-    else waiter.reject(new Error(`店铺 ${browserId} 打开失败`));
+    else waiter.reject(new Error(data?.error || `店铺 ${browserId} 打开失败`));
   });
 }
 
@@ -123,13 +150,15 @@ async function verifyConnection(pageWindow: ShopPageWindow, result: MallOpenResu
   }
 }
 
-async function waitForReadyConnection(pageWindow: ShopPageWindow, initial: MallOpenResult) {
+async function waitForReadyConnection(pageWindow: ShopPageWindow, initial: MallOpenResult, assertCurrent?: () => void) {
   const deadline = Date.now() + CDP_READY_TIMEOUT_MS;
   let result = initial;
   let lastError: Error | undefined;
   do {
+    assertCurrent?.();
     try {
       const live = await pageWindow.localflow?.getBrowserConnection?.(initial.mallId);
+      assertCurrent?.();
       if (
         live?.isopen &&
         String(live.browserId) === initial.mallId &&
@@ -138,10 +167,12 @@ async function waitForReadyConnection(pageWindow: ShopPageWindow, initial: MallO
         result = connectionResult(initial.mallId, live);
       }
       await verifyConnection(pageWindow, result);
+      assertCurrent?.();
       return result;
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
     }
+    assertCurrent?.();
     if (!lastError.message.includes("CDP") || Date.now() >= deadline) throw lastError;
     await new Promise((resolve) =>
       window.setTimeout(resolve, Math.min(500, deadline - Date.now()))
@@ -221,8 +252,10 @@ function waitForWebDriverOpen(pageWindow: ShopPageWindow, mallId: string) {
 /** 通过页面 ruxOpen 打开店铺，并等待可复用的 CDP 连接 */
 export async function openMallFromPage(
   mallId: number | string,
-  pageWindow: ShopPageWindow = window as ShopPageWindow
+  pageWindow: ShopPageWindow = window as ShopPageWindow,
+  assertCurrent?: () => void
 ): Promise<MallOpenResult> {
+  assertCurrent?.();
   const id = String(mallId ?? "").trim();
   if (!id) throw new Error("缺少店铺 ID");
   if (typeof pageWindow.ruxOpen !== "function") {
@@ -231,45 +264,73 @@ export async function openMallFromPage(
 
   usePageWindow(pageWindow);
   const pending = openingMalls.get(id);
-  if (pending) return pending;
+  if (pending) {
+    let current = true;
+    try { pending.assertCurrent?.(); } catch { current = false; }
+    if (current) {
+      const result = await pending.promise;
+      assertCurrent?.();
+      return result;
+    }
+  }
 
   const operation = (async () => {
     try {
       const live = await pageWindow.localflow?.getBrowserConnection?.(id);
+      assertCurrent?.();
       if (live?.isopen && String(live.browserId) === id) {
         const result = connectionResult(id, live);
         await verifyConnection(pageWindow, result);
+        assertCurrent?.();
         openedMalls.set(id, result);
         return { ...result, reused: true, message: "店铺已打开，已复用现有浏览器" };
       }
     } catch {
       /* 现有连接不可用时重新打开 */
     }
+    assertCurrent?.();
     const opened = openedMalls.get(id);
     if (opened) {
       try {
         await verifyConnection(pageWindow, opened);
+        assertCurrent?.();
         return { ...opened, reused: true, message: "店铺已打开，已复用现有浏览器" };
       } catch {
         openedMalls.delete(id);
       }
     }
+    assertCurrent?.();
     const status = waitForWebDriverOpen(pageWindow, id);
     status.promise.catch(() => {});
+    let launchTimer = 0;
     try {
-      Promise.resolve()
-        .then(() => pageWindow.ruxOpen?.({ browserId: id }))
-        .catch((error) => status.cancel(error instanceof Error ? error : new Error(String(error))));
+      // A failed status event can precede the IPC rejection carrying its actual cause.
+      // Await that request first, while retaining the same bounded opening timeout.
+      await Promise.race([
+        Promise.resolve().then(() => {
+          assertCurrent?.();
+          return pageWindow.ruxOpen?.({ browserId: id });
+        }),
+        new Promise<never>((_resolve, reject) => {
+          launchTimer = window.setTimeout(() => reject(new Error(`店铺 ${id} 打开超时`)), OPEN_TIMEOUT_MS);
+        }),
+      ]);
+      assertCurrent?.();
       const data = await status.promise;
-      const result = await waitForReadyConnection(pageWindow, connectionResult(id, data));
+      assertCurrent?.();
+      const result = await waitForReadyConnection(pageWindow, connectionResult(id, data), assertCurrent);
       openedMalls.set(id, result);
       return { ...result, reused: false };
     } catch (error) {
       status.cancel();
       throw error;
+    } finally {
+      window.clearTimeout(launchTimer);
     }
-  })().finally(() => openingMalls.delete(id));
+  })().finally(() => {
+    if (openingMalls.get(id)?.promise === operation) openingMalls.delete(id);
+  });
 
-  openingMalls.set(id, operation);
+  openingMalls.set(id, { promise: operation, assertCurrent });
   return operation;
 }

@@ -85,7 +85,7 @@ async function exportPackage() {
               .slice(-200)
               .map(({ role, content, createdAt, completedAt }) => ({
                 role,
-                content: content.slice(0, 20000),
+                content: String(content ?? "").slice(0, 20000),
                 createdAt,
                 completedAt,
               })),

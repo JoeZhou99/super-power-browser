@@ -23,7 +23,7 @@ import type { PendingFile, PendingImage, SelectedSkill } from "../../type";
 import { collapseRepeatedText, stripThinkingMarkup } from "../../utils/streamText";
 import { normalizeTaskShops } from "../../utils/taskShops";
 import type { SelectedShop } from "../components/ShopSelect.vue";
-import { isMallOpenOnlyRequest, openMallFromPage, type MallOpenResult } from "../utils/shop";
+import { isMallOpenOnlyRequest, openMallFromPage, mallOpenFailure, MallOpenError, type MallOpenResult } from "../utils/shop";
 import { useModelPlanAccess } from "@/ai/views/modelManage/composables/useModelPlanAccess";
 
 export interface SendPromptPayload {
@@ -341,19 +341,14 @@ export function useAgentRun() {
                         .join("\n"),
                     };
                   })
-                  .catch((cause) => ({
-                    ok: false,
-                    mallId: String(shop.id),
-                    status: "failed" as const,
-                    message: errorMessage(cause),
-                  }))
+                  .catch((cause) => mallOpenFailure(shop, cause))
               )
             )
           ).map(fillOpenMessage);
           if (!isCurrent()) return;
           const failed = mallOpenResults.find((result) => !result.ok);
           if (failed && (pendingShops.length === 1 || projectOnlyMallOpen)) {
-            throw new Error(failed.message);
+            throw new MallOpenError(mallOpenResults);
           }
         }
 
@@ -424,7 +419,7 @@ export function useAgentRun() {
           conversation.executionState = "stopped";
           if (conversation.id === store.activeId && isApprovalDenied(cause)) store.error = "";
         } else if (isCurrent()) {
-          const message = errorMessage(cause);
+          const message = cause instanceof MallOpenError ? cause.message : errorMessage(cause);
           assistant.executionStatus = "failed";
           if (conversation.id === store.activeId) store.error = message;
           if (!assistant.content)

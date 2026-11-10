@@ -54,6 +54,7 @@ import {
 } from "@/ai/utils/electronApi";
 import {
   MODEL_PROVIDERS,
+  DEFAULT_AGENT_NAME,
   ZHIFU_STORAGE_KEYS,
   createDefaultMessageChannelSettings,
   createDefaultSettings,
@@ -1297,6 +1298,9 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
       const value = String(fallback?.[key] || "").trim();
       if (value) source[key] = value;
       else delete source[key];
+    }
+    if (!String(source.agentName || "").trim() || source.agentName === "盘古") {
+      source.agentName = DEFAULT_AGENT_NAME;
     }
     source.shopConcurrency = normalizeShopConcurrency(fallback?.shopConcurrency);
     source.conversationConcurrency = normalizeShopConcurrency(fallback?.conversationConcurrency);

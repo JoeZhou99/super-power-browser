@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import {computed,nextTick,onMounted,ref,watch} from 'vue';
+import {computed,nextTick,onMounted,onUnmounted,ref,watch} from 'vue';
+import {ElMessage} from 'element-plus';
 import {useRoute,useRouter} from 'vue-router';
 import {House,Shop,Monitor,Connection,Wallet,User,Setting,Fold,Expand,Refresh,Close,ChatDotRound} from '@element-plus/icons-vue';
 import CompanyInfo from './components/Sidebar/components/CompanyInfo.vue';
 import WindowControls from '@/components/WindowControls.vue';
 import {usePermissions} from '@/store/modules/permission.store';
 import {useAccount} from '@/store/modules/account.store';
+import {token} from '@/utils/request';
+import {zhifuCompleteScheduledShops,zhifuOnOpenScheduledShops} from '@/ai/utils/electronApi';
+import {openMallFromPage} from '@/ai/views/zhifuAgent/chat/utils/shop';
+import {listenForScheduledShopOpen} from '@/ai/utils/scheduledShopOpen';
 const route=useRoute(),router=useRouter(),permissions=usePermissions(),account=useAccount();
 const windowControls=Boolean(window.api?.windowControl);
 const MAX_OPEN_TABS=6;
@@ -34,7 +39,25 @@ watch(()=>route.fullPath,async()=>{
   tabsElement.value?.querySelector('.workspace-tab.active')?.scrollIntoView({block:'nearest',inline:'nearest'});
 },{immediate:true});
 function closeTab(path:string){const index=tabs.value.findIndex(t=>t.path===path);if(index<0||path==='/dashboard')return;tabs.value.splice(index,1);if(route.fullPath===path)router.push(tabs.value[Math.max(0,index-1)]?.path||'/dashboard');}
-onMounted(()=>account.load());
+let sessionGeneration=0;
+let stopScheduledShopOpen: (()=>void)|undefined;
+watch(()=>JSON.stringify([permissions.user?.tenantId,permissions.user?.id,permissions.can('ai.use'),token()]),()=>{
+  sessionGeneration++;
+},{flush:'sync'});
+onMounted(()=>{
+  stopScheduledShopOpen=listenForScheduledShopOpen({
+    subscribe:zhifuOnOpenScheduledShops,
+    complete:zhifuCompleteScheduledShops,
+    getSessionKey:()=>{
+      const user=permissions.user,session=token();
+      return user&&session&&permissions.can('ai.use')?JSON.stringify([user.tenantId,user.id,session,sessionGeneration]):'';
+    },
+    openShop:(id,assertCurrent)=>openMallFromPage(id,undefined,assertCurrent),
+    onError:()=>ElMessage.error('定时任务店铺连接结果未能回传，请检查登录状态'),
+  });
+  account.load();
+});
+onUnmounted(()=>stopScheduledShopOpen?.());
 </script>
 <template>
   <div class="shell" :class="{collapsed}"><aside class="sidebar"><CompanyInfo/>

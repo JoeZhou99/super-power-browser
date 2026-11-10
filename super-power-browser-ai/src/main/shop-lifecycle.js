@@ -17,7 +17,9 @@ export class ShopLifecycle {
       entry = { id, leases: new Set(), protected: !this.getConnection, blocked: false }
       this.shops.set(id, entry)
       entry.ready = Promise.resolve().then(() => this.getConnection?.(id)).then(connection => {
-        entry.protected ||= Boolean(connection?.isopen)
+        // Only a confirmed closed shop can belong to this task. Missing or
+        // unknown state must not grant permission to close a user's browser.
+        entry.protected ||= connection?.isopen !== false
       }, () => { entry.protected = true })
     }
     const token = randomUUID()

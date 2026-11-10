@@ -11,7 +11,8 @@ interface Window {
     closeAll():Promise<void>;
     browserStates():Promise<Record<string,string>>;
     browserProgress?():Promise<Record<string,{version:string;stage:string;percent:number|null;message:string}>>;
-    settings():Promise<{version:string;userData:string;corePath:string;downloads:string;cacheBytes:number}>;
+    settings():Promise<{version:string;userData:string;corePath:string;downloads:string;cacheBytes:number;preventSleepWhileRunning:boolean}>;
+    setPreventSleep(enabled:boolean):Promise<{preventSleepWhileRunning:boolean}>;
     clearCache():Promise<{removed:number;skipped:string[]}>;
     checkUpdate():Promise<{version:string;available:boolean}>;
     checkProxy(id:string):Promise<{connected:boolean;ip:string;countryName?:string;latencyMs?:number;message:string;saved?:boolean}>;

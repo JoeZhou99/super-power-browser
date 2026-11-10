@@ -1,5 +1,5 @@
 /** 去掉 Electron 远程调用包装，只保留最后一段 Error: 后的说明。 */
-function readableError(value: string) {
+export function readableError(value: string) {
   let text = value.trim();
   for (let i = 0; i < 4; i += 1) {
     const next = text

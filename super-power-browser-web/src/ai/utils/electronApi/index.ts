@@ -1,3 +1,5 @@
+import { toPlainDiagnosticData } from "../diagnostics";
+
 const localflowApi = (window as any).localflow;
 export const electronApi = (window as any).api;
 export const getAppVersion = async () => (await electronApi?.settings())?.version || '0.0.0';
@@ -166,7 +168,7 @@ export const zhifuBootstrap = () => zhifuInvoke<ZhifuBootstrapResult>("bootstrap
 export const zhifuExportDiagnostics = (input: Record<string, unknown>) =>
   zhifuInvoke<{ issueId: string; path: string; collected: number; skipped: number } | null>(
     "exportDiagnostics",
-    input
+    toPlainDiagnosticData(input)
   );
 export const zhifuPreviewResultImage = (path: string) =>
   zhifuInvoke<string>("previewResultImage", path);

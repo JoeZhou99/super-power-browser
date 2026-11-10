@@ -1,4 +1,4 @@
-const {app,BrowserWindow,ipcMain,dialog}=require('electron');
+const {app,BrowserWindow,ipcMain,dialog,powerSaveBlocker}=require('electron');
 const path=require('node:path');
 const {configuration}=require('./model/InitData');
 const {ApiClient}=require('./services/ApiClient');
@@ -8,6 +8,7 @@ const {AiHost}=require('./services/AiHost');
 const {BrowserHost}=require('./BrowserManage/BrowserHost');
 const {ProxyChecks}=require('./services/ProxyChecks');
 const {closeAllProxyRuntimes}=require('./services/ProxyRuntime');
+const {PowerPreference}=require('./services/PowerPreference');
 const {cacheFolders,clearCache}=require('./module/SettingsModule');
 app.setName('super-power-browser');
 if(process.platform==='win32')app.setAppUserModelId('com.superpower.browser');
@@ -15,6 +16,8 @@ app.setPath('userData',!app.isPackaged&&process.env.SPB_USER_DATA?path.resolve(p
 if(!app.requestSingleInstanceLock())app.quit();
 else app.whenReady().then(async()=>{
   const config=configuration(),api=new ApiClient(config.apiUrl),browsers=new BrowserHost(config,api,{onApplicationAction:applicationAction,onActionError:error=>dialog.showErrorBox('桌面操作失败',error.message)});
+  const power=await new PowerPreference(path.join(config.dataPath,'power-preference.json'),powerSaveBlocker).initialize();
+  app.once('will-quit',()=>{void power.dispose();});
   await browsers.recover();
   const local=await serveWeb(app.isPackaged?path.join(process.resourcesPath,'web'):path.join(config.resources,'resources/web'),config.apiUrl);
   const pageUrl=config.webUrl||local.url;
@@ -27,10 +30,11 @@ else app.whenReady().then(async()=>{
   function handle(name,fn){ipcMain.handle(`spb:${name}`,(event,...args)=>{if(event.sender!==window.webContents||!event.senderFrame||new URL(event.senderFrame.url).origin!==origin)throw new Error('请求来源不合法');return fn(...args);});}
   registerWindowControls(window,handle);
   handle('setSession',async token=>{if(typeof token!=='string'||token.length>500)throw new Error('登录凭据不合法');if(api.token!==token){await proxyChecks.suspend();try{await ai.stop();if(api.token)await browsers.closeAll();await closeAllProxyRuntimes();api.token=token;}finally{proxyChecks.resume();}}});
-  handle('openBrowser',async id=>{try{const result=await browsers.open(id);window.webContents.send('spb:shopStatus',await ai.connection(id));return result;}catch(error){window.webContents.send('spb:shopStatus',{browserId:id,isopen:false});throw error;}});handle('closeBrowser',id=>browsers.close(id));handle('closeAll',()=>browsers.closeAll());handle('browserStates',()=>browsers.states());
+  handle('openBrowser',async id=>{try{const result=await browsers.open(id);window.webContents.send('spb:shopStatus',await ai.connection(id));return result;}catch(error){window.webContents.send('spb:shopStatus',{browserId:id,isopen:false,error:error.message});throw error;}});handle('closeBrowser',id=>browsers.close(id));handle('closeAll',()=>browsers.closeAll());handle('browserStates',()=>browsers.states());
   handle('runtimePlatform',()=>({platform:process.platform,arch:process.arch}));
   handle('browserProgress',()=>browsers.progress());
-  handle('settings',async()=>({version:app.getVersion(),userData:config.profiles,corePath:config.corePath,downloads:config.downloads,cacheBytes:(await cacheFolders(config.profiles)).reduce((n,c)=>n+c.bytes,0)}));
+  handle('settings',async()=>({version:app.getVersion(),userData:config.profiles,corePath:config.corePath,downloads:config.downloads,preventSleepWhileRunning:power.enabled,cacheBytes:(await cacheFolders(config.profiles)).reduce((n,c)=>n+c.bytes,0)}));
+  handle('setPreventSleep',enabled=>power.set(enabled));
   handle('clearCache',()=>clearCache(config.profiles,new Set([...browsers.running.keys(),...browsers.pending.keys()])));
   handle('checkUpdate',async()=>{const {manifestUrl}=await api.request('/runtime/updates');if(!manifestUrl)throw new Error('尚未配置更新服务');const url=new URL(manifestUrl);if(url.protocol!=='https:')throw new Error('更新地址必须使用 HTTPS');const manifest=await (await fetch(url,{signal:AbortSignal.timeout(10000)})).json();if(!/^\d+\.\d+\.\d+$/.test(manifest.version))throw new Error('更新版本格式不正确');const current=app.getVersion().split('.').map(Number),next=manifest.version.split('.').map(Number);let available=false;for(let i=0;i<3;i++){if(next[i]!==current[i]){available=next[i]>current[i];break;}}return {version:manifest.version,available};});
   const proxyChecks=new ProxyChecks(api,{resources:config.resources});
@@ -40,7 +44,7 @@ else app.whenReady().then(async()=>{
   let quitting=false,shutdown=null,applicationTask=null;
   async function finishQuit(relaunch=false){
     if(shutdown)return shutdown;
-    shutdown=(async()=>{await proxyChecks.suspend();await ai.stop();await browsers.closeAll();await closeAllProxyRuntimes();quitting=true;clearInterval(monitor);local.server.close();if(relaunch)app.relaunch();window.destroy();app.quit();})();
+    shutdown=(async()=>{await proxyChecks.suspend();await ai.stop();await browsers.closeAll();await closeAllProxyRuntimes();await power.dispose();quitting=true;clearInterval(monitor);local.server.close();if(relaunch)app.relaunch();window.destroy();app.quit();})();
     try{await shutdown;}catch(error){shutdown=null;proxyChecks.resume();throw error;}
   }
   async function applicationAction(action){

@@ -23,6 +23,12 @@ class AiHost {
     const run=this.browsers.running.get(id);
     return {browserId:id,isopen:run?.status==='running'&&Boolean(run.debuggerUrl),browserInstanceId:run?.debuggerUrl||'',WebDriverPort:run?.port||0,KernalNumber:Number(run?.kernelVersion?.split('.')[0])||0,cdpUrl:run?.debuggerUrl||''};
   }
+  async isShopBrowserOpen(value){
+    const {browserId:id}=await this.connection(value);
+    // Lifecycle ownership starts before CDP is ready. Preserve a shop that the
+    // user is already opening, including kernel preparation and pending launch.
+    return [this.browsers.pending,this.browsers.starting,this.browsers.preparing,this.browsers.running].some(states=>states?.has(id));
+  }
   async checkedConnection(input){
     if(!input?.mallId||String(input.mallId)!==String(input.browserId))throw new Error('店铺连接与店铺 ID 不匹配');
     const live=await this.connection(input.mallId);
@@ -63,7 +69,7 @@ class AiHost {
       const prepareModelSettings=createAiDeviceSettings(this.config.dataPath);
       const runtime=await startTridentHost({prepareModelSettings,getWindow:()=>this.window,getWebContents:()=>this.window.webContents,
         dataDir:path.join(this.config.dataPath,'ai','accounts',actor.tenantId,actor.id),conversationDir:path.join(this.config.dataPath,'ai'),authorize,authorizeTask:valid,
-        getBrowserConnection:id=>this.connection(id),isShopBrowserOpen:async id=>(await this.connection(id)).isopen,
+        getBrowserConnection:id=>this.connection(id),isShopBrowserOpen:id=>this.isShopBrowserOpen(id),
         closeShopBrowser:async(id,expected)=>{const live=await this.connection(id);if(!live.isopen||live.browserInstanceId!==expected.browserInstanceId)return {closed:false,reason:'店铺实例已变化'};await this.browsers.close(id);return {closed:!this.browsers.running.has(id)};}
       });
       if(generation!==this.generation){await runtime.dispose();throw new Error('登录账号已变化');}

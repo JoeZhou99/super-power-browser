@@ -12,6 +12,7 @@
     "prepare:ssr": "node scripts/prepare-ssr-runtime.cjs",
     "test:proxy": "node --test scripts/network-info.test.cjs scripts/browser-network.test.cjs scripts/proxy-config.test.cjs scripts/proxy-process.test.cjs scripts/proxy-runtime.test.cjs scripts/proxy-checks.test.cjs scripts/proxy-compatibility.test.cjs scripts/proxy-routes.test.cjs scripts/proxy-package.test.cjs scripts/socks4-client.test.cjs scripts/ssr-integration.test.cjs scripts/xray-integration.test.cjs",
     "test:plugins": "node --test scripts/plugin-upgrade.test.cjs scripts/plugin-readiness.test.cjs",
+    "test:power": "node --test scripts/power-preference.test.cjs",
     "build:win": "npm run prepare:proxy -- --targets win32-x64 && npm run prepare:ssr -- --targets win32-x64 && npm run build && electron-builder --win --x64",
     "build:mac": "npm run prepare:proxy -- --targets darwin-x64,darwin-arm64 && npm run prepare:ssr -- --targets darwin-x64 && npm run build && node scripts/mac-icon.cjs && electron-builder --mac --x64 --arm64"
   },

@@ -6,7 +6,8 @@
   "main": "out/main/embed.js",
   "type": "module",
   "scripts": {
-    "build": "node scripts/build-embedded.mjs"
+    "build": "node scripts/build-embedded.mjs",
+    "test:lifecycle": "node --test scripts/shop-lifecycle.test.mjs"
   },
   "dependencies": {
     "@cline/sdk": "0.0.83",
