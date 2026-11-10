@@ -146,14 +146,12 @@ const o = "https://api.zhanfubrowser.com/api/v1",
     },
     async getMallInfo(t) {
       const a = await s();
-      try {
-        const r = await (
-          await fetch(`${o}/mall/bindMall/getMall?${new URLSearchParams(t)}`, { headers: a })
-        ).json();
-        return n(r);
-      } catch (e) {
-        console.log("getMallInfo error", e);
-      }
+      // Let the check page distinguish missing setup data from a failed check
+      // and retry the complete initialization flow.
+      const r = await (
+        await fetch(`${o}/mall/bindMall/getMall?${new URLSearchParams(t)}`, { headers: a })
+      ).json();
+      return n(r);
     },
     async saveMallJumpMethod(t) {
       const a = await s();

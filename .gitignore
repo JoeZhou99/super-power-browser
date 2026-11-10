@@ -17,6 +17,14 @@ out/
 *.log
 /super-power-browser-desktop/Plugin/
 /super-power-browser-desktop/resources/web/
+/super-power-browser-desktop/proxy-runtime/.downloads/
+/super-power-browser-desktop/proxy-runtime/.test-fixtures/
+/super-power-browser-desktop/proxy-runtime/.*.lock
+/super-power-browser-desktop/proxy-runtime/win32-x64/
+/super-power-browser-desktop/proxy-runtime/darwin-x64/
+/super-power-browser-desktop/proxy-runtime/darwin-arm64/
+/super-power-browser-desktop/proxy-runtime/ssr/
+/super-power-browser-desktop/proxy-runtime/licenses/
 
 # Local editor and operating system files
 .DS_Store

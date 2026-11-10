@@ -14,8 +14,10 @@ class EnvironmentRepository {
     private final SecretCipher secrets;
     EnvironmentRepository(Db db,SecretCipher secrets) { this.db=db;this.secrets=secrets; }
     private static final String PUBLIC="e.id,e.name,e.platform,e.platform_site_id,e.start_url,e.account_name,e.remark,e.device_id,e.kernel_version,e.fingerprint_seed,e.fingerprint,e.config_version,e.favorite,e.recycled,e.last_opened_at,e.created_at,e.updated_at,(SELECT d.name FROM device d WHERE d.id=e.device_id) AS device_name,(SELECT d.host FROM device d WHERE d.id=e.device_id) AS device_host,(SELECT d.region FROM device d WHERE d.id=e.device_id) AS device_region,(SELECT u.display_name FROM app_user u WHERE u.id=e.owner_id) AS creator_name,(SELECT GROUP_CONCAT(u.display_name SEPARATOR ', ') FROM environment_grant g JOIN app_user u ON u.id=g.user_id WHERE g.environment_id=e.id) AS granted_names";
-    private static final String SCOPE="e.tenant_id=? AND (?=TRUE OR e.owner_id=? OR EXISTS(SELECT 1 FROM environment_grant g WHERE g.environment_id=e.id AND g.user_id=?))";
-    private List<Object> scopeArgs(Actor a) { return new ArrayList<>(List.of(a.tenantId(),a.owner(),a.id(),a.id())); }
+    private static final String SCOPE="e.tenant_id=? AND (?=TRUE OR e.owner_id=? OR EXISTS(SELECT 1 FROM environment_grant g WHERE g.environment_id=e.id AND g.user_id=?) OR (?=TRUE AND EXISTS(SELECT 1 FROM app_user creator WHERE creator.id=e.owner_id AND creator.tenant_id=e.tenant_id AND creator.department_id=?)))";
+    private List<Object> scopeArgs(Actor a) {
+        return new ArrayList<>(List.of(a.tenantId(),a.owner() || a.memberType()==3,a.id(),a.id(),a.memberType()==2,a.departmentId()));
+    }
     Map<String,Object> get(Actor a,String id) {
         var args=scopeArgs(a); args.add(id);
         var result=one(db.select("SELECT e.* FROM environment e WHERE "+SCOPE+" AND e.id=?",args.toArray()));
@@ -47,6 +49,8 @@ class EnvironmentRepository {
     }
     List<Map<String,Object>> aiPlatforms(Actor a) {return rows(db.select("SELECT DISTINCT e.platform AS id,e.platform AS name FROM environment e WHERE "+SCOPE+" AND e.recycled=FALSE ORDER BY e.platform",scopeArgs(a).toArray()));}
     void create(String id,Actor a,Map<String,Object> r) {
+        var creator=one(db.select("SELECT enabled,deleted FROM app_user WHERE id=? AND tenant_id=? FOR UPDATE",a.id(),a.tenantId()));
+        BusinessException.require(flag(creator,"enabled")&&!flag(creator,"deleted"),401,"成员已停用，请重新登录");
         r=new HashMap<>(r);r.put("accountPassword",secrets.encrypt(text(r,"accountPassword")));
         db.execute("INSERT INTO environment(id,tenant_id,owner_id,name,platform,platform_site_id,start_url,account_name,account_password,remark,kernel_version,fingerprint_seed,fingerprint) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",id,a.tenantId(),a.id(),text(r,"name"),text(r,"platform"),text(r,"platformSiteId"),text(r,"startUrl"),text(r,"accountName"),text(r,"accountPassword"),text(r,"remark"),text(r,"kernelVersion"),Data.id(),text(r,"fingerprint"));
     }

@@ -1,0 +1,1 @@
+ALTER TABLE device ADD COLUMN proxy_options MEDIUMTEXT NULL;

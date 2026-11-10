@@ -10,6 +10,13 @@ export async function verify(distribution) {
   for (const name of ['RXMallHelper', 'RXAccountManage']) {
     const root = path.join(distribution, name), list = await files(root);
     const manifest = JSON.parse(await readFile(path.join(root, 'manifest.json'), 'utf8'));
+    const build = JSON.parse(await readFile(path.join(root, 'runtime/build.json'), 'utf8'));
+    const worker = await readFile(path.join(root, manifest.background.service_worker), 'utf8');
+    if (!/^[a-f0-9]{64}$/.test(build.buildId ?? '') ||
+        !worker.startsWith(`globalThis.__SP_PLUGIN_BUILD_ID__ = ${JSON.stringify(build.buildId)};\n`) ||
+        report.artifacts.find(artifact => artifact.name === name)?.buildId !== build.buildId) {
+      throw new Error(`插件构建标识不一致: ${name}`);
+    }
     const refs = [manifest.background.service_worker, ...Object.values(manifest.icons), ...manifest.content_scripts.flatMap(x => [...(x.js ?? []), ...(x.css ?? [])])];
     if (manifest.action.default_popup) refs.push(manifest.action.default_popup);
     const check = async (file, reference) => {

@@ -16,6 +16,11 @@ public interface DeviceSupplier {
         public Product { attributes=attributes==null?Map.of():Map.copyOf(attributes); }
     }
     record Connection(String providerId,String name,int ipType,String protocol,String host,int port,String username,
-        String password,String region,String expiresAt) {}
+        String password,String region,String expiresAt,Map<String,Object> proxyOptions) {
+        public Connection(String providerId,String name,int ipType,String protocol,String host,int port,String username,String password,String region,String expiresAt) {
+            this(providerId,name,ipType,protocol,host,port,username,password,region,expiresAt,Map.of());
+        }
+        public Connection {proxyOptions=proxyOptions==null?Map.of():Map.copyOf(proxyOptions);}
+    }
     record Delivery(List<Connection> devices,String expiresAt) {}
 }

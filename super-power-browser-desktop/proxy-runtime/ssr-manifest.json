@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "version": "0.9.3",
+  "source": "https://github.com/ShadowsocksR-Live/shadowsocksr-native",
+  "sourceCommit": "0724abdb9b65862dc43df53d15bb979af13d4dac",
+  "license": "GPL-3.0",
+  "licenseUrl": "https://raw.githubusercontent.com/ShadowsocksR-Live/shadowsocksr-native/0724abdb9b65862dc43df53d15bb979af13d4dac/LICENSE",
+  "licenseSha256": "d62f065830aa3739cc031156b9690805c7b2e811b4a178c8b4acd8725d561c94",
+  "notices": {
+    "http-parser-LICENSE-MIT": {
+      "url": "https://raw.githubusercontent.com/ShadowsocksR-Live/http-parser/6a3d605ded6b4b8abc0a5eb01409fbd185629935/LICENSE-MIT",
+      "sha256": "79e6ba8b687cb54786207342b9b6fcee0ac10218453ed9009b84d949b2233cc0"
+    },
+    "json-c-COPYING": {
+      "url": "https://raw.githubusercontent.com/ShadowsocksR-Live/json-c/da98bb3f6dac46bbb6bb36ad2476f1ed11e57f12/COPYING",
+      "sha256": "74c1e6ca5eba76b54d0ad00d4815c8315c1b3bc45ff99de61d103dc92486284c"
+    },
+    "libbloom-LICENSE": {
+      "url": "https://raw.githubusercontent.com/ShadowsocksR-Live/libbloom/b3ecdaeead201157814702a69bab9a235e2126ef/LICENSE",
+      "sha256": "618d031557a17f445608e9e3ee93e46b6268829774c0155d6ccb58556467f6dc"
+    },
+    "libsodium-LICENSE": {
+      "url": "https://raw.githubusercontent.com/ShadowsocksR-Live/libsodium/0738b0d63efe7995b0370f84095873ae78a287dd/LICENSE",
+      "sha256": "4f111ede0387833541c3405f86a5921f714d113b3217b8aa95bd0867e61c25ea"
+    },
+    "libuv-LICENSE": {
+      "url": "https://raw.githubusercontent.com/ShadowsocksR-Live/libuv/4d3a645165a651b8191d2079aa9d2e5009cbf737/LICENSE",
+      "sha256": "95b8b163c60d17cfce3cef61a2d8a9cf70137502c8fb5f3d93cd2fc529fa98c8"
+    },
+    "mbedtls-LICENSE": {
+      "url": "https://raw.githubusercontent.com/ShadowsocksR-Live/mbedtls/d83b865920e709fd1409cea0a868d84d9d811b29/LICENSE",
+      "sha256": "93ffdf17d6585eada49caa2429d21d192f8a7894e57e00c7432953cf07bae44a"
+    },
+    "mbedtls-apache-2.0.txt": {
+      "url": "https://raw.githubusercontent.com/ShadowsocksR-Live/mbedtls/d83b865920e709fd1409cea0a868d84d9d811b29/apache-2.0.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    "mbedtls-gpl-2.0.txt": {
+      "url": "https://raw.githubusercontent.com/ShadowsocksR-Live/mbedtls/d83b865920e709fd1409cea0a868d84d9d811b29/gpl-2.0.txt",
+      "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+    },
+    "uri-encode-c-LICENSE": {
+      "url": "https://raw.githubusercontent.com/ShadowsocksR-Live/uri-encode-c/fcea083a12818af72b346f3c8e045fbbbe94aa07/LICENSE",
+      "sha256": "61760afbfd192c53e98076eee66f56e32be57ea3d030aec6010bcf6f6b05fadb"
+    },
+    "uv-mbed-LICENSE": {
+      "url": "https://raw.githubusercontent.com/ShadowsocksR-Live/uv-mbed/8c2250434ef9d16221b2e9234d1cf30dc4d38734/LICENSE",
+      "sha256": "9521f19ecbc61ccfe15e64583506735ceb9248baabb0991f1ef320f9023ecbb8"
+    }
+  },
+  "platforms": {
+    "win32-x64": {
+      "file": "ssr/win32-x64/ssr-client.exe",
+      "sha256": "918eb026d0b9248421c24d1951dcb4f706ee2a5cc74aa01d3f63a35d683df58c",
+      "size": 204800,
+      "archive": "https://github.com/ShadowsocksR-Live/shadowsocksr-native/releases/download/0.9.3/ssr-native-windows-x64.zip",
+      "archiveSha256": "20d7b4e56e79ac3a50d75c2d7ef41b53eb9aab94cf008e4d68cfe9178a2c8e29",
+      "dependencies": {
+        "bloom.dll": "083ea5f7128dabf8dbf7b5258429b45847e6ffc58eabbceee8a0624e11c846cb",
+        "json-c.dll": "89fe148f7d74117884eeaf29c83f21ab00f6e02d8e71467a75eb773daf6e4e34",
+        "libsodium.dll": "bc16fc387edbfb691fe24e4462373d0d28b06bebf5322747574a855e338961fc",
+        "libuv.dll": "ce3d019e319964c9ab1990420671225ba84d90dc5463f9138742b45dd2a15d9c",
+        "mbedTLS.dll": "4246d276373eb2664351bdd381d71aa1dc3cfb2a6cdbab0eed3702b4f30f7b5a",
+        "msvcr100.dll": "b4bfa27f677295b00a1df9a7e14db4b75cac2dd41b898d4e9a378eccce3699f0",
+        "uv-mbed.dll": "ea8ca6288b6499a5bf18655b400b1f626f0601b6d93c3d5a0851edeb2355c14a",
+        "ssr-client-lib.dll": "d147942a051c8a8a2c54b22dca4034df5132b68e40d8fc27cbc32f133d8d7b94"
+      }
+    },
+    "darwin-x64": {
+      "file": "ssr/darwin-x64/ssr-client",
+      "sha256": "e125dac1f5b327174a3abdce602ed4ca8c94bc7653ded81f43252f5ea589ad94",
+      "size": 1639016,
+      "archive": "https://github.com/ShadowsocksR-Live/shadowsocksr-native/releases/download/0.9.3/ssr-native-macos-x64.zip",
+      "archiveSha256": "1d13f4d84cdee19ec1f6612f01963bdd01e652fc7ac1ab9a3d2e692886622405",
+      "dependencies": {}
+    }
+  }
+}

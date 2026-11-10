@@ -5,9 +5,9 @@ const {createHash}=require('node:crypto');
 const AdmZip=require('adm-zip');
 async function json(file,fallback){try{return JSON.parse(await fs.readFile(file,'utf8'));}catch(error){if(error.code==='ENOENT')return fallback;throw error;}}
 async function atomic(file,text){const temporary=file+'.spb-tmp';await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(temporary,text,{mode:0o600});await fs.rename(temporary,file);}
-async function preparePlugins(resources,profile,{environment,session,websocketPort,proxyUrl,apiUrl,cookie='',localGeo=null}){
+async function preparePlugins(resources,profile,{environment,session,websocketPort,proxyUrl,resourceProxyUrl,apiUrl,cookie='',localGeo=null}){
   const {encodeBootstrap}=await import(pathToFileURL(path.join(__dirname,'bootstrap.mjs')).href);
-  const dirs=[],pluginIdMap={};
+  const dirs=[],pluginIdMap={},builds=[];
   for(const name of ['RXMallHelper','RXAccountManage']){
     const target=path.join(profile,'RBP',name),zip=await fs.readFile(path.join(resources,'Plugin',name+'.zip'));
     const checksum=createHash('sha256').update(zip).digest('hex');
@@ -26,12 +26,17 @@ async function preparePlugins(resources,profile,{environment,session,websocketPo
     await atomic(path.join(target,'runtime/endpoint.json'),JSON.stringify({apiBase:new URL('/extension',apiUrl).href,authOrigin:new URL(apiUrl).origin}));
     const manifest=await json(path.join(target,'manifest.json'),{});
     if(!manifest.key)throw new Error('内置插件缺少固定身份公钥');
+    if(!/^[a-f0-9]{64}$/.test(build.buildId||'')||!manifest.background?.service_worker)throw new Error('内置插件缺少构建标识，请重新构建客户端');
     pluginIdMap[name]=createHash('sha256').update(Buffer.from(manifest.key,'base64')).digest('hex').slice(0,32).replace(/[0-9a-f]/g,c=>String.fromCharCode(97+parseInt(c,16)));dirs.push(target);
+    builds.push({id:pluginIdMap[name],buildId:build.buildId,worker:manifest.background.service_worker});
     if(name==='RXMallHelper')await atomic(path.join(target,'runtime/environment-policy.js'),environmentPolicy(environment.fingerprint));
   }
   const loopback=new URL(proxyUrl);
+  const localProxy={host:loopback.hostname,port:Number(loopback.port),username:decodeURIComponent(loopback.username),password:decodeURIComponent(loopback.password)};
+  const resource=resourceProxyUrl?new URL(resourceProxyUrl):null;
+  const localResourceProxy=resource?{host:resource.hostname,port:Number(resource.port),username:decodeURIComponent(resource.username),password:decodeURIComponent(resource.password)}:undefined;
   const configuration={desktopProtocol:'super-power-browser-desktop/1',kernelProtocol:'fingerprint-chromium/1',browserId:environment.id,sysMallId:environment.id,accessToken:session.token,websocketPort,pluginIdMap,
-    proxyInfo:{proxyAuthUrl:`http://${loopback.host}@`,proxyIp:environment.proxy.host},staticProxy:{exchange:`http://${loopback.host}@`},
+    proxyInfo:{proxyAuthUrl:`http://${loopback.host}@`,proxyIp:environment.proxy.host},staticProxy:{exchange:`http://${resource?.host||loopback.host}@`},localProxy,localResourceProxy,proxyRouting:environment.proxy.proxyOptions?.routing||{},preferredCandidateIndex:environment.preferredCandidateIndex??0,
     localGeo,accessRules:environment.fingerprint.accessRules,language_setPlugin:'zh-CN',language:'zh-CN',appVersion:'5.3.17',browserVersion:environment.kernelVersion,
     cookie,installPlugins:[],commonParams:{is_plugin_sync_cookie:1},logoInfo:{brand_name:'SuperPower',main_logo:`chrome-extension://${pluginIdMap.RXMallHelper}/branding/mark.svg`},openUrl:environment.startUrl,
     apiBase:new URL('/extension',apiUrl).href,authOrigin:new URL(apiUrl).origin};
@@ -57,7 +62,7 @@ async function preparePlugins(resources,profile,{environment,session,websocketPo
   }
   await fs.writeFile(path.join(profile,'First Run'),'');
   await atomic(path.join(profile,'access-blocked.html'),'<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>访问受限 · SuperPower</title><style>body{font:16px system-ui;background:#f5f7fb;color:#24324b;max-width:640px;margin:16vh auto;padding:32px}h1{font-size:26px}p{line-height:1.8;color:#60708a}</style><h1>此网站受访问规则限制</h1><p>请联系管理员检查当前店铺的访问范围。</p></html>');
-  return {dirs,pluginIdMap,bundle,configuration};
+  return {dirs,pluginIdMap,builds,bundle,configuration};
 }
 async function clearBootstrap(profile){for(const name of ['RXMallHelper','RXAccountManage'])for(const file of ['config.dat','init.json'])await fs.rm(path.join(profile,'RBP',name,file),{force:true});}
 // Compatibility restrictions in page worlds, not native fingerprint patches.

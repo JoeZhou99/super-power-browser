@@ -12,7 +12,8 @@ const {validateExit}=require('../src/main/pluginManage/NetworkInfo');
 const id='11111111-2222-3333-4444-555555555555';
 async function listen(server){await new Promise((resolve,reject)=>{server.once('error',reject);server.listen(0,'127.0.0.1',resolve);});return server.address().port;}
 async function close(server){server.closeAllConnections?.();await new Promise(resolve=>server.close(resolve));}
-function localRequest(port,path){return new Promise((resolve,reject)=>{http.get({host:'127.0.0.1',port,path},response=>{let body='';response.setEncoding('utf8');response.on('data',chunk=>body+=chunk);response.on('end',()=>resolve({status:response.statusCode,body}));response.on('error',reject);}).on('error',reject);});}
+function localAuth(url){const parsed=new URL(url);return {'Proxy-Authorization':'Basic '+Buffer.from(decodeURIComponent(parsed.username)+':'+decodeURIComponent(parsed.password)).toString('base64')};}
+function localRequest(port,path,headers={}){return new Promise((resolve,reject)=>{http.get({host:'127.0.0.1',port,path,headers,agent:false},response=>{let body='';response.setEncoding('utf8');response.on('data',chunk=>body+=chunk);response.on('end',()=>resolve({status:response.statusCode,body}));response.on('error',reject);}).on('error',reject);});}
 
 test('proxy addresses preserve credentials, gateway domains and IPv6 without accepting URL injection',()=>{
   const url=new URL(upstream({protocol:'socks5',host:'gateway.example.test',port:1080,username:'a:b@c',password:'p@ss:/?#%'}));
@@ -129,9 +130,10 @@ test('SSH runtime forwards HTTP and CONNECT through SSH and closes all resources
   const sshPort=await listen(ssh),runtime=new ProxyRuntime({protocol:'ssh',host:'127.0.0.1',port:sshPort,username:'user',password:'pass'});
   try{
     await runtime.listen();
-    const response=await localRequest(runtime.port,`http://127.0.0.1:${targetPort}/`);assert.deepEqual(response,{status:200,body:'through-ssh'});
-    const tunnel=await new Promise((resolve,reject)=>{const request=http.request({host:'127.0.0.1',port:runtime.port,method:'CONNECT',path:`127.0.0.1:${targetPort}`});request.on('connect',(response,socket)=>response.statusCode===200?resolve(socket):reject(new Error('CONNECT failed')));request.on('error',reject);request.end();});
-    let body='';tunnel.on('data',chunk=>body+=chunk);tunnel.write('GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n');await once(tunnel,'end');assert.match(body,/through-ssh/);
+    assert.equal((await localRequest(runtime.port,`http://127.0.0.1:${targetPort}/`)).status,407);
+    const response=await localRequest(runtime.port,`http://127.0.0.1:${targetPort}/`,localAuth(runtime.url));assert.deepEqual(response,{status:200,body:'through-ssh'});
+    const tunnel=await new Promise((resolve,reject)=>{const request=http.request({host:'127.0.0.1',port:runtime.port,method:'CONNECT',path:`127.0.0.1:${targetPort}`,headers:localAuth(runtime.url)});request.on('connect',(response,socket)=>response.statusCode===200?resolve(socket):reject(new Error('CONNECT failed')));request.on('error',reject);request.end();});
+    let body='';tunnel.on('data',chunk=>body+=chunk);tunnel.write(`GET / HTTP/1.1\r\nHost: 127.0.0.1:${targetPort}\r\nConnection: close\r\n\r\n`);await once(tunnel,'end');assert.match(body,/through-ssh/);
     assert.equal(forwards,2);
     await runtime.close();assert.equal(runtime.tunnel.server.listening,false);assert.equal(runtime.closed,true);await runtime.close();
   }finally{await runtime.close();for(const socket of upstreams)socket.destroy();for(const client of clients)client.end();await close(target);await close(ssh);}
@@ -141,6 +143,6 @@ test('unavailable upstream fails without falling back to a direct target connect
   let directCalls=0;const target=http.createServer((_request,response)=>{directCalls++;response.end('unexpected');}),unused=net.createServer();
   const targetPort=await listen(target),unusedPort=await listen(unused);await close(unused);
   const runtime=new ProxyRuntime({protocol:'http',host:'127.0.0.1',port:unusedPort});
-  try{await runtime.listen();const response=await localRequest(runtime.port,`http://127.0.0.1:${targetPort}/`);assert.notEqual(response.status,200);assert.equal(directCalls,0);}
+  try{await runtime.listen();const response=await localRequest(runtime.port,`http://127.0.0.1:${targetPort}/`,localAuth(runtime.url));assert.notEqual(response.status,200);assert.equal(directCalls,0);}
   finally{await runtime.close();await close(target);}
 });

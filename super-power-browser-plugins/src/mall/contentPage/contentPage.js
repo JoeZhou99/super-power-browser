@@ -1,3 +1,4 @@
+import {requestProxySwitch, requestProxyRoutes, requestTransferSpeed} from "../runtime/proxy-switch.mjs";
 import {
   d as te,
   _ as le,
@@ -547,6 +548,10 @@ const ae = 3,
         loadIp: !0,
         checkIp: !1,
         checkIpEnd: !1,
+        spCheckSetupPending: !1,
+        spCheckSetupError: "",
+        spUaChecked: !1,
+        spIpChecked: !1,
         checkResult: this.$t("check.content.detecting"),
         websiteList: [],
         currencyList: [],
@@ -570,6 +575,9 @@ const ae = 3,
         nextTransferProxyIndex: 0,
         transferProxySwitchCount: 0,
         switchingIndex: -1,
+        spTriedCandidateIndexes: [],
+        spProxySwitchAttempt: 0,
+        spProxySnapshotId: "",
         lastReportedTransferProxyKey: "",
         hasPendingTransferReport: !1,
         transitLatencyMap: {},
@@ -675,6 +683,7 @@ const ae = 3,
     },
     watch: {
       checkIp() {
+        if (this.initJson?.desktopProtocol && (this.spCheckSetupPending || this.loadIp || (!this.spIpChecked && !this.checkIp))) return;
         this.checkIp && this.checkUa
           ? (this.openPinnedPage(), (this.checkResult = this.$t("check.content.wieh_login")))
           : (this.checkResult = this.$t("check.content.the_test_failed"));
@@ -835,7 +844,7 @@ const ae = 3,
               B = C.port,
               O = B == null ? "" : String(B).trim();
             if (!I) return;
-            const R = `${I}:${O}`;
+            const R = Number.isInteger(C.candidateIndex) ? `candidate:${C.candidateIndex}` : `${I}:${O}`;
             i.has(R) || (i.add(R), s.push(C));
           };
         (!!e?.ip && a(e, {}, !0),
@@ -858,6 +867,7 @@ const ae = 3,
           : !!(t === 0 && this.mall?.has_one_agent_ip_v2?.ip);
       },
       formatLatency(e) {
+        if (e == null || e === "") return "--";
         const t = Number(e);
         return !Number.isFinite(t) || t < 0 ? "--" : `${Math.round(t)}ms`;
       },
@@ -880,7 +890,9 @@ const ae = 3,
       getTransitMetricLevel(e, t) {
         const s = this.getTransitLatencyState(e);
         if (s.status !== "success" || (t === "line" && s.transferLineError)) return "gray";
-        const i = Number(this.getTransitMetricValue(e, t));
+        const value = this.getTransitMetricValue(e, t);
+        if (value == null || value === "") return "gray";
+        const i = Number(value);
         if (!Number.isFinite(i) || i < 0) return "gray";
         let a = 120,
           d = 260;
@@ -941,8 +953,8 @@ const ae = 3,
             return;
           }
           try {
-            (await this.handleManualSwitchTransit(e.item, e.index),
-              (this.lineTestingStatus = "success"),
+            if (await this.handleManualSwitchTransit(e.item, e.index) === false) return;
+            ((this.lineTestingStatus = "success"),
               (this.lineTestingMessage = this.$t("check.transit.auto_switched_best", {
                 lineName: e.lineName,
               })));
@@ -1009,7 +1021,8 @@ const ae = 3,
       async measureLocalToTransit(e) {
         if (!this.isClientPingMethodSupported) return null;
         if ((N || this.initClientLogger(), !N)) throw new Error("ipc_unavailable");
-        const t = { currentTransferProxies: [e] },
+        const t = { currentTransferProxies: [this.initJson?.desktopProtocol ? {candidateIndex:e.candidateIndex} : e],
+            ...(this.initJson?.desktopProtocol ? {snapshotId:this.spProxySnapshotId} : {}) },
           s = await N.sendAction(S.event_type.ping, t, { is_reply: 1, timeoutMs: 15e3 }),
           i = this.extractPingLatency(s);
         if (
@@ -1051,6 +1064,10 @@ const ae = 3,
         });
       },
       async switchTransitAndWaitReady(e) {
+        if (this.initJson?.desktopProtocol) {
+          if (!await this.swithTransit(e)) throw new Error('switch_failed');
+          return;
+        }
         const t = this.waitForInitProxyComplete(15e3);
         (this.swithTransit(e), await t);
       },
@@ -1091,6 +1108,7 @@ const ae = 3,
         return { samples: t, average: Math.round(a / t.length) };
       },
       async measureTransferLineTotalLatency(e, t) {
+        if (this.initJson?.desktopProtocol) return requestTransferSpeed(e.candidateIndex, this.spProxySnapshotId);
         const s = {
           type: String(e?.proxy_type || ""),
           info: {
@@ -1136,15 +1154,20 @@ const ae = 3,
                       ? this.$t("check.content.not_connected")
                       : this.$t("check.transit.test_failed");
       },
-      getTransitSelectionSnapshot() {
+      async getTransitSelectionSnapshot() {
+        if (this.initJson?.desktopProtocol) {
+          const current = await requestProxyRoutes();
+          if (current.snapshotId !== this.spProxySnapshotId) throw new Error('线路配置已变化，请刷新检测页');
+          this.syncTransitCandidateIndex(current.candidateIndex);
+        }
         return {
           currentTransferProxyIndex: this.currentTransferProxyIndex,
           nextTransferProxyIndex: this.nextTransferProxyIndex,
         };
       },
       async restoreTransitSelectionAfterTest(e) {
-        ((this.currentTransferProxyIndex = e.currentTransferProxyIndex),
-          (this.nextTransferProxyIndex = e.nextTransferProxyIndex));
+        if (!this.initJson?.desktopProtocol) this.currentTransferProxyIndex = e.currentTransferProxyIndex;
+        this.nextTransferProxyIndex = e.nextTransferProxyIndex;
         try {
           const t = e.currentTransferProxyIndex;
           if (t >= 0 && this.transferProxies[t]) {
@@ -1242,7 +1265,7 @@ const ae = 3,
       },
       async handleTestSingleTransit(e, t) {
         if (this.isTransitLatencyTesting || this.switchingIndex !== -1) return;
-        const s = this.getTransitSelectionSnapshot();
+        const s = await this.getTransitSelectionSnapshot();
         ((this.isTransitLatencyTesting = !0), (this.isBatchTransitTesting = !1));
         try {
           await this.runTransitLatencyTest(e, t);
@@ -1256,7 +1279,7 @@ const ae = 3,
           y.warning(this.$t("check.transit.no_line"));
           return;
         }
-        const e = this.getTransitSelectionSnapshot();
+        const e = await this.getTransitSelectionSnapshot();
         ((this.isTransitLatencyTesting = !0),
           (this.isBatchTransitTesting = !0),
           (this.lineTestingStatus = "testing"),
@@ -1279,10 +1302,9 @@ const ae = 3,
         t > 0 && (await this.switchBestTransitAfterTestAllIfEnabled());
       },
       async handleManualSwitchTransit(e, t) {
-        this.switchingIndex !== -1 ||
-          this.isTransitLatencyTesting ||
-          ((this.switchingIndex = t),
-          (this.currentTransferProxyIndex = t),
+        if (this.switchingIndex !== -1 || this.isTransitLatencyTesting) return false;
+        ((this.switchingIndex = t),
+          !this.initJson?.desktopProtocol && (this.currentTransferProxyIndex = t),
           (this.nextTransferProxyIndex = t + 1),
           (this.checkResult = this.$t("check.content.detecting")),
           (this.loadIp = !0),
@@ -1291,8 +1313,9 @@ const ae = 3,
           _.info(
             `[check.vue] Manually switching to transit proxy #${t + 1}: ${this.encryptLogText(e.ip)}:${e.port}`,
           ),
-          (this.hasPendingTransferReport = !0),
-          this.swithTransit(e));
+          (this.hasPendingTransferReport = !0));
+        if (this.initJson?.desktopProtocol) this.spTriedCandidateIndexes = [];
+        return await this.swithTransit(e);
       },
       async reportSelectedTransferOnSuccess() {
         if (
@@ -1319,7 +1342,7 @@ const ae = 3,
             return;
           }
         }
-        const t = `${e.ip || ""}:${e.port || ""}`;
+        const t = Number.isInteger(e.candidateIndex) ? `candidate:${e.candidateIndex}` : `${e.ip || ""}:${e.port || ""}`;
         if (t && t === this.lastReportedTransferProxyKey) {
           this.hasPendingTransferReport = !1;
           return;
@@ -1328,7 +1351,9 @@ const ae = 3,
             ip: this?.mall?.has_one_agent_ip?.map_ip || this?.mall?.has_one_agent_ip.map_ip || "",
             transfer_name: e?.ip || "",
             port: e?.port || "",
-            mall_id: Number(this.mallId),
+            mall_id: this.initJson?.desktopProtocol ? String(this.mallId) : Number(this.mallId),
+            ...(Number.isInteger(e.candidateIndex) ? {candidateIndex:e.candidateIndex} : {}),
+            ...(this.initJson?.desktopProtocol ? {snapshotId:this.spProxySnapshotId} : {}),
           },
           i = this.mall?.ip_local_region;
         i != null && (s.ip_local_region = i);
@@ -1350,12 +1375,18 @@ const ae = 3,
       trySwitchTransferProxy() {
         if (!this.canUseTransitPoolFlow()) return !1;
         if (this.isTransitLatencyTesting) return !0;
+        if (this.initJson?.desktopProtocol) {
+          const next = this.transferProxies.findIndex(line => !this.spTriedCandidateIndexes.includes(line.candidateIndex));
+          this.nextTransferProxyIndex = next < 0 ? this.transferProxies.length : next;
+        }
         const e = this.transferProxies[this.nextTransferProxyIndex];
         return e
           ? ((this.checkResult = this.$t("check.content.detecting")),
             (this.loadIp = !0),
             (this.checkIpEnd = !1),
-            (this.currentTransferProxyIndex = this.nextTransferProxyIndex),
+            this.initJson?.desktopProtocol
+              ? (this.switchingIndex = this.nextTransferProxyIndex)
+              : (this.currentTransferProxyIndex = this.nextTransferProxyIndex),
             this.nextTransferProxyIndex++,
             this.transferProxySwitchCount++,
             _.info(
@@ -1363,12 +1394,16 @@ const ae = 3,
               e.ip,
             ),
             (this.hasPendingTransferReport = !0),
-            this.swithTransit(e),
+            this.swithTransit(e, {autoAdvance:true}),
             !0)
           : this.transferProxies.length > 0
             ? ((this.checkResult = this.ipv6
                 ? this.$t("check.content.the_test_failed_ipv6")
                 : this.$t("check.content.the_test_failed")),
+              this.initJson?.desktopProtocol &&
+                ((this.loadIp = !1), (this.checkIp = !1), (this.switchingIndex = -1),
+                  (this.hasPendingTransferReport = !1),
+                  this.spNetwork && (this.spNetwork.message = this.checkResult)),
               _.error("Transit list polling ended, still not passed detection"),
               !0)
             : !1;
@@ -1616,13 +1651,17 @@ const ae = 3,
             const i = this.$t("check.content.after_inspection");
             y({ type: "warning", message: i });
           } else if (e.type === S.event_type.init_proxy_complete) {
+            if (this.initJson?.desktopProtocol && (this.spCheckSetupPending || !this.spProxySnapshotId)) return true;
+            if (this.initJson?.desktopProtocol && e.snapshotId && e.snapshotId !== this.spProxySnapshotId) return true;
+            if (this.initJson?.desktopProtocol) this.syncTransitCandidateIndex(e.candidateIndex);
             if ((console.log("初始化代理完成", e), this.isTransitLatencyTesting))
               return (
                 _.info("[check.vue] init_proxy_complete received during transit latency testing"),
                 !0
               );
             const i = this.mall.check_env;
-            i == "1" ? this.checkIpHandle() : i == "2" && ((this.loadIp = !1), (this.checkIp = !0));
+            i == "1" ? this.checkIpHandle() : i == "2" && ((this.loadIp = !1), (this.checkIp = !0),
+              this.initJson?.desktopProtocol && (this.switchingIndex = -1));
           } else
             e.type === S.event_type.network_exception &&
               chrome.superbrowser.showMessageDialog(
@@ -1654,16 +1693,55 @@ const ae = 3,
         this.isShowAds = new Date().getTime() - e > 0;
       },
       startProxy() {
+        if (this.initJson?.desktopProtocol && !this.isTransitLatencyTesting) {
+          const line = this.transferProxies[this.currentTransferProxyIndex];
+          this.spTriedCandidateIndexes = line ? [line.candidateIndex] : [];
+        }
         const e = {};
         ((e.type = S.event_type.set_proxy),
-          (e.white_list = this.mall.has_one_platform.white_list || []),
-          (e.black_list = this.mall.has_one_platform.black_list || []),
+          (e.white_list = this.mall?.has_one_platform?.white_list || []),
+          (e.black_list = this.mall?.has_one_platform?.black_list || []),
           (e.mallInfo = this.mall),
           console.log("通知后台设置代理", e),
           chrome.runtime.sendMessage(e));
       },
-      swithTransit(e) {
+      syncTransitCandidateIndex(candidateIndex) {
+        if (!Number.isInteger(candidateIndex) || candidateIndex < 0 || candidateIndex > 8) return;
+        const index = this.transferProxies.findIndex(line => line.candidateIndex === candidateIndex);
+        if (index < 0) return;
+        this.currentTransferProxyIndex = index;
+        this.nextTransferProxyIndex = index + 1;
+      },
+      swithTransit(e, options = {}) {
         if (!e) return;
+        if (this.initJson?.desktopProtocol) {
+          const attempt = ++this.spProxySwitchAttempt;
+          if (!this.isTransitLatencyTesting) {
+            if (!this.spTriedCandidateIndexes.includes(e.candidateIndex)) this.spTriedCandidateIndexes.push(e.candidateIndex);
+          }
+          return requestProxySwitch(e.candidateIndex, this.spProxySnapshotId).then(() => {
+            if (attempt === this.spProxySwitchAttempt) this.syncTransitCandidateIndex(e.candidateIndex);
+            return true;
+          }, (error) => {
+            if (attempt !== this.spProxySwitchAttempt) return false;
+            // A rejected desktop switch keeps its previous forwarder alive.
+            this.syncTransitCandidateIndex(error?.candidateIndex);
+            this.nextTransferProxyIndex = this.currentTransferProxyIndex + 1;
+            if (!this.isTransitLatencyTesting) {
+              this.switchingIndex = -1;
+              this.loadIp = false;
+              this.checkIp = false;
+              this.checkResult = '线路切换失败，请重试或选择其他线路';
+              if (this.spNetwork) this.spNetwork.message = this.checkResult;
+              this.hasPendingTransferReport = false;
+              // No ready event follows a rejection. Advance explicitly only
+              // for automatic fallback; the latency loop owns its own steps.
+              this.checkIpEnd = false;
+              if (options.autoAdvance) this.trySwitchTransferProxy();
+            }
+            return false;
+          });
+        }
         const t = Number(e.port || 0),
           s = e.proxy_type || e.proxyType || "",
           i = {};
@@ -1882,7 +1960,26 @@ const ae = 3,
         (console.log("getCurrency", e), e.errorCode === 0 && (this.currencyList = e.data));
       },
       async getMallInfo() {
+        if (this.spCheckSetupPending) return;
+        this.spCheckSetupPending = true;
         this.listLoading = !0;
+        let setupStage = "details";
+        if (this.initJson?.desktopProtocol) {
+          this.spCheckSetupError = "";
+          this.spProxySnapshotId = "";
+          this.transferProxies = [];
+          this.currentTransferProxyIndex = -1;
+          this.nextTransferProxyIndex = 0;
+          this.checkIpEnd = false;
+          this.checkIp = false;
+          this.checkUa = false;
+          this.spIpChecked = false;
+          this.spUaChecked = false;
+          this.loadIp = true;
+          this.loadUa = true;
+          this.checkResult = this.$t("check.content.detecting");
+          if (this.spNetwork) this.spNetwork.message = "";
+        }
         const e = { mallId: this.mallId, ip_local_region: 1 };
         try {
           const t = this.initJson?.localGeo,
@@ -1894,20 +1991,23 @@ const ae = 3,
         }
         try {
           const t = await E.getMallInfo(e);
-          if (
-            (console.log("getMallInfo", t),
-            (this.listLoading = !1),
-            (this.mall = t.data),
-            t.errorCode !== 0)
-          ) {
-            console.error("获取店铺详情异常", t.errorMsg);
-            return;
-          }
-          (this?.mall?.is_check_agent === 2 && (this.mall.has_one_agent_ip.ip_type = 5),
+          if (!t || t.errorCode !== 0 || !t.data || typeof t.data !== "object" || Array.isArray(t.data))
+            throw new Error("shop_details_unavailable");
+          this.mall = t.data;
+          (this.mall.is_check_agent === 2 && this.mall.has_one_agent_ip && (this.mall.has_one_agent_ip.ip_type = 5),
             this.mall.has_one_agent_ip &&
               this.mall.has_one_agent_ip.ip_type == 1 &&
               this.mall.has_one_agent_ip.web_type == 1 &&
               (this.mall.has_one_agent_ip.ip_type = 5));
+          setupStage = "routes";
+          const liveSnapshot = this.initJson?.desktopProtocol ? await requestProxyRoutes() : null;
+          if (liveSnapshot) {
+            this.spProxySnapshotId = liveSnapshot.snapshotId;
+            // Server configuration may have been edited while this browser is
+            // running. Display exactly the immutable routes it can switch to.
+            this.mall.has_one_agent_ip_v2 = {...this.mall.has_one_agent_ip_v2,
+              ...liveSnapshot.candidates[0], transfer_proxies:liveSnapshot.candidates.slice(1)};
+          }
           const s = this.buildTransitProxyList();
           ((this.transferProxies = s.list),
             this.canUseTransitPoolFlow() && s.hasCurrentMainProxy && this.transferProxies.length > 0
@@ -1917,6 +2017,13 @@ const ae = 3,
             (this.lastReportedTransferProxyKey = ""),
             (this.hasPendingTransferReport = !1),
             this.resetTransitLatencyStates());
+          if (liveSnapshot && this.transferProxies.length) {
+            const preferred = liveSnapshot.candidateIndex;
+            const index = this.transferProxies.findIndex(line => line.candidateIndex === preferred);
+            this.currentTransferProxyIndex = index < 0 ? 0 : index;
+            this.nextTransferProxyIndex = this.currentTransferProxyIndex + 1;
+          }
+          setupStage = "prepare";
           try {
             const l = Y(String(this.mallId)),
               r = await chrome.storage.local.get(l);
@@ -1933,8 +2040,25 @@ const ae = 3,
                 (this.mall.has_one_agent_ip.map_ip || this.mall.has_one_agent_ip.ip)) ||
               "",
             d = (this.mall.has_one_agent_ip && this.mall.has_one_agent_ip.area_name) || "";
+          this.listLoading = false;
+          this.spCheckSetupPending = false;
           ((this.titleIP = a + "(" + d + ")"), this.startProxy());
         } catch (t) {
+          this.spCheckSetupPending = false;
+          if (this.initJson?.desktopProtocol) {
+            this.listLoading = false;
+            this.loadIp = false;
+            this.loadUa = false;
+            this.checkIpEnd = false;
+            this.spCheckSetupError = setupStage === "details"
+              ? "店铺信息加载失败，请点击重新检测"
+              : setupStage === "routes"
+                ? "线路信息加载失败，请点击重新检测；仍未恢复请关闭店铺后重新打开"
+                : "店铺检测信息未准备好，请点击重新检测";
+            this.checkResult = this.spCheckSetupError;
+            if (this.spNetwork) this.spNetwork.message = "";
+            return;
+          }
           (console.log("异常--", t, this.reqLimit),
             t &&
               t?.message?.indexOf("timeout") > -1 &&
@@ -1952,20 +2076,22 @@ const ae = 3,
         const e = navigator.userAgent,
           t =
             e.indexOf("Mac") > -1
-              ? this.mall.has_one_mac_user_agent.ua
-              : this.mall.has_one_user_agent.ua;
+              ? this.mall?.has_one_mac_user_agent?.ua
+              : this.mall?.has_one_user_agent?.ua;
+        if (typeof t !== "string" || !t.trim()) throw new Error("shop_agent_unavailable");
+        this.spUaChecked = true;
         let s = t,
-          i = s.split("Chrome/"),
+          i = /Chrome\/([\d.]+)/.exec(s),
           a;
-        (i.length > 0 &&
-          ((i = i[1].split(" ")[0]),
+        (i &&
+          ((i = i[1]),
           (a = i.split(".")[0]),
           a >= 101 && (s = s.replace("Chrome/" + i, "Chrome/" + a + ".0.0.0"))),
           console.log("当前userAgent", e),
           console.log("店铺userAgent", s),
           console.log(a, this.mall.platformName),
           navigator.userAgent === t || navigator.userAgent === s
-            ? a < 109 && this.mall.platformName.indexOf("ebay") > -1
+            ? a < 109 && String(this.mall.platformName || "").indexOf("ebay") > -1
               ? ((this.checkUa = !1),
                 (this.checkResult = this.$t("check.content.the_test_failed_ua")),
                 y.warning({

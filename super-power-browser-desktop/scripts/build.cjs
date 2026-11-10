@@ -2,6 +2,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 const {execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
+execFileSync(process.execPath,[path.join(__dirname,'prepare-proxy-runtime.cjs')],{cwd:root,stdio:'inherit'});
+execFileSync(process.execPath,[path.join(__dirname,'prepare-ssr-runtime.cjs'),'--host-if-supported'],{cwd:root,stdio:'inherit'});
 const aiRoot=path.resolve(root,'../super-power-browser-ai');
 execFileSync(process.execPath,[path.join(aiRoot,'scripts/build-embedded.mjs')],{cwd:aiRoot,stdio:'inherit'});
 const pluginRoot=path.resolve(root,'../super-power-browser-plugins');

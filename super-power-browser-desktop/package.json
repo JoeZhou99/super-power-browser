@@ -8,16 +8,18 @@
     "dev": "npm run build && electron .",
     "start": "electron .",
     "build": "node scripts/build.cjs",
-    "test:proxy": "node --test scripts/proxy-runtime.test.cjs",
-    "build:win": "npm run build && electron-builder --win --x64",
-    "build:mac": "npm run build && node scripts/mac-icon.cjs && electron-builder --mac --x64 --arm64"
+    "prepare:proxy": "node scripts/prepare-proxy-runtime.cjs",
+    "prepare:ssr": "node scripts/prepare-ssr-runtime.cjs",
+    "test:proxy": "node --test scripts/network-info.test.cjs scripts/browser-network.test.cjs scripts/proxy-config.test.cjs scripts/proxy-process.test.cjs scripts/proxy-runtime.test.cjs scripts/proxy-checks.test.cjs scripts/proxy-compatibility.test.cjs scripts/proxy-routes.test.cjs scripts/proxy-package.test.cjs scripts/socks4-client.test.cjs scripts/ssr-integration.test.cjs scripts/xray-integration.test.cjs",
+    "test:plugins": "node --test scripts/plugin-upgrade.test.cjs scripts/plugin-readiness.test.cjs",
+    "build:win": "npm run prepare:proxy -- --targets win32-x64 && npm run prepare:ssr -- --targets win32-x64 && npm run build && electron-builder --win --x64",
+    "build:mac": "npm run prepare:proxy -- --targets darwin-x64,darwin-arm64 && npm run prepare:ssr -- --targets darwin-x64 && npm run build && node scripts/mac-icon.cjs && electron-builder --mac --x64 --arm64"
   },
   "dependencies": {
     "@super-power-browser/ai": "file:../super-power-browser-ai",
     "adm-zip": "0.5.16",
     "https-proxy-agent": "7.0.6",
     "koffi": "2.12.3",
-    "proxy-chain": "^2.5.0",
     "ssh2": "1.17.0",
     "ws": "8.18.2"
   },
@@ -26,6 +28,9 @@
     "electron-builder": "24.13.3"
   },
   "build": {
+    "beforePack": "./scripts/proxy-package.cjs",
+    "afterPack": "./scripts/proxy-package.cjs",
+    "afterSign": "./scripts/proxy-package.cjs",
     "appId": "com.superpower.browser",
     "productName": "SuperPower Browser",
     "directories": {
@@ -47,6 +52,11 @@
       {
         "from": "Plugin",
         "to": "Plugin"
+      },
+      {
+        "from": "proxy-runtime",
+        "to": "proxy-runtime",
+        "filter": ["manifest.json", "ssr-manifest.json", "README.md", "licenses/**/*"]
       }
     ],
     "asarUnpack": [
@@ -56,7 +66,11 @@
     ],
     "win": {
       "icon": "branding/app.ico",
-      "target": "nsis"
+      "target": "nsis",
+      "extraResources": [
+        { "from": "proxy-runtime/win32-${arch}", "to": "proxy-runtime/win32-${arch}", "filter": ["xray.exe", "LICENSE"] },
+        { "from": "proxy-runtime/ssr/win32-${arch}", "to": "proxy-runtime/ssr/win32-${arch}", "filter": ["ssr-client.exe", "*.dll", "LICENSE"] }
+      ]
     },
     "mac": {
       "target": [
@@ -65,6 +79,10 @@
       ],
       "category": "public.app-category.business",
       "icon": "branding/app.icns",
+      "extraResources": [
+        { "from": "proxy-runtime/darwin-${arch}", "to": "proxy-runtime/darwin-${arch}", "filter": ["xray", "LICENSE"] },
+        { "from": "proxy-runtime/ssr", "to": "proxy-runtime/ssr", "filter": ["darwin-${arch}/ssr-client", "darwin-${arch}/LICENSE"] }
+      ],
       "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
     }
   }

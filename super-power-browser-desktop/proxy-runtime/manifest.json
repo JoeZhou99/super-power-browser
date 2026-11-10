@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "version": "1.8.24",
+  "source": "https://github.com/XTLS/Xray-core",
+  "sourceCommit": "6baad79f9881ee2cf75bdc825b3e2e92b289477a",
+  "license": "MPL-2.0",
+  "licenseSha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5",
+  "platforms": {
+    "win32-x64": {
+      "file": "win32-x64/xray.exe",
+      "sha256": "1b560df0e636ad458164e70022f39e6f35607f09c11099982bedc8b22e5d121a",
+      "size": 28403712,
+      "archive": "https://github.com/XTLS/Xray-core/releases/download/v1.8.24/Xray-windows-64.zip",
+      "archiveSha256": "f932f83870bb539b9bd075540142c7a9e1a8ababb4fc1460fd2098fa491b89dc"
+    },
+    "darwin-x64": {
+      "file": "darwin-x64/xray",
+      "sha256": "47f6570e365a9c296b5a3e5a0d13ac24549a87e18f17f68900cadae6b8f637fc",
+      "size": 28732000,
+      "archive": "https://github.com/XTLS/Xray-core/releases/download/v1.8.24/Xray-macos-64.zip",
+      "archiveSha256": "d1b4ccfede6813cb9fe40e9eb7fd504352e4ea66f2a371341650d0be266e19ec"
+    },
+    "darwin-arm64": {
+      "file": "darwin-arm64/xray",
+      "sha256": "fa5791721c8293a37891c8f67992d56ddf733c2f0ae073d85a12a964c0a9ccc0",
+      "size": 27785026,
+      "archive": "https://github.com/XTLS/Xray-core/releases/download/v1.8.24/Xray-macos-arm64-v8a.zip",
+      "archiveSha256": "bb033a6e094a6cbb2f6e2c9a8b8c370678e3b9035e4e5bd42cbf44b06f0bc91a"
+    }
+  }
+}

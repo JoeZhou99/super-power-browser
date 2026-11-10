@@ -2,6 +2,7 @@ package com.superpower.browser.environment;
 
 import com.superpower.browser.auth.Actor;
 import com.superpower.browser.auth.MemberDirectory;
+import com.superpower.browser.config.BrowserConfiguration;
 import com.superpower.browser.device.DeviceAccess;
 import com.superpower.browser.runtime.KernelCatalog;
 import com.superpower.browser.shared.*;
@@ -20,8 +21,9 @@ public class EnvironmentService {
     private final AuditRepository audit;
     private final KernelCatalog kernels;
     private final PlatformCatalog platforms;
-    public EnvironmentService(EnvironmentRepository repository,MemberDirectory members,DeviceAccess devices,AuditRepository audit,KernelCatalog kernels,PlatformCatalog platforms) {
-        this.repository=repository; this.members=members; this.devices=devices; this.audit=audit;this.kernels=kernels;this.platforms=platforms;
+    private final BrowserConfiguration configuration;
+    public EnvironmentService(EnvironmentRepository repository,MemberDirectory members,DeviceAccess devices,AuditRepository audit,KernelCatalog kernels,PlatformCatalog platforms,BrowserConfiguration configuration) {
+        this.repository=repository; this.members=members; this.devices=devices; this.audit=audit;this.kernels=kernels;this.platforms=platforms;this.configuration=configuration;
     }
     public Map<String,Object> get(Actor a,String id,String permission) { a.allow(permission); return repository.get(a,id); }
     public Map<String,Object> list(Actor a,String category,String query,int page,int size,boolean recycled) {
@@ -52,9 +54,11 @@ public class EnvironmentService {
         catch(IllegalArgumentException e) { throw new BusinessException(400,"店铺地址不合法"); }
         String kernel=required(input,"kernelVersion",30);
         require(kernel.matches("[0-9]+(?:\\.[0-9]+)*"),400,"内核版本不合法");
+        if(!input.containsKey("fingerprint"))input.put("fingerprint",previous==null?Map.of():object(text(previous,"fingerprint")));
         require(input.get("fingerprint") instanceof Map<?,?>,400,"指纹配置必须是对象");
         if(previous==null||!text(previous,"kernelVersion").equals(kernel))kernels.requirePublished(kernel);
-        var fingerprint=new LinkedHashMap<>((Map<?,?>)input.get("fingerprint"));
+        @SuppressWarnings("unchecked") var fingerprint=new LinkedHashMap<>((Map<String,Object>)input.get("fingerprint"));
+        configuration.applyDefaults(fingerprint,previous==null?null:object(text(previous,"fingerprint")));
         fingerprint.remove("iconColor");fingerprint.remove("taskbarNumber");input.put("fingerprint",fingerprint);
         FingerprintSettings.validate(fingerprint,kernel);
         String serialized=json(input.get("fingerprint")); require(serialized.length()<30000,400,"指纹配置过大");
@@ -78,7 +82,7 @@ public class EnvironmentService {
         var input=new HashMap<String,Object>();
         input.put("name",required(request,"name",100));
         for(String key:List.of("platform","platformSiteId","startUrl","kernelVersion"))input.put(key,source.get(key));
-        input.put("fingerprint",fields.contains("fingerprint")?object(text(source,"fingerprint")):Map.of("language","zh-CN","timezone","Asia/Shanghai","webRtc","disabled","webgl",true,"resolution","1920x1080","os","Windows"));
+        input.put("fingerprint",fields.contains("fingerprint")?object(text(source,"fingerprint")):Map.of("webRtc","disabled","webgl",true,"os","Windows"));
         if(fields.contains("account"))for(String key:List.of("accountName","accountPassword"))input.put(key,source.get(key));
         if(fields.contains("remark"))input.put("remark",source.get("remark"));
         String copied=save(a,null,input);
@@ -111,7 +115,10 @@ public class EnvironmentService {
     @Transactional public void grant(Actor a,String id,List<String> userIds,boolean revoke) {
         get(a,id,"shop.grant");
         // 撤销停用成员的授权仍应允许；新增授权才要求成员处于启用状态。
-        members.describe(a.tenantId(),userIds);
+        var recipients=members.describe(a.tenantId(),userIds);
+        if(!a.owner()&&a.memberType()!=3) {
+            require(recipients.stream().allMatch(member->a.departmentId().equals(text(member,"departmentId"))),403,"只能管理本部门成员的店铺授权");
+        }
         if(!revoke) for(String userId:userIds) members.requireActive(a.tenantId(),userId);
         for(String userId:userIds) repository.grant(id,userId,a.id(),revoke);
         audit.record(a,revoke?"shop.revoke":"shop.grant",id,Map.of("members",userIds));

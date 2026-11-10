@@ -1,4 +1,4 @@
-param([switch]$BackendOnly)
+param([switch]$BackendOnly,[switch]$EnableOperations)
 $ErrorActionPreference='Stop'
 $projectRoot=$PSScriptRoot
 $previewDir=Join-Path $projectRoot '.local-preview'
@@ -11,6 +11,16 @@ if(-not (Test-Path -LiteralPath $accessFile)){
     [System.IO.File]::WriteAllText($accessFile,($access|ConvertTo-Json),[System.Text.UTF8Encoding]::new($false))
 }
 $access=Get-Content -LiteralPath $accessFile -Raw -Encoding UTF8|ConvertFrom-Json
+$operationsAccessFile=Join-Path $previewDir 'operations-access.json'
+if($EnableOperations -and -not (Test-Path -LiteralPath $operationsAccessFile)){
+    $operationsAccess=@{username='operations-admin';password=('Ops-'+[guid]::NewGuid().ToString('N')+'!8')}
+    [System.IO.File]::WriteAllText($operationsAccessFile,($operationsAccess|ConvertTo-Json),[System.Text.UTF8Encoding]::new($false))
+}
+if(Test-Path -LiteralPath $operationsAccessFile){
+    $operationsAccess=Get-Content -LiteralPath $operationsAccessFile -Raw -Encoding UTF8|ConvertFrom-Json
+    $env:OPS_ADMIN_USERNAME=$operationsAccess.username
+    $env:OPS_ADMIN_PASSWORD=$operationsAccess.password
+}
 $apiUrl='http://127.0.0.1:18080'
 $env:AI_PUBLIC_URL=$apiUrl
 $env:AI_SKILL_STORAGE=Join-Path $previewDir 'ai-skills'

@@ -27312,6 +27312,33 @@ safe-buffer/index.js:
             u = e("~/utils/storage"),
             h = i.interopDefault(u),
             l = e("./utils");
+          let spAccountLoginPromise = null;
+          async function spAccountLogin(data, requireSuccess = false) {
+            await (0, s.setToken)(data.token || "");
+            await (0, h.default).set("mall_id", data.mall_id);
+            (0, n.invalidateAutoFillInputConfigCache)();
+            (0, n.invalidatePageEnhanceConfigCache)();
+            const user = await p();
+            if (requireSuccess && user?.errorCode !== 0) throw new Error("account_user_unavailable");
+            const accounts = await b(data);
+            if (requireSuccess && accounts?.errorCode !== 0) throw new Error("account_list_unavailable");
+          }
+          function spInitializeVerifiedAccount() {
+            if (spAccountLoginPromise) return spAccountLoginPromise;
+            // The guard validates this shop-scoped configuration before running
+            // the bundle. A restarted account worker cannot depend on another
+            // extension sending its one-time LOGIN message again.
+            const config = globalThis.__SP_BOOTSTRAP__;
+            const mallId = config?.sysMallId || config?.browserId;
+            spAccountLoginPromise = Promise.resolve().then(() => {
+              if (!config?.accessToken || !mallId) throw new Error("account_startup_unavailable");
+              return spAccountLogin({token:config.accessToken,mall_id:mallId}, true);
+            }).catch(() => {
+              spAccountLoginPromise = null;
+              throw new Error("店铺账号初始化失败，请关闭店铺后重新打开");
+            });
+            return spAccountLoginPromise;
+          }
           function d() {
             chrome.runtime.onMessageExternal.addListener(async (e, t, r) => {
               let i = e.event_type || e.type || e.action;
@@ -27327,14 +27354,9 @@ safe-buffer/index.js:
                 (console.log("\u8bbe\u7f6e\u8bed\u8a00"), (0, s.setLanguage)(e.language));
               else if ("openMall" === i);
               else if ("LOGIN" === e.event_type) {
-                let t = e.token || "";
-                (console.log("\u8bbe\u7f6etoken"),
-                  await (0, s.setToken)(t),
-                  (0, h.default).set("mall_id", e.mall_id),
-                  (0, n.invalidateAutoFillInputConfigCache)(),
-                  (0, n.invalidatePageEnhanceConfigCache)(),
-                  await p(),
-                  await b(e));
+                if (globalThis.__SP_BUILD__?.mode === "superpower")
+                  await spInitializeVerifiedAccount();
+                else await spAccountLogin(e);
               } else if ("RETRIGGER_AUTO_FILL" === i) {
                 let i = "number" == typeof e?.tabId && Number.isFinite(e.tabId) ? e.tabId : void 0,
                   n = e?.accountId ?? e?.preferredAccountId,
@@ -27356,10 +27378,13 @@ safe-buffer/index.js:
                 !0
               );
             });
+            if (globalThis.__SP_BUILD__?.mode === "superpower")
+              globalThis.__SP_ACCOUNT_STARTUP__ = spInitializeVerifiedAccount();
           }
           let p = async () => {
               let e = await (0, a.default).getUserInfo();
               0 === e.errorCode && (await (0, h.default).set("userInfo", e?.data || {}));
+              return e;
             },
             b = async (e) => {
               let t = { mall_id: e.mall_id, limit: 100 },
@@ -27371,6 +27396,7 @@ safe-buffer/index.js:
                 console.log(
                   "allUserAccount\u7528\u6237\u6570\u636e\u4fdd\u5b58\u6210\u529f\uff01",
                 ));
+              return r;
             };
           async function m() {
             try {

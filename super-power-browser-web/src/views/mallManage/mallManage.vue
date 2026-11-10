@@ -11,6 +11,7 @@ import {downloadWorkbook} from '@/utils/workbook';
 import {date} from '@/utils/format';
 import {ElMessage,ElMessageBox} from 'element-plus';
 import {mallApi} from '@/api/mall/mall.api';
+import {loadBrowserConfig,type BrowserConfig} from '@/api/config/browser-config.api';
 import {request,post} from '@/utils/request';
 import {usePermissions} from '@/store/modules/permission.store';
 const props=withDefaults(defineProps<{recycled?:boolean}>(),{recycled:false});
@@ -30,7 +31,7 @@ async function refreshStates(){const [status,preparing]=await Promise.all([windo
 let timer:ReturnType<typeof setInterval>;
 onMounted(()=>{load();if(route.query.create)edit();refreshStates();timer=setInterval(refreshStates,3000);});onUnmounted(()=>clearInterval(timer));
 const editing=ref(false),saving=ref(false),form=reactive<any>({});
-const defaults=()=>({name:'',platform:'',startUrl:'https://',accountName:'',accountPassword:'',remark:'',kernelVersion:'144',fingerprint:{canvas:'privacy',audio:'privacy',clientRects:'privacy',fontMetrics:'privacy',webglFingerprint:'privacy',hardwareAcceleration:true,autoInjectPasskey:false,disabledPasskey:false,accountLock:true,language:'zh-CN',timezone:'Asia/Shanghai',webRtc:'disabled',webgl:true,languageMode:'custom',rememberPassword:true,notifications:true,speechVoices:'privacy',fonts:'privacy',resolution:'1920x1080',os:'Windows'}});
+const defaults=(config?:BrowserConfig)=>({name:'',platform:'',startUrl:'https://',accountName:'',accountPassword:'',remark:'',kernelVersion:'144',fingerprint:{canvas:'privacy',audio:'privacy',clientRects:'privacy',fontMetrics:'privacy',webglFingerprint:'privacy',hardwareAcceleration:true,autoInjectPasskey:false,disabledPasskey:false,accountLock:true,webRtc:'disabled',webgl:true,languageMode:'custom',rememberPassword:true,notifications:true,speechVoices:'privacy',fonts:'privacy',os:'Windows',...config?.defaults}});
 async function edit(row?:any){const value=row?await request(`/environments/${row.id}`):defaults();Object.keys(form).forEach(k=>delete form[k]);Object.assign(form,value);if(typeof form.fingerprint==='string')form.fingerprint=JSON.parse(form.fingerprint);form.fingerprint={...defaults().fingerprint,...form.fingerprint};delete form.fingerprint.iconColor;delete form.fingerprint.taskbarNumber;form.accountPassword='';editing.value=true;}
 async function save(bindAfter=false){saving.value=true;try{const payload={...form};if(form.id&&!payload.accountPassword)delete payload.accountPassword;const result=await mallApi.save(payload);if(form.granteeIds?.length)await mallApi.grant(result.id,form.granteeIds);editing.value=false;await load();ElMessage.success('店铺已保存');if(bindAfter)await openBinding({...form,id:result.id});}finally{saving.value=false;}}
 async function open(row:any){if(!window.api)throw new Error('请在桌面客户端中打开店铺');if(opening[row.id])return;opening[row.id]=true;try{await window.api.openBrowser(row.id);await load();}finally{delete opening[row.id];await refreshStates();}}
@@ -48,7 +49,12 @@ const availableMembers=computed(()=>members.value.filter(m=>m.enabled&&!granted.
 async function grant(){await mallApi.grant(selectedShop.value.id,selectedMembers.value);await openGrants(selectedShop.value);await load();}
 async function revoke(member:string){await mallApi.revoke(selectedShop.value.id,member);await openGrants(selectedShop.value);await load();}
 async function exportAll(onlySelected=false){const all:any[]=[];if(onlySelected)all.push(...selected.value);else for(let p=1;;p++){const r=await mallApi.list({category:category.value,query:query.value,page:p,size:200,recycled:props.recycled});all.push(...r.items);if(all.length>=r.total)break;}await downloadWorkbook('店铺列表.xlsx',all,exportColumns);}
-async function importRows(rows:any[]){await post('/environments/import',rows.map(row=>({...defaults(),...row})));}
+async function importRows(rows:any[]){
+  try{
+    const config=await loadBrowserConfig();
+    await post('/environments/import',rows.map(row=>({...defaults(config),...row})));
+  }catch(error){ElMessage.error(error instanceof Error?error.message:'导入失败，请重试');throw error;}
+}
 async function batch(action:string){
   if(action==='recycle'||action==='delete'){try{await ElMessageBox.confirm(`确认处理所选 ${selected.value.length} 家店铺？`,'批量操作');}catch{return;}}
   let completed=0;try{for(const row of selected.value){if(action==='open')await open(row);if(action==='close')await close(row);if(action==='restore')await mallApi.restore(row.id);if(action==='recycle'||action==='delete'){await window.api?.closeBrowser(row.id);await mallApi.recycle(row.id,props.recycled);}if(action==='favorite')await mallApi.favorite(row.id,true);completed++;}ElMessage.success(`已完成 ${completed} 项操作`);}finally{await load();}

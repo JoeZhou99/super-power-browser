@@ -1,39 +1,74 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import type { FormInstance, FormRules } from 'element-plus';
 import { Check, Connection, Lock, Monitor, Right, User } from '@element-plus/icons-vue';
-import { post } from '@/utils/request';
+import { passwordError, publicAuth, usernameError, type AuthSession } from './public-auth';
 
+const route = useRoute();
 const router = useRouter();
 const formRef = ref<FormInstance>();
-const form = reactive({ username: '', password: '' });
+const form = reactive({ username: '', password: '', confirmPassword: '' });
+const isRegister = computed(() => route.path === '/register');
 const busy = ref(false);
 const capsLock = ref(false);
 const formError = ref('');
-const rules: FormRules = {
-  username: [{ required: true, whitespace: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
-};
+let submission: AbortController | undefined;
+const rules = computed<FormRules>(() => ({
+  username: [{ required: true, trigger: 'blur', validator: (_rule, value, callback) => {
+    const error = isRegister.value ? usernameError(value || '') : (!value?.trim() ? '请输入用户名' : '');
+    callback(error ? new Error(error) : undefined);
+  } }],
+  password: [{ required: true, trigger: 'blur', validator: (_rule, value, callback) => {
+    const error = isRegister.value ? passwordError(value || '') : (!value ? '请输入密码' : '');
+    callback(error ? new Error(error) : undefined);
+  } }],
+  confirmPassword: [{ required: true, trigger: 'blur', validator: (_rule, value, callback) => {
+    const error = !value ? '请再次输入密码' : value !== form.password ? '两次输入的密码不一致' : '';
+    callback(error ? new Error(error) : undefined);
+  } }],
+}));
+
+watch(isRegister, () => {
+  submission?.abort();
+  busy.value = false;
+  form.password = '';
+  form.confirmPassword = '';
+  capsLock.value = false;
+  formError.value = '';
+  formRef.value?.clearValidate();
+});
+onBeforeUnmount(() => { submission?.abort(); form.password = ''; form.confirmPassword = ''; });
 
 function checkCapsLock(event: Event | KeyboardEvent) {
   if (!(event instanceof KeyboardEvent)) return;
   capsLock.value = event.getModifierState('CapsLock');
 }
 
-async function login() {
+async function submit() {
   if (busy.value || !formRef.value) return;
   busy.value = true;
   formError.value = '';
+  const controller = new AbortController();
+  submission = controller;
+  const registering = isRegister.value;
   try {
     if (!(await formRef.value.validate().catch(() => false))) return;
-    const data = await post('/auth/login', form);
+    if (controller.signal.aborted) return;
+    const data = await publicAuth<AuthSession>(registering ? '/register' : '/login', {
+      body: { username: form.username.trim(), password: form.password, ...(registering ? { displayName: form.username.trim() } : {}) },
+      signal: controller.signal,
+    });
+    if (controller.signal.aborted) return;
+    if (!data.token) throw new Error('登录信息不完整，请稍后重试');
     sessionStorage.setItem('spb-token', data.token);
-    await router.replace('/');
+    form.password = '';
+    form.confirmPassword = '';
+    await router.replace('/dashboard');
   } catch (error) {
-    formError.value = error instanceof Error ? error.message : '登录失败，请稍后重试';
+    if (!controller.signal.aborted) formError.value = error instanceof Error ? error.message : `${registering ? '注册' : '登录'}失败，请稍后重试`;
   } finally {
-    busy.value = false;
+    if (submission === controller) busy.value = false;
   }
 }
 </script>
@@ -91,27 +126,34 @@ async function login() {
       <section class="auth-panel" aria-labelledby="login-title">
         <div class="auth-form-container">
           <span class="form-symbol" aria-hidden="true"><el-icon><Right /></el-icon></span>
-          <h2 id="login-title">欢迎回来</h2>
-          <p class="form-description">登录工作台，开始今天的工作。</p>
+          <h2 id="login-title">{{ isRegister ? '创建账号' : '欢迎回来' }}</h2>
+          <p class="form-description">{{ isRegister ? '注册后即可开始管理店铺与团队。' : '登录工作台，开始今天的工作。' }}</p>
 
-          <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="auth-form" :aria-busy="busy" @submit.prevent="login" @input="formError = ''">
+          <el-form :key="isRegister ? 'register' : 'login'" ref="formRef" :model="form" :rules="rules" label-position="top" class="auth-form" :aria-busy="busy" @submit.prevent="submit" @input="formError = ''">
             <el-form-item label="用户名" prop="username">
-              <el-input v-model.trim="form.username" name="username" placeholder="请输入用户名" autocomplete="username" :prefix-icon="User" :disabled="busy" autocapitalize="none" :spellcheck="false" />
+              <el-input v-model.trim="form.username" name="username" :placeholder="isRegister ? '设置登录用户名（3–80 个字符）' : '请输入用户名'" autocomplete="username" :maxlength="isRegister ? 80 : undefined" :prefix-icon="User" :disabled="busy" autocapitalize="none" :spellcheck="false" />
             </el-form-item>
             <el-form-item label="密码" prop="password">
-              <el-input v-model="form.password" name="password" placeholder="请输入密码" type="password" show-password autocomplete="current-password" :prefix-icon="Lock" :disabled="busy" @keydown="checkCapsLock" @keyup="checkCapsLock" @blur="capsLock = false" />
+              <el-input v-model="form.password" name="password" :placeholder="isRegister ? '设置密码，至少 12 个字符' : '请输入密码'" type="password" show-password :autocomplete="isRegister ? 'new-password' : 'current-password'" :prefix-icon="Lock" :disabled="busy" @keydown="checkCapsLock" @keyup="checkCapsLock" @blur="capsLock = false" />
+            </el-form-item>
+            <el-form-item v-if="isRegister" label="确认密码" prop="confirmPassword">
+              <el-input v-model="form.confirmPassword" name="confirm-password" placeholder="请再次输入密码" type="password" show-password autocomplete="new-password" :prefix-icon="Lock" :disabled="busy" @keydown="checkCapsLock" @keyup="checkCapsLock" @blur="capsLock = false" />
             </el-form-item>
             <div class="form-status" aria-live="polite">
               <span v-if="capsLock" class="caps-warning">大写锁定已开启</span>
-              <span v-else>使用管理员分配的账号登录</span>
+              <span v-else>{{ isRegister ? '请使用不易猜测的密码，并妥善保存。' : '使用注册账号或管理员分配的账号登录' }}</span>
             </div>
             <div v-if="formError" class="login-error" role="alert">{{ formError }}</div>
             <el-button class="login-submit" type="primary" native-type="submit" :loading="busy" :disabled="busy">
-              <span>{{ busy ? '正在登录…' : '登录工作台' }}</span><el-icon v-if="!busy"><Right /></el-icon>
+              <span>{{ busy ? (isRegister ? '正在注册…' : '正在登录…') : (isRegister ? '注册并进入工作台' : '登录工作台') }}</span><el-icon v-if="!busy"><Right /></el-icon>
             </el-button>
           </el-form>
 
-          <div class="account-help"><span>需要帮助？</span>请联系管理员获取账号或重置密码。</div>
+          <div class="account-switch">
+            <span>{{ isRegister ? '已有账号？' : '还没有账号？' }}</span>
+            <el-button link type="primary" :disabled="busy" @click="router.push(isRegister ? '/login' : '/register')">{{ isRegister ? '返回登录' : '立即注册' }}</el-button>
+          </div>
+          <div v-if="!isRegister" class="account-help"><span>需要帮助？</span>请联系管理员重置密码。</div>
         </div>
         <div class="auth-footer"><el-icon><Lock /></el-icon><span>独立环境 · 专注每一份业务</span></div>
       </section>
@@ -205,8 +247,8 @@ async function login() {
 .showcase-features { position: relative; display: flex; align-items: center; gap: 22px; padding-top: 22px; color: #6b81a4; font-size: 11px; }
 .showcase-features > span { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .showcase-features .el-icon { font-size: 14px; color: #7998cc; }
-.auth-panel { position: relative; display: flex; align-items: center; justify-content: center; padding: 64px 42px 96px; }
-.auth-form-container { width: 100%; max-width: 352px; }
+.auth-panel { position: relative; display: flex; flex-direction: column; align-items: center; padding: 64px 42px 96px; min-height: 0; overflow-y: auto; }
+.auth-form-container { width: 100%; max-width: 352px; flex: 0 0 auto; margin: auto; }
 .form-symbol { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #e8edf6; border-radius: 12px; color: #386bff; background: #f7f9fe; font-size: 23px; margin-bottom: 25px; }
 .auth-panel h2 { font-size: 30px; letter-spacing: 1px; font-weight: 650; margin: 0 0 12px; line-height: 1.4; }
 .form-description { font-size: 13px; color: var(--auth-muted); margin: 0 0 35px; line-height: 1.7; }
@@ -230,6 +272,8 @@ async function login() {
 .login-submit .el-icon { margin-left: 13px; font-size: 17px; }
 .account-help { border-top: 1px solid #edf0f5; margin-top: 29px; padding-top: 22px; font-size: 11px; color: #8692a6; line-height: 1.9; }
 .account-help > span { color: #5e6e86; }
+.account-switch { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 20px; font-size: 12px; color: #748198; }
+.account-switch .el-button { font-size: 12px; }
 .auth-footer { position: absolute; bottom: 29px; left: 20px; right: 20px; display: flex; justify-content: center; align-items: center; gap: 6px; color: #98a3b5; font-size: 10px; letter-spacing: .6px; }
 @media (min-width: 1100px) and (min-height: 850px) {
   .showcase-content { padding-top: 36px; }
@@ -284,5 +328,10 @@ async function login() {
 }
 @media (prefers-reduced-motion: reduce) {
   .auth-form :deep(.el-input__wrapper), .login-submit { transition: none; }
+}
+@media (max-height: 660px) {
+  .auth-panel { display: block; padding-top: 24px; padding-bottom: 28px; }
+  .auth-form-container { margin: 0 auto; }
+  .auth-footer { display: none; }
 }
 </style>

@@ -59,6 +59,7 @@ const fetch=async(input,options)=>{const base=(await chrome.storage.session.get(
       manifest.key=identities[name];
       manifest.permissions=manifest.permissions.filter(p=>p!=='superbrowser');
       if(source==='mall'){
+        manifest.permissions=[...new Set([...manifest.permissions,'webRequest','webRequestAuthProvider'])];
         manifest.content_scripts.unshift({js:['runtime/environment-policy.js'],matches:['http://*/*','https://*/*'],run_at:'document_start',world:'MAIN',all_frames:true,match_about_blank:true,match_origin_as_fallback:true});
         await writeFile(path.join(target,'runtime/environment-policy.js'),'// Configured by the desktop before launch.\n');
         const pageFile=path.join(target,'contentPage/contentPage.js');
@@ -78,6 +79,7 @@ const fetch=async(input,options)=>{const base=(await chrome.storage.session.get(
       workerText = workerText.replace(entries[0][0], `__spRun(async () => { __spInstallDesktop(); await __spInstallAccessPolicy(); return ${entries[0][1]}.init(); });`);
       workerText = `import { installAccessPolicy as __spInstallAccessPolicy } from '../runtime/access-policy.mjs';\nimport { installDesktopAdapter as __spInstallDesktop } from '../runtime/desktop-adapter.mjs';\n${workerText}`;
       if(config.mode==='superpower'){
+        workerText = `import { createProxyPac as __spProxyPac } from '../runtime/proxy-routing.mjs';\nimport { installProxyAuthentication as __spInstallProxyAuth } from '../runtime/proxy-auth.mjs';\n__spInstallProxyAuth({early:true});\n${workerText}`;
         workerText=workerText.replace('const ut = chrome?.superbrowser;', 'const ut = true;');
         workerText=`function __spInternalCookie(c){const host=c.domain.replace(/^\\./,'');return ['127.0.0.1','localhost',new URL(globalThis.__SP_BOOTSTRAP__.authOrigin).hostname].includes(host)&&['chrome_token','browserVersion','lang'].includes(c.name);}\n${workerText}`;
         workerText=workerText.replace(/([ci])\.domain\.indexOf\("zhanfubrowser"\) < 0/g, '$1.domain.indexOf("zhanfubrowser") < 0 && !__spInternalCookie($1)');
@@ -86,7 +88,7 @@ const fetch=async(input,options)=>{const base=(await chrome.storage.session.get(
       // complete PAC. Network repair remains available.
       workerText = workerText.replace('setProxyDirect() {', 'setProxyDirect() {\n      if (globalThis.__SP_BUILD__?.mode === "superpower") return;');
       workerText = workerText.replace('async getPacScript(e, t) {', `async getPacScript(e, t) {
-        if (globalThis.__SP_BUILD__?.mode === 'superpower') return 'function FindProxyForURL(url,host){if(host === "127.0.0.1" || host === "localhost" || host === "[::1]")return "DIRECT";return "PROXY '+e+'";}';`);
+        if (globalThis.__SP_BUILD__?.mode === 'superpower') return __spProxyPac(globalThis.__SP_BOOTSTRAP__);`);
       workerText = workerText.replace('x.reportOpenedTabUrls("check-page-completed"),', `x.reportOpenedTabUrls("check-page-completed"),
         globalThis.__SP_EVENT__?.('CheckCompleted').then(()=>chrome.storage.local.set({spStartup:{state:'ready',message:'店铺服务已连接，环境检测完成',at:new Date().toISOString()}})).catch(error=>console.error(error.message)),`);
       if(config.mode==='superpower')workerText=workerText.replace('const t = Number(e);\n  return Number.isFinite(t) ? t : null;', 'return String(e);');
@@ -112,15 +114,27 @@ function L(`);
         workerText=workerText.replace('chrome.runtime.onMessageExternal.addListener(async (e, t, r) => {','chrome.runtime.onMessageExternal.addListener(async (e, t, r) => { if(t.id!==globalThis.__SP_BOOTSTRAP__?.pluginIdMap?.RXMallHelper)return;');
         workerText=workerText.replace('await g(i || []),','await g(i || []), await chrome.storage.local.set({spStartup:{state:"ready",message:"店铺账号已同步",at:new Date().toISOString()}}),');
       }
-      workerText = `function __spStartAccount() {\n${workerText}\n}\n__spRun(__spStartAccount);\n`;
+      workerText = `function __spStartAccount() {\n${workerText}\n${config.mode==='superpower'?'return globalThis.__SP_ACCOUNT_STARTUP__;':''}\n}\n__spRun(__spStartAccount);\n`;
     }
     await writeFile(worker, `import { run as __spRun } from ${JSON.stringify(guardImport)};\n${workerText}`);
     if(config.mode==='superpower')await applyBranding(target,source,manifest,path.resolve(root,'../branding'));
     await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
     await writeFile(path.join(target, 'runtime/build.json'), JSON.stringify({ ...config, requiredMethods, defaultPopup }, null, 2) + '\n');
+    // Cover imported modules and page assets too: a manifest version can stay
+    // unchanged during development while Chromium retains an old worker.
+    const identity = createHash('sha256');
+    for (const file of (await files(target)).sort()) {
+      const content = await readFile(path.join(target, file));
+      identity.update(JSON.stringify([file, content.length]) + '\n').update(content);
+    }
+    const buildId = identity.digest('hex');
+    // A literal in executed code distinguishes a cached worker from new files
+    // on disk. Reading build.json at runtime alone cannot detect that mismatch.
+    await writeFile(worker, `globalThis.__SP_PLUGIN_BUILD_ID__ = ${JSON.stringify(buildId)};\n${await readFile(worker, 'utf8')}`);
+    await writeFile(path.join(target, 'runtime/build.json'), JSON.stringify({ ...config, requiredMethods, defaultPopup, buildId }, null, 2) + '\n');
     const zip = await zipDirectory(target);
     await writeFile(path.join(output, 'Plugin', name + '.zip'), zip);
-    artifacts.push({ name, bytes: zip.length, sha256: createHash('sha256').update(zip).digest('hex') });
+    artifacts.push({ name, buildId, bytes: zip.length, sha256: createHash('sha256').update(zip).digest('hex') });
   }
   await writeFile(path.join(output, 'build-report.json'), JSON.stringify({ ...config, requiredMethods, artifacts }, null, 2) + '\n');
   return { output, mode: config.mode, requiredMethods: requiredMethods.length, artifacts };

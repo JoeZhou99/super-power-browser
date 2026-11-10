@@ -1,5 +1,6 @@
 import { request, post, patch, remove, queryString } from '@/utils/request';
 import type { ProxyProtocol } from '@/utils/proxyImport';
+import type { ProxyOptions } from '@/utils/proxyOptions.mjs';
 
 export interface ProxyRecord {
   id: string; name: string; host: string; port: number; protocol: ProxyProtocol;
@@ -11,17 +12,17 @@ export interface ProxyRecord {
 export interface ProxyInput {
   name: string; host: string; port: number; protocol: ProxyProtocol; username: string;
   password?: string; webType: number; region: string; remark: string; provider: string;
-  expiresAt?: string | null; mapIp?: string; changeIpUrl?: string;
+  expiresAt?: string | null; mapIp?: string; changeIpUrl?: string; proxyOptions?: ProxyOptions;
 }
 export interface ProxyCredentials {
-  username: string; password: string;
+  username: string; password: string; proxyOptions?: ProxyOptions;
 }
 export interface ProxyQuery {
   webType?: number; protocol?: string; query?: string; page?: number; size?: number; recycled?: boolean;
 }
 export const proxyApi = {
-  list: (query: ProxyQuery) => request<{items: ProxyRecord[]; total: number}>('/proxies?' + queryString(query as Record<string, unknown>)),
-  get: (id: string) => request<ProxyRecord>(`/proxies/${encodeURIComponent(id)}`),
+  list: (query: ProxyQuery, signal?: AbortSignal) => request<{items: ProxyRecord[]; total: number}>('/proxies?' + queryString(query as Record<string, unknown>), {signal}),
+  get: (id: string, signal?: AbortSignal) => request<ProxyRecord>(`/proxies/${encodeURIComponent(id)}`, {signal}),
   credentials: (id: string, signal?: AbortSignal) => request<ProxyCredentials>(`/proxies/${encodeURIComponent(id)}/credentials`, {cache: 'no-store', signal}),
   create: (data: ProxyInput) => post('/proxies', data) as Promise<{id: string}>,
   update: (id: string, data: ProxyInput) => patch(`/proxies/${encodeURIComponent(id)}`, data) as Promise<{id: string}>,

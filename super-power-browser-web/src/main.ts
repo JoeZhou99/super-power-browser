@@ -12,6 +12,7 @@ import './styles/workbench.css';
 import './styles/brand.css';
 import 'virtual:uno.css';
 import './ai/styles/host.css';
+import './styles/scrollbar.css';
 router.afterEach(to=>document.body.classList.toggle('ai-page',to.path==='/zhifuAgent'));
 const app=createApp(App);
 (window as any).ruxOpen = (params: {browserId: string | number}) => window.api?.openBrowser(String(params.browserId));

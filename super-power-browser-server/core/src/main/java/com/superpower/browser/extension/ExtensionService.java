@@ -39,10 +39,12 @@ public class ExtensionService {
     }
     public Map<String,Object> capabilities() {
         var methods=new ArrayList<>(ROUTES.values());methods.add("getWhiteList");
-        return Map.of("protocol","super-power-browser-extension/1","ready",true,"nativeBridge",true,"methods",methods,"pluginDistribution","bundled","lineSwitching",false,"fullProfileSync",false,"cookieSync",true);
+        return Map.of("protocol","super-power-browser-extension/1","ready",true,"nativeBridge",true,"methods",methods,"pluginDistribution","bundled","lineSwitching",true,"fullProfileSync",false,"cookieSync",true);
     }
     public Map<String,Object> bootstrap(ExtensionSessions.Context c) {
-        return Map.of("cookie",documents.get(c.environmentId(),"settings","cookie",""),"environmentId",c.environmentId());
+        var env=shops.get(c.actor(),c.environmentId(),"shop.open");
+        var proxy=devices.launchProxy(c.actor(),text(env,"deviceId"));
+        return Map.of("cookie",documents.get(c.environmentId(),"settings","cookie",""),"environmentId",c.environmentId(),"preferredCandidateIndex",preferredCandidate(c,proxy),"snapshotId",candidateKey(proxy,0));
     }
     private void scope(ExtensionSessions.Context c,Map<String,Object> b) {
         for(String key:List.of("mallId","mall_id","storeId","browserId","bind_mall_id"))
@@ -56,7 +58,7 @@ public class ExtensionService {
     public Object call(ExtensionSessions.Context c,String method,Map<String,Object> b) {
         scope(c,b);String env=c.environmentId();
         Object result=switch(method) {
-            case "getUserInfo" -> Map.of("id",c.actor().id(),"username",c.actor().username(),"name",c.actor().username(),"level",c.actor().owner()?1:2,"permissions",c.actor().permissions());
+            case "getUserInfo" -> Map.of("id",c.actor().id(),"username",c.actor().username(),"name",c.actor().username(),"level",c.actor().owner()?1:c.actor().memberType()>=2?2:3,"permissions",c.actor().permissions());
             case "getMallInfo" -> mall(c);
             case "refreshToken" -> Map.of("token",c.token(),"access_token",c.token());
             case "getInfoByKey" -> setting(env,text(b,"key"));
@@ -99,13 +101,53 @@ public class ExtensionService {
             case "applyWhite","applyWhiteV2" -> saveRecord(env,"whitelistApplications",new LinkedHashMap<>(Map.of("request",b,"status","pending","createdAt",Instant.now().toString())),false);
             case "reviewReason","reviewReasonV2" -> documents.get(env,"whitelistApplications",required(b,"id",100),Map.of());
             case "reportCheckForcedOffline" -> Map.of("forcedOffline",false); // Session and grant checked before every call.
-            case "updateMainTransfer" -> throw new BusinessException(409,"当前设备没有供应商提供的备用线路");
+            case "updateMainTransfer" -> selectTransfer(c,b);
             case "uploadStatistics","reportVerification","setAccessStatus","transferSpeed" -> save(env,"reports",method,Map.of("data",b,"receivedAt",Instant.now().toString()));
             default -> throw new BusinessException(404,"未实现的插件接口："+method);
         };
         return Map.of("errorCode",0,"data",result,"message","success");
     }
     private Object save(String env,String collection,String id,Object value) {documents.put(env,collection,id,value);return Map.of("saved",true);}
+    @SuppressWarnings("unchecked") private List<Map<String,Object>> candidates(Map<String,Object> proxy) {
+        var result=new ArrayList<Map<String,Object>>();result.add(proxy);
+        if(proxy.get("proxyOptions") instanceof Map<?,?> options&&options.get("alternatives") instanceof List<?> alternatives)
+            for(Object value:alternatives)if(value instanceof Map<?,?> connection)result.add((Map<String,Object>)connection);
+        return result;
+    }
+    private Object ordered(Object input) {
+        if(input instanceof Map<?,?> map){var sorted=new TreeMap<String,Object>();map.forEach((k,v)->sorted.put(String.valueOf(k),ordered(v)));return sorted;}
+        if(input instanceof List<?> list)return list.stream().map(this::ordered).toList();
+        return input;
+    }
+    private String candidateKey(Map<String,Object> proxy,int index) {
+        var candidate=candidates(proxy).get(index);var connection=new LinkedHashMap<String,Object>();
+        for(String key:List.of("protocol","host","port","username","password","proxyOptions"))if(candidate.containsKey(key))connection.put(key,candidate.get(key));
+        return ExtensionSessions.hash(json(ordered(connection)));
+    }
+    private int preferredCandidate(ExtensionSessions.Context c,Map<String,Object> proxy) {
+        Object value=documents.get(c.environmentId(),"settings","preferredProxyRoute",Map.of());
+        if(value instanceof Map<?,?> selected&&selected.get("candidateIndex") instanceof Number number) {
+            int index=number.intValue();
+            if(index>=0&&index<candidates(proxy).size()&&Objects.equals(selected.get("deviceId"),proxy.get("id"))&&Objects.equals(selected.get("candidateKey"),candidateKey(proxy,index)))return index;
+        }
+        return 0;
+    }
+    private Object selectTransfer(ExtensionSessions.Context c,Map<String,Object> body) {
+        var env=shops.get(c.actor(),c.environmentId(),"shop.open");
+        var proxy=devices.launchProxy(c.actor(),text(env,"deviceId"));
+        Object selection=body.get("candidateIndex");
+        require(selection instanceof Number&&((Number)selection).doubleValue()==((Number)selection).intValue(),400,"线路编号不合法");
+        int index=((Number)selection).intValue();
+        require(index>=0&&index<candidates(proxy).size(),403,"只能选择当前店铺已配置的线路");
+        require(Objects.equals(body.get("snapshotId"),candidateKey(proxy,0)),409,"代理配置已变化，当前线路仅在本次窗口使用，请重新打开店铺后保存偏好");
+        // Store only the authorized server-side identity; never persist nodes or
+        // credentials supplied by the plugin. Changed/removed routes invalidate it.
+        documents.put(c.environmentId(),"settings","preferredProxyRoute",Map.of("candidateIndex",index,"candidateKey",candidateKey(proxy,index),"deviceId",text(proxy,"id")));
+        return Map.of("saved",true,"candidateIndex",index);
+    }
+    private Map<String,Object> publicCandidate(Map<String,Object> connection,int index) {
+        return Map.of("candidateIndex",index,"id",String.valueOf(index),"ip",text(connection,"host"),"port",number(connection,"port"),"proxy_type",text(connection,"protocol"));
+    }
     private Object saveCookie(String env,Map<String,Object> b) {
         Object cookie=b.getOrDefault("cookie","");String jsonCookie=cookie instanceof String?(String)cookie:json(cookie);
         if(!jsonCookie.isEmpty())require(JSON.readValue(jsonCookie,Object.class) instanceof List<?>,400,"Cookie 必须为数组");
@@ -186,7 +228,11 @@ public class ExtensionService {
         device.put("area_name",text(proxy,"region"));device.put("web_type",number(proxy,"webType"));device.put("protocol_family",number(proxy,"protocolFamily"));device.put("equipment_name",text(proxy,"name"));device.put("equipment_code",text(proxy,"id"));device.put("type_name",number(proxy,"ipType")==2?"自有设备":"平台设备");
         device.put("map_ip",text(proxy,"mapIp"));device.put("map_port",number(proxy,"mapPort"));device.put("port",number(proxy,"port"));device.put("proxy_type",text(proxy,"protocol"));
         result.put("has_one_agent_ip",device);
-        result.put("has_many_transfer_ip",List.of());return result;
+        var routes=candidates(proxy);var route=new LinkedHashMap<>(device);route.putAll(publicCandidate(proxy,0));
+        var alternatives=new ArrayList<Map<String,Object>>();for(int i=1;i<routes.size();i++)alternatives.add(publicCandidate(routes.get(i),i));
+        route.put("transfer_proxies",alternatives);route.put("preferredCandidateIndex",preferredCandidate(c,proxy));
+        result.put("has_one_agent_ip_v2",route);
+        result.put("has_many_transfer_ip",alternatives);return result;
     }
     private Object firewall(ExtensionSessions.Context c) {
         var env=shops.get(c.actor(),c.environmentId(),"shop.open");var fp=object(text(env,"fingerprint"));

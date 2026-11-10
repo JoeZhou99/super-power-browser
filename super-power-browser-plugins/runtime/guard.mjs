@@ -1,5 +1,7 @@
 // Runs before the extension worker. Never clear or replace a browser proxy
 // before authenticated startup configuration and the host contract are valid.
+import {configureProxyAuthentication} from './proxy-auth.mjs';
+import {createProxyPac} from './proxy-routing.mjs';
 const bytes = text => Uint8Array.from(atob(text), c => c.charCodeAt(0));
 const utf8 = new TextEncoder();
 export async function readBootstrap(configText, initText, cryptoApi = crypto) {
@@ -24,17 +26,48 @@ export async function readBootstrap(configText, initText, cryptoApi = crypto) {
   return config;
 }
 
-export async function checkBackend(build, bootstrap, fetcher = fetch) {
+export async function checkBackend(build, bootstrap, fetcher = fetch, timeoutMs = 8000) {
   if (build.mode === 'legacy') return;
   const response = await fetcher(`${build.apiBase}/capabilities`, {
     headers: { Authorization: `Bearer ${bootstrap.accessToken}` },
-    signal: AbortSignal.timeout(8000), redirect: 'error', cache: 'no-store',
+    signal: AbortSignal.timeout(Math.max(1,Math.ceil(timeoutMs))), redirect: 'error', cache: 'no-store',
   });
   if (!response.ok) throw new Error(`插件后台尚未就绪（HTTP ${response.status}）`);
   const body = await response.json();
   if (body.protocol !== 'super-power-browser-extension/1' || body.ready !== true || body.nativeBridge !== true) throw new Error('后台未声明完整插件协议和桌面通信支持');
   const missing = build.requiredMethods.filter(method => !body.methods?.includes(method));
   if (missing.length) throw new Error(`后台缺少 ${missing.length} 项插件接口：${missing.slice(0, 3).join('、')}`);
+}
+
+async function prepareProxyRouting(chromeApi, bootstrap) {
+  // Account helper has no proxy permission. Only the mall helper controls PAC.
+  if (!chromeApi.proxy?.settings) return false;
+  const data = createProxyPac(bootstrap);
+  await new Promise((resolve, reject) => chromeApi.proxy.settings.set({
+    scope:'regular', value:{mode:'pac_script',pacScript:{data,mandatory:true}},
+  }, () => {
+    const error=chromeApi.runtime.lastError;
+    error ? reject(new Error('无法设置当前店铺代理，请重新打开店铺')) : resolve();
+  }));
+  return true;
+}
+
+async function checkBackendAfterRouting(build, bootstrap, fetcher, controlsProxy) {
+  if(build.mode!=='superpower'||controlsProxy)return checkBackend(build,bootstrap,fetcher);
+  const deadline=Date.now()+8000;
+  let previous;
+  for (;;) {
+    if(Date.now()>=deadline)throw previous||new Error('插件后台连接超时');
+    try { return await checkBackend(build, bootstrap, fetcher,deadline-Date.now()); }
+    catch (error) {
+      // Both workers start independently. Account startup may hit the previous
+      // profile's PAC before the mall helper replaces its now-closed ports.
+      // Retry only transport failures, never invalid capabilities or HTTP auth.
+      if (!(error instanceof TypeError)||Date.now()>=deadline) throw error;
+      previous=error;
+      await new Promise(resolve=>setTimeout(resolve,Math.min(200,deadline-Date.now())));
+    }
+  }
 }
 
 export async function boot(chromeApi = chrome, fetcher = fetch) {
@@ -52,11 +85,16 @@ export async function boot(chromeApi = chrome, fetcher = fetch) {
     if(endpoint.protocol!=='https:'&&!(endpoint.protocol==='http:'&&['127.0.0.1','localhost'].includes(endpoint.hostname)))throw new Error('插件后台地址必须使用 HTTPS 或本机地址');
     build.compiledApiBase=build.apiBase;build.apiBase=bootstrap.apiBase;build.authOrigin=bootstrap.authOrigin;
   }
+  let controlsProxy=false;
   if (build.mode === 'superpower') {
     if (bootstrap.desktopProtocol !== 'super-power-browser-desktop/1' || bootstrap.kernelProtocol !== 'fingerprint-chromium/1') throw new Error('桌面与独立内核启动协议不匹配');
     if (!chromeApi.storage?.session || !chromeApi.cookies) throw new Error('当前浏览器缺少必需的扩展能力');
+    configureProxyAuthentication(bootstrap);
+    // A profile may retain an earlier extension PAC, and resource/direct rules
+    // also differ from the command-line proxy. Install current routing first.
+    controlsProxy=await prepareProxyRouting(chromeApi,bootstrap);
   } else if (!chromeApi.superbrowser) throw new Error('当前浏览器缺少所需的专用内核接口');
-  await checkBackend(build, bootstrap, fetcher);
+  await checkBackendAfterRouting(build, bootstrap, fetcher, controlsProxy);
   bootstrap.authOrigin ||= build.authOrigin;
   return { build, bootstrap };
 }

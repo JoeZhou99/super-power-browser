@@ -24,6 +24,7 @@ public class Bootstrap implements ApplicationRunner {
         String hash = AuthService.encodePassword(password);
         String tenantId = id();
         repository.createTenant(tenantId);
+        repository.initializeDepartment(tenantId,tenantId,"默认部门",true);
         repository.createUser(id(),tenantId,username,hash,"管理员",true);
         wallets.open(tenantId);
     }

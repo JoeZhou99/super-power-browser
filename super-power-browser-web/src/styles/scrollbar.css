@@ -1,0 +1,80 @@
+/* Shared by native scroll containers and Element Plus overlays. */
+:root {
+  --app-scrollbar-size: 10px;
+  --app-scrollbar-thumb: #c5cedc;
+  --app-scrollbar-thumb-hover: #a3b1c5;
+  --app-scrollbar-thumb-active: #8194af;
+}
+
+/* Keep Chromium's custom shape; standard scrollbar properties override it. */
+@supports selector(::-webkit-scrollbar) {
+  ::-webkit-scrollbar {
+    width: var(--app-scrollbar-size);
+    height: var(--app-scrollbar-size);
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    min-height: 32px;
+    min-width: 32px;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: var(--app-scrollbar-thumb);
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--app-scrollbar-thumb-hover);
+  }
+
+  ::-webkit-scrollbar-thumb:active {
+    background-color: var(--app-scrollbar-thumb-active);
+  }
+
+  ::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+}
+
+/* Low specificity lets intentionally hidden scrollbars stay hidden. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--app-scrollbar-thumb) transparent;
+  }
+
+  :where(*:hover, *:focus-within) {
+    scrollbar-color: var(--app-scrollbar-thumb-hover) transparent;
+  }
+}
+
+/* Component styles may be loaded again with lazy routes. */
+html .el-scrollbar {
+  --el-scrollbar-bg-color: var(--app-scrollbar-thumb);
+  --el-scrollbar-hover-bg-color: var(--app-scrollbar-thumb-hover);
+  --el-scrollbar-opacity: 1;
+  --el-scrollbar-hover-opacity: 1;
+}
+
+html .el-scrollbar__thumb {
+  border-radius: 999px;
+}
+
+html .el-scrollbar__thumb:active {
+  background-color: var(--app-scrollbar-thumb-active);
+}
+
+/* Respect system contrast colors instead of forcing the decorative palette. */
+@media (forced-colors: active) {
+  :root {
+    --app-scrollbar-thumb: ButtonText;
+    --app-scrollbar-thumb-hover: Highlight;
+    --app-scrollbar-thumb-active: Highlight;
+  }
+}

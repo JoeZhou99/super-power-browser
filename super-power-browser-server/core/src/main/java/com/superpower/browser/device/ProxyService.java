@@ -16,7 +16,7 @@ public class ProxyService {
     public Map<String,Object> get(Actor actor,String id){actor.allow("device.view");return repository.proxy(actor,id,false);}
     public Map<String,Object> list(Actor actor,int webType,String protocol,String query,int page,int size,boolean recycled){
         actor.allow("device.view");require(Set.of(0,1,2).contains(webType),400,"代理类型不合法");
-        protocol=protocol.trim().toLowerCase(Locale.ROOT);require(Set.of("","http","https","socks5","ssh").contains(protocol),400,"代理协议不支持");
+        protocol=protocol.trim().toLowerCase(Locale.ROOT);require(protocol.isEmpty()||ProxyOptions.PROTOCOLS.contains(protocol),400,"代理协议不支持");
         require(page>0&&size>0&&size<=200&&query.length()<=200,400,"分页或搜索参数不合法");
         return repository.proxies(actor,webType,protocol,query.trim(),page,size,recycled);
     }
@@ -49,7 +49,7 @@ public class ProxyService {
     public Map<String,Object> credentials(Actor actor,String id){
         actor.allow("device.edit");var own=repository.proxy(actor,id,true);
         require(!flag(own,"recycled"),409,"请先恢复代理");
-        return Map.of("username",text(own,"username"),"password",text(own,"password"));
+        return Map.of("username",text(own,"username"),"password",text(own,"password"),"proxyOptions",own.get("proxyOptions"));
     }
     @Transactional public Map<String,Object> checkResult(Actor actor,String id,Map<String,Object> request){
         actor.allow("device.edit");var proxy=repository.proxy(actor,id,false);require(!flag(proxy,"recycled"),409,"请先恢复代理");

@@ -1,4 +1,5 @@
-export const PROXY_PROTOCOLS = ['http', 'https', 'socks5', 'ssh'];
+import { parseProxyShare } from './proxyShares.mjs';
+export const PROXY_PROTOCOLS = ['http', 'https', 'socks5', 'socks4', 'socks4a', 'ssh', 'ss', 'ssr', 'vmess', 'vless'];
 export const MAX_PROXY_IMPORT = 500;
 
 export function validateProxyAddress(host, port) {
@@ -32,6 +33,7 @@ function decodeCredential(value) {
 export function parseProxyLine(line, defaultProtocol = 'http') {
   let source = line.trim(), remark = '', changeIpUrl = '', hasRemark = false, hasUrl = false;
   if (!source) throw new Error('代理内容不能为空');
+  if (source.length > 65536) throw new Error('单条代理内容过长');
   // Suffixes can occur in either order; an IPv6 address is never treated as a URL suffix.
   for (let suffix = 0; suffix < 2; suffix++) {
     const remarkMatch = source.match(/\{([^{}]*)\}\s*$/);
@@ -47,7 +49,11 @@ export function parseProxyLine(line, defaultProtocol = 'http') {
   let protocol = defaultProtocol.toLowerCase();
   const scheme = source.match(/^([a-z][a-z\d+.-]*):\/\//i);
   if (scheme) { protocol = scheme[1].toLowerCase(); source = source.slice(scheme[0].length); }
-  if (!PROXY_PROTOCOLS.includes(protocol)) throw new Error('协议仅支持 HTTP、HTTPS、SOCKS5、SSH');
+  if (!PROXY_PROTOCOLS.includes(protocol)) throw new Error('不支持的代理协议');
+  if (['ss','ssr','vmess','vless'].includes(protocol)) {
+    const proxy = parseProxyShare(source, protocol, validateProxyAddress);
+    return {...proxy, ...(hasRemark ? {remark, name: remark || proxy.name} : {}), changeIpUrl};
+  }
   let username = '', password = '', endpoint = source, uriCredentials = false;
   const at = source.lastIndexOf('@');
   const colonCredentials = source.startsWith('[')
@@ -69,6 +75,8 @@ export function parseProxyLine(line, defaultProtocol = 'http') {
     username = match[3]; password = match[4];
   }
   if (!username && password) throw new Error('填写密码时必须同时填写账号');
+  if (protocol === 'ssh' && !username) throw new Error('SSH 代理需要填写账号');
+  if (['socks4','socks4a'].includes(protocol) && password) throw new Error('SOCKS4 不支持密码认证');
   const address = validateProxyAddress(match[1], match[2]);
   return { ...address, protocol, username, password, remark, changeIpUrl, name: remark || `${address.host}:${address.port}` };
 }

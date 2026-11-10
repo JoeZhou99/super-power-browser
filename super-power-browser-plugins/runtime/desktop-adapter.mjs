@@ -1,11 +1,18 @@
 import {a as encrypt, i as decrypt, f as socketEncrypt} from '../js/common.js';
+import {installProxyAuthentication} from './proxy-auth.mjs';
 const pending=new Map();
 export function installDesktopAdapter(){
   if(globalThis.__SP_BUILD__?.mode!=='superpower')return;
+  installProxyAuthentication();
   globalThis.__SP_REPLY__=reply=>{
     const item=pending.get(reply.requestId);if(!item)return;
     pending.delete(reply.requestId);clearTimeout(item.timer);
-    reply.ret===200?item.resolve(reply):item.reject(new Error(reply.returnObj?.message||'桌面操作失败'));
+    if(reply.ret===200)item.resolve(reply);
+    else{
+      const error=new Error(reply.returnObj?.message||'桌面操作失败'),index=reply.returnObj?.candidateIndex;
+      if(reply.action==='StartProxy'&&Number.isInteger(index)&&index>=0&&index<=8)error.candidateIndex=index;
+      item.reject(error);
+    }
   };
   globalThis.__SP_RPC__=async request=>{
     const deadline=Date.now()+15000;
@@ -17,7 +24,10 @@ export function installDesktopAdapter(){
     request.browserId=globalThis.__SP_BOOTSTRAP__.browserId;
     request.requestId||=crypto.randomUUID();
     const response=new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>{pending.delete(request.requestId);reject(new Error('桌面通信超时'));},15000);
+      // Route selection validates a candidate and restarts a local helper; SSH
+      // can legitimately exceed the ordinary short RPC deadline.
+      const timeout=['StartProxy','TransferSpeed'].includes(request.action)?75000:15000;
+      const timer=setTimeout(()=>{pending.delete(request.requestId);reject(new Error('桌面通信超时'));},timeout);
       pending.set(request.requestId,{resolve,reject,timer});
     });
     bridge.ws.send(btoa(JSON.stringify({iv:bridge.iv,mac:bridge.mac,value:socketEncrypt(JSON.stringify(request),bridge.iv,bridge.wsDecryptKey)})));

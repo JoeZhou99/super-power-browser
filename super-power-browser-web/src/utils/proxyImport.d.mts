@@ -1,7 +1,8 @@
-export type ProxyProtocol = 'http' | 'https' | 'socks5' | 'ssh';
+import type { ProxyOptions } from './proxyOptions.mjs';
+export type ProxyProtocol = 'http' | 'https' | 'socks5' | 'socks4' | 'socks4a' | 'ssh' | 'ss' | 'ssr' | 'vmess' | 'vless';
 export interface ParsedProxy {
   name: string; host: string; port: number; protocol: ProxyProtocol;
-  username: string; password: string; remark: string; changeIpUrl: string;
+  username: string; password: string; remark: string; changeIpUrl: string; proxyOptions?: ProxyOptions;
 }
 export interface ProxyImportRow { line: number; proxy?: ParsedProxy; error: string }
 export const PROXY_PROTOCOLS: ProxyProtocol[];

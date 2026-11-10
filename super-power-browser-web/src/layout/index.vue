@@ -18,7 +18,7 @@ const groups=computed(()=>[
   {name:'device',title:'设备管理',icon:Monitor,children:[['设备列表','/agentIp/all','device.view'],['购买设备','/agentIp/aggregateBuy3','device.buy'],['设备回收站','/agentIp/recycle','device.view']]},
   {name:'proxy',title:'代理管理',icon:Connection,children:[['代理列表','/proxy/list','device.view'],['动态代理','/proxy/dynamic','device.view']]},
   {name:'money',title:'费用管理',icon:Wallet,children:[['账户充值','/money/recharge','wallet.recharge|wallet.view'],['订单管理','/money/order','order.view']]},
-  {name:'company',title:'成员管理',icon:User,children:[['成员管理','/companyManage/membersMamanger','member.manage|role.manage'],['角色权限','/companyManage/roles','role.manage|member.manage']]}
+  {name:'company',title:'企业管理',icon:User,children:[['部门与成员','/companyManage/membersMamanger','member.manage|role.manage'],['角色权限','/companyManage/roles','role.manage|member.manage']]}
 ].map(g=>({...g,children:g.children.filter(c=>c[2]!.split('|').some(p=>permissions.can(p)))})).filter(g=>g.children.length));
 watch(()=>route.fullPath,async()=>{
   const path=route.fullPath,current=tabs.value.find(tab=>tab.path===path);

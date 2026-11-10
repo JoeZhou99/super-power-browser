@@ -2,7 +2,8 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const net=require('node:net');
 const {spawn}=require('node:child_process');
-const {ProxyRuntime,upstream}=require('../services/ProxyRuntime');
+const {ProxyRuntime,upstream,proxyError}=require('../services/ProxyRuntime');
+const {ProxyRoutes}=require('../services/ProxyRoutes');
 const WebSocket=require('ws');
 const {preparePlugins,clearBootstrap}=require('../pluginManage/PluginService');
 const {DesktopBridge}=require('../pluginManage/DesktopBridge');
@@ -66,9 +67,10 @@ class BrowserHost {
     const iconPath=path.join(profile,'superpower.ico');
     if(process.platform==='win32')await fs.copyFile(path.join(this.config.resources,'branding/app.ico'),iconPath);
     check(signal);
-    const proxy=new ProxyRuntime(environment.proxy,{signal});
-    const run={status:'starting',startupTimings,networkController:new AbortController(),notifications:environment.fingerprint.notifications!==false,kernelVersion:kernel.version,proxy,profile,iconPath,child:null,port:await freePort(),debuggerUrl:null};
+    const proxy=new ProxyRuntime(environment.proxy,{signal,resources:this.config.resources});
+    const run={status:'starting',startupTimings,pluginGeneration:0,networkController:new AbortController(),notifications:environment.fingerprint.notifications!==false,kernelVersion:kernel.version,proxy,profile,iconPath,child:null,port:await freePort(),debuggerUrl:null};
     this.running.set(id,run);
+    proxy.on('failure',error=>{run.proxyFailure=error.message;void this.close(id).catch(this.onActionError);});
     try{
       check(signal);
       const extensionRequest=async(route,body)=>{
@@ -77,32 +79,93 @@ class BrowserHost {
         const result=await response.json();if(!response.ok||result.errorCode)throw new Error(result.message||'插件后台请求失败');return result;
       };
       const probeSignal=signal?AbortSignal.any([signal,run.networkController.signal]):run.networkController.signal;
-      const probeNetwork=()=>collectGeo({proxyUrl:'http://127.0.0.1:'+proxy.port,expectedIp:expectedExit(environment.proxy),firstValid:true,signal:probeSignal});
+      const routes=new ProxyRoutes(environment.proxy,proxy,{target:environment.startUrl,resources:this.config.resources,signal:probeSignal});
+      if(environment.proxy.proxyOptions?.resourceProxy){
+        run.resourceProxy=new ProxyRuntime(environment.proxy.proxyOptions.resourceProxy,{resources:this.config.resources,signal:probeSignal});
+        run.resourceProxy.on('failure',error=>{run.proxyFailure=error.message;void this.close(id).catch(this.onActionError);});
+      }
+      const probeNetwork=async()=>{
+        const exit=await collectGeo({proxyUrl:proxy.url,expectedIp:expectedExit(environment.proxy),firstValid:true,signal:probeSignal});
+        const verdict=validateExit(environment.proxy,exit);
+        run.networkChecks=[...(run.networkChecks||[]),{at:new Date().toISOString(),available:exit.available,allowed:verdict.allowed,message:verdict.message,durationMs:exit.durationMs,providers:exit.diagnostics}].slice(-8);
+        return exit;
+      };
+      const switchRoute=async candidateIndex=>{
+        if(run.routeSwitch)throw proxyError('正在切换线路，请稍后重试');
+        const operation=(async()=>{
+          await run.networkProbe?.catch(()=>{});
+          await proxy.switchCandidate(candidateIndex,{validate:async(connection,sessionSignal)=>{
+            const candidate=new ProxyRuntime(connection,{resources:this.config.resources,signal:AbortSignal.any([sessionSignal,probeSignal])});
+            try{
+              await candidate.listen();
+              const exit=await collectGeo({proxyUrl:candidate.url,expectedIp:expectedExit(environment.proxy),firstValid:true,signal:probeSignal});
+              const verdict=validateExit(environment.proxy,exit);
+              if(!verdict.allowed)throw proxyError(verdict.message);
+            }finally{await candidate.close();}
+          }});
+          initialNetwork=null;
+          // An old in-flight check must not become the result of the new route.
+          run.networkProbe=null;run.networkChecked=false;
+          return {isSuccess:true,candidateIndex:proxy.candidateIndex,snapshotId:routes.snapshotId,proxyAddress:[
+            {protocol:'http',ip:'127.0.0.1',port:proxy.port},
+            {protocol:'socks5',ip:'127.0.0.1',port:proxy.socksPort}
+          ]};
+        })().finally(()=>{if(run.routeSwitch===operation)run.routeSwitch=null;});
+        run.routeSwitch=operation;return operation;
+      };
       const preparations=await Promise.allSettled([
-        (async()=>{await proxy.listen();check(signal);initialNetwork={at:Date.now(),promise:probeNetwork().catch(()=>({available:false,message:'代理出口检测失败'}))};})(),
-        (async()=>{run.session=await this.api.request('/environments/'+id+'/extension-sessions',{method:'POST',body:{},signal});check(signal);return extensionRequest('/bootstrap');})()
+        (async()=>{
+          await proxy.listen();check(signal);
+          const prepared={completedAt:null};
+          prepared.promise=probeNetwork().catch(()=>({available:false,message:'代理出口检测失败'})).finally(()=>{prepared.completedAt=Date.now();});
+          initialNetwork=prepared;
+        })(),
+        (async()=>{run.session=await this.api.request('/environments/'+id+'/extension-sessions',{method:'POST',body:{},signal});check(signal);return extensionRequest('/bootstrap');})(),
+        run.resourceProxy?.listen()
       ]);
       check(signal);const failed=preparations.find(result=>result.status==='rejected');if(failed)throw failed.reason;
       const saved=preparations[1].value;mark('services');
-      run.bridge=new DesktopBridge({id,proxy:environment.proxy,onAction:async(action,args)=>{
+      if(saved.snapshotId===routes.snapshotId&&Number.isInteger(saved.preferredCandidateIndex)&&saved.preferredCandidateIndex>0){
+        try{await switchRoute(saved.preferredCandidateIndex);}
+        catch(error){check(signal);run.routeRestoreFailure=error.message;}
+      }
+      environment.preferredCandidateIndex=proxy.candidateIndex;
+      run.bridge=new DesktopBridge({id,proxy:environment.proxy,runtime:proxy,routes,onAction:async(action,args)=>{
+        if(action==='GetProxyRoutes')return routes.state();
+        if(action==='TransferSpeed')return routes.latency(args);
         if(action==='GetNetworkInfo'){
+          const generation=run.pluginGeneration;
+          if(run.routeSwitch)await run.routeSwitch;
+          if(generation!==run.pluginGeneration)throw new Error('插件已更新，请重新检测');
           const prepared=initialNetwork;initialNetwork=null;
-          run.networkProbe??=(prepared&&Date.now()-prepared.at<10000?prepared.promise:probeNetwork()).then(exit=>{run.networkChecked=true;mark('network');return {local,exit,...validateExit(environment.proxy,exit)};}).finally(()=>{run.networkProbe=null;});
+          if(!run.networkProbe){
+            // A slow startup probe is still valid while pending. Expire only
+            // completed results, otherwise opening the page starts a duplicate.
+            const probe=(prepared&&(!prepared.completedAt||Date.now()-prepared.completedAt<10000)?prepared.promise:probeNetwork()).then(exit=>{
+              if(generation===run.pluginGeneration){run.networkChecked=true;mark('network');}
+              return {local,exit,...validateExit(environment.proxy,exit)};
+            }).finally(()=>{if(run.networkProbe===probe)run.networkProbe=null;});
+            run.networkProbe=probe;
+          }
           return run.networkProbe;
         }
         if(action==='GetLocalNetworkInfo')return waitFor(localReady,signal);
         if(action==='UpdateMallCookie'||action==='UploadCookies')return (await extensionRequest('/api/v1/bindMall/setCookie',{mallId:id,cookie:args.cookie||''})).data;
         if(action==='CheckCompleted')return (await extensionRequest('/api/v1/bindMall/setAccessStatus',{mallId:id,status:1})).data;
         if(action==='UploadCache')throw new Error('完整浏览器缓存同步尚未配置；Cookie 已独立同步');
-        if(action==='StartProxy')throw new Error('当前设备没有已配置的备用线路');
+        if(action==='StartProxy'){
+          const selection=args.proxyInfo;
+          routes.select(selection);
+          return switchRoute(selection.candidateIndex);
+        }
         return this.desktopAction(id,action);
       }});
       const websocketPort=await run.bridge.listen();
       check(signal);
-      const plugins=await preparePlugins(this.config.resources,profile,{environment,session:run.session,websocketPort,proxyUrl:`http://127.0.0.1:${proxy.port}`,apiUrl:this.config.apiUrl,cookie:saved.cookie,localGeo:local.available?local:null});
+      const plugins=await preparePlugins(this.config.resources,profile,{environment,session:run.session,websocketPort,proxyUrl:proxy.url,resourceProxyUrl:run.resourceProxy?.url,apiUrl:this.config.apiUrl,cookie:saved.cookie,localGeo:local.available?local:null});
       mark('plugins');
       run.bridge.configure(plugins.bundle,Object.values(plugins.pluginIdMap));
-      const {args}=await prepareLaunch(environment,{kernel,profile,proxyUrl:`http://127.0.0.1:${proxy.port}`,plugins:plugins.dirs,debugPort:run.port,downloads:this.config.downloads});
+      const {args}=await prepareLaunch(environment,{kernel,profile,proxyUrl:proxy.browserUrl,plugins:plugins.dirs,debugPort:run.port,downloads:this.config.downloads});
       check(signal);
       const child=spawn(executable,args,{cwd:path.dirname(executable),windowsHide:false,stdio:'ignore'});run.child=child;mark('process');
       let exited=false,spawnError;
@@ -117,7 +180,11 @@ class BrowserHost {
       if(!run.debuggerUrl)throw new Error('内核启动超时，未获得可验证的运行状态');
       await this.reveal(run,signal);mark('window');
       await this.writeJournal();
-      await waitFor(activatePlugins(run,Object.values(plugins.pluginIdMap),signal),signal);check(signal);
+      run.pluginBuilds=await waitFor(activatePlugins(run,plugins.builds,signal,{onReload:plugin=>{
+        if(plugin.id===plugins.pluginIdMap.RXMallHelper){
+          run.pluginGeneration++;run.bridge.invalidateReadiness();run.networkChecked=false;run.networkProbe=null;
+        }
+      }}),signal);check(signal);
       mark('activation');
       const pluginDeadline=Date.now()+60000;
       while(!run.bridge.ready&&!run.networkChecked&&Date.now()<pluginDeadline){check(signal);if(exited)throw new Error(`内核提前退出（${run.exitCode}）`);await pause(250,signal);}
@@ -143,8 +210,8 @@ class BrowserHost {
     const run=this.running.get(id);if(!run||(expected&&run!==expected))return;if(run.cleaning)return run.cleaning;
     run.cleaning=(async()=>{
       run.networkController?.abort(cancelled());
-      await fs.writeFile(path.join(run.profile,'runtime-diagnostics.json'),JSON.stringify({startupTimings:run.startupTimings,exitCode:run.exitCode,startError:run.startError,connected:run.bridge?.connected,ready:run.bridge?.ready,events:run.bridge?.events,at:new Date().toISOString()},null,2)).catch(()=>{});
-      await Promise.allSettled([run.proxy.close(true),run.bridge?.close(),run.session?this.api.request(`/environments/${id}/extension-sessions/${run.session.id}`,{method:'DELETE'}):Promise.resolve()]);
+      await fs.writeFile(path.join(run.profile,'runtime-diagnostics.json'),JSON.stringify({startupTimings:run.startupTimings,pluginBuilds:run.pluginBuilds,networkChecks:run.networkChecks,exitCode:run.exitCode,startError:run.startError,routeRestoreFailure:run.routeRestoreFailure,connected:run.bridge?.connected,ready:run.bridge?.ready,events:run.bridge?.events,at:new Date().toISOString()},null,2)).catch(()=>{});
+      await Promise.allSettled([run.proxy.close(true),run.resourceProxy?.close(),run.bridge?.close(),run.session?this.api.request(`/environments/${id}/extension-sessions/${run.session.id}`,{method:'DELETE'}):Promise.resolve()]);
       try{await clearBootstrap(run.profile);}finally{this.running.delete(id);this.windows.release(run.child?.pid);await this.writeJournal();}
     })();return run.cleaning;
   }

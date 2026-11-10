@@ -39,6 +39,30 @@ final class ProxySettings {
         if(value.isBlank())return "";
         String result=host(value);require(result.contains(":")||result.matches("[0-9]+(?:\\.[0-9]+){3}"),400,"检测结果必须是 IP 地址");return result;
     }
+    /** HTTP Host/:authority may carry a port; TLS serverName must remain a hostname. */
+    static String transportHost(String value) {
+        String input=value.trim();if(input.isEmpty())return "";
+        require(input.length()<=255,400,"传输 Host 过长");
+        String address,port="";
+        if(input.startsWith("[")) {
+            int end=input.indexOf(']');require(end>1,400,"传输 Host 的 IPv6 地址必须使用方括号");
+            address=input.substring(1,end);require(address.contains(":"),400,"传输 Host 的方括号仅用于 IPv6");
+            String suffix=input.substring(end+1);
+            if(!suffix.isEmpty()){require(suffix.startsWith(":"),400,"传输 Host 格式不正确");port=suffix.substring(1);require(!port.isEmpty(),400,"传输 Host 端口不合法");}
+        } else {
+            int colon=input.indexOf(':');
+            require(colon<0||colon==input.lastIndexOf(':'),400,"传输 Host 的 IPv6 地址必须使用方括号");
+            address=colon<0?input:input.substring(0,colon);
+            if(colon>=0){port=input.substring(colon+1);require(!port.isEmpty(),400,"传输 Host 端口不合法");}
+        }
+        address=host(address);if(address.contains(":"))address="["+address+"]";
+        if(!port.isEmpty()) {
+            require(port.matches("[0-9]{1,5}"),400,"传输 Host 端口不合法");
+            int number=Integer.parseInt(port);require(number>0&&number<=65535,400,"传输 Host 端口不合法");
+            return address+":"+number;
+        }
+        return address;
+    }
     static String changeUrl(String value) {
         String result=value.trim();if(result.isEmpty())return result;
         require(result.getBytes(java.nio.charset.StandardCharsets.UTF_8).length<=2000,400,"换 IP 链接最多 2000 字节");

@@ -4,6 +4,7 @@ import { a as w, G as ge, s as ke, b as ye } from "../js/auth.js";
 import { L as _e, a as u, W as g, P as k, R as we, i as Ie } from "../js/desktop-bridge.js";
 import { p as be, i as Pe } from "../js/cookies.js";
 import "../js/vendor-commonjs.js";
+import {switchAuthorizedProxy, queryAuthorizedProxyRoutes, measureAuthorizedTransfer} from "../runtime/proxy-switch.mjs";
 const ve = {
   adsBookmark: [],
   addAdsBookmarkList: [],
@@ -1481,6 +1482,52 @@ const x = De(d),
     openHelperIndex() {
       const e = this.initJson;
       let t = chrome.runtime.getURL("/contentPage/check.html") + "?mallId=" + e?.sysMallId;
+      if (globalThis.__SP_BUILD__?.mode === "superpower") {
+        if (this.spOpeningCheckPage) return this.spOpeningCheckPage;
+        const opening = (async () => {
+          const check = new URL(t), mallId = check.searchParams.get("mallId");
+          const ownHosts = new Set([check.host, chrome.runtime.id]);
+          const destination = tab => tab.pendingUrl || tab.url || "";
+          const ownCheck = tab => {
+            try {
+              const url = new URL(destination(tab));
+              return url.protocol === "chrome-extension:" && ownHosts.has(url.host) &&
+                url.pathname === check.pathname && url.searchParams.get("mallId") === mallId;
+            } catch { return false; }
+          };
+          const blank = tab => ["about:blank", "chrome://newtab/", "chrome://newtab"].includes(destination(tab));
+          const windows = (await chrome.windows.getAll({populate:true})).filter(window => window.type === "normal");
+          const tabs = windows.flatMap(window => window.tabs || []), existing = tabs.filter(ownCheck);
+          // Remember the tab we created even if Chrome has not exposed its URL
+          // yet. Concurrent initialization must share this entire operation.
+          const reserved = tabs.find(tab => tab.id === this.spCheckTabId && this.spCheckMallId === mallId &&
+            (!destination(tab) || ownCheck(tab) || blank(tab)));
+          let target = existing.find(tab => tab.id === this.spCheckTabId) || existing[0] || reserved || tabs.find(blank);
+          if (target) {
+            const current = await chrome.tabs.get(target.id).catch(() => null);
+            target = current && (ownCheck(current) || blank(current) ||
+              (current.id === reserved?.id && !destination(current))) ? current : null;
+          }
+          const opened = target
+            ? this.check_completed && ownCheck(target) ? target : await chrome.tabs.update(target.id, {url:t})
+            : await chrome.tabs.create({url:t,...(windows[0]?.id ? {windowId:windows[0].id} : {})});
+          this.spCheckTabId = opened.id; this.spCheckMallId = mallId;
+          // Only remove confirmed duplicates for this shop. A tab may have
+          // begun navigating elsewhere since the window snapshot was read.
+          for (const duplicate of existing) {
+            if (duplicate.id === opened.id) continue;
+            const current = await chrome.tabs.get(duplicate.id).catch(() => null);
+            if (current && ownCheck(current)) await chrome.tabs.remove(current.id).catch(() => {});
+          }
+          return opened;
+        })().catch(() => {
+          u.error("【zf-mall-helper】openCheckPage failed");
+        }).finally(() => {
+          if (this.spOpeningCheckPage === opening) this.spOpeningCheckPage = null;
+        });
+        this.spOpeningCheckPage = opening;
+        return opening;
+      }
       (console.log("打开check页面: " + t),
         u.info(`【zf-mall-helper】openCheckPage:${t}`),
         chrome.windows.getAll({ populate: !0 }, (o) => {
@@ -1512,7 +1559,7 @@ const x = De(d),
       const n = await this.getPacScript(t, o);
       (console.log("proxyConfig", n),
         chrome.proxy.settings.set(
-          { scope: "regular", value: { mode: "pac_script", pacScript: { data: n } } },
+          { scope: "regular", value: { mode: "pac_script", pacScript: { data: n, mandatory: globalThis.__SP_BUILD__?.mode === "superpower" } } },
           () => {
             (console.log("代理设置完成"),
               (this.proxy_complete = !0),
@@ -1637,9 +1684,48 @@ const x = De(d),
           "",
       };
     },
+    guardUncheckedTab(tab) {
+      this.spPendingDetectionTabs ||= new Set();
+      if (this.isDebug || (this.cookie_complete && this.proxy_complete && this.check_completed)) {
+        this.spPendingDetectionTabs.delete(tab.id);
+        return false;
+      }
+      const url = tab.pendingUrl || tab.url || "";
+      if (!url || ["about:blank", "chrome://newtab/", "chrome://newtab"].includes(url)) {
+        // onCreated can precede the destination. Wait for this new tab's
+        // onUpdated event instead of closing an extension or restored page.
+        this.spPendingDetectionTabs.add(tab.id);
+        return false;
+      }
+      this.spPendingDetectionTabs.delete(tab.id);
+      if (!/^https?:\/\//i.test(url)) return false;
+      chrome.runtime.sendMessage({type:h.event_type.no_other_action}, {}, () => {});
+      chrome.tabs.remove(tab.id).catch(() => {});
+      return true;
+    },
     initEvent() {
       (u.info("【zf-mall-helper】initEvent"),
         chrome.runtime.onMessage.addListener((e, t, o) => {
+          if (['sp:proxy-routes','sp:transfer-speed'].includes(e?.type) && globalThis.__SP_BUILD__?.mode === 'superpower') {
+            const options={extensionId:chrome.runtime.id, extensionRoot:chrome.runtime.getURL(''), rpc:(action,args)=>globalThis.__SP_EVENT__(action,args)};
+            const operation=e.type==='sp:proxy-routes' ? queryAuthorizedProxyRoutes(t,options) : measureAuthorizedTransfer(e,t,options);
+            operation.then(o,()=>o({available:false,message:'无法读取线路状态，请重试'}));
+            return true;
+          }
+          if (e?.type === 'sp:proxy-switch' && globalThis.__SP_BUILD__?.mode === 'superpower') {
+            switchAuthorizedProxy(e, t, {
+              extensionId: chrome.runtime.id,
+              extensionRoot: chrome.runtime.getURL(''),
+              rpc: (action, args) => globalThis.__SP_EVENT__(action, args),
+              notify: message => chrome.runtime.sendMessage(message),
+              readyType: h.event_type.init_proxy_complete,
+            }).then(o, error => {
+              const failure={isSuccess:false, message:'线路切换失败，请重试或选择其他线路'};
+              if(Number.isInteger(error?.candidateIndex)&&error.candidateIndex>=0&&error.candidateIndex<=8)failure.candidateIndex=error.candidateIndex;
+              o(failure);
+            });
+            return true;
+          }
           if (
             (console.log(
               "收到来自content-script的消息：" + (e.event_type || e.type || e.action),
@@ -1935,6 +2021,10 @@ const x = De(d),
                       (console.log("close_browser 关闭浏览器"),
                         g.sendWsData(h.event_type.close_browser));
                     else if (e.type === h.event_type.swith_transit) {
+                      if (globalThis.__SP_BUILD__?.mode === 'superpower') {
+                        o({isSuccess:false, message:'请使用已配置的线路编号切换'});
+                        return false;
+                      }
                       (console.log("切换中继", e),
                         u.info("【zf-mall-helper=>initEvent】swith_transit"));
                       const n = { proxyInfo: e.proxyInfo };
@@ -1951,6 +2041,11 @@ const x = De(d),
           }
         }),
         chrome.tabs.onCreated.addListener((e) => {
+          if (globalThis.__SP_BUILD__?.mode === "superpower") {
+            x.handleTabCreated(e);
+            this.guardUncheckedTab(e);
+            return;
+          }
           if (
             (x.handleTabCreated(e),
             console.log(
@@ -1966,7 +2061,7 @@ const x = De(d),
             !this.isDebug &&
               (!this.cookie_complete || !this.proxy_complete || !this.check_completed))
           ) {
-            if (e.pendingUrl && e.pendingUrl.indexOf("chrome://extensions") === 0) return;
+            if ((e.pendingUrl || e.url || "").indexOf("chrome://extensions") === 0) return;
             const t = { type: h.event_type.no_other_action };
             chrome.runtime.sendMessage(t, {}, (n) => {
               console.log("收到来自content-script的回复：" + n);
@@ -1976,12 +2071,17 @@ const x = De(d),
           }
         }),
         chrome.tabs.onUpdated.addListener((e, t, o) => {
-          if (
-            (x.handleTabUpdated(e, t, o),
-            (t.pinned === !0 || t.pinned === !1) &&
-              (console.log("info.pinned", t, o), this.savePinnedPage()),
-            o.status === "loading")
-          ) {
+          x.handleTabUpdated(e, t, o);
+          if (globalThis.__SP_BUILD__?.mode === "superpower") {
+            if (this.spPendingDetectionTabs?.has(e) &&
+                this.guardUncheckedTab({...o,id:e,pendingUrl:o.pendingUrl || t.url})) return;
+            // Browser and extension pages do not belong to merchant URL rules.
+            if (!/^https?:\/\//i.test(o.url || t.url || "")) return;
+            if (!o.url && t.url) o = {...o,url:t.url};
+          }
+          (t.pinned === !0 || t.pinned === !1) &&
+            (console.log("info.pinned", t, o), this.savePinnedPage());
+          if (o.status === "loading") {
             if (
               (h.forceCloseTab &&
                 h.forceCloseTab.length > 0 &&
@@ -2017,6 +2117,7 @@ const x = De(d),
                 console.log(" 扩展脚本执行失败:", n);
               });
         }),
+        chrome.tabs.onRemoved.addListener(id => this.spPendingDetectionTabs?.delete(id)),
         chrome.alarms.onAlarm.addListener((e) => {
           e.name === "refreshToken"
             ? (console.log("刷新token -----"), d.refreshToken())

@@ -1,7 +1,7 @@
 import {defineStore} from 'pinia';
 import {request,post,token} from '@/utils/request';
 export const usePermissions=defineStore('permissions',{
-  state:()=>({user:null as null|{id:string;username:string;owner:boolean;permissions:string[]}}),
+  state:()=>({user:null as null|{id:string;tenantId:string;username:string;owner:boolean;memberType:number;departmentId:string;permissions:string[]}}),
   actions:{
     async load(){this.user=await request('/me/permissions');},
     can(permission:string){return this.user?.permissions.includes(permission)||false;},

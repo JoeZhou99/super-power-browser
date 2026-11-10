@@ -1,6 +1,6 @@
 {
   "name": "super-power-browser-plugins",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "type": "module",
   "description": "店铺助手与账号助手的可构建源码工程、运行适配和功能契约",
@@ -8,6 +8,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "verify": "node scripts/verify.mjs",
+    "test:proxy": "node --test scripts/proxy-auth.test.mjs scripts/proxy-switch.test.mjs scripts/proxy-routing.test.mjs scripts/proxy-bootstrap.test.mjs scripts/proxy-check-page.test.mjs scripts/account-startup.test.mjs scripts/plugin-check-tab.test.mjs",
     "prepare-profile": "node scripts/prepare-profile.mjs"
   }
 }

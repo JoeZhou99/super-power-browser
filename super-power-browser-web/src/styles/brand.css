@@ -98,7 +98,7 @@ body:not(.ai-page) .mall-section-form .el-input__wrapper,body:not(.ai-page) .mal
 body:not(.ai-page) .mall-dialog{display:flex;flex-direction:column;height:auto;max-height:90dvh;max-width:calc(100vw - 40px);margin-bottom:0}
 body:not(.ai-page) .mall-dialog .el-dialog__header,body:not(.ai-page) .mall-dialog .el-dialog__footer{flex-shrink:0}
 body:not(.ai-page) .mall-dialog .el-dialog__header{height:auto;min-height:44px;padding:0 30px 16px 0}
-body:not(.ai-page) .mall-dialog .el-dialog__body{min-height:0;padding:20px 8px 0 0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#d8e1ef transparent;overscroll-behavior:contain}
+body:not(.ai-page) .mall-dialog .el-dialog__body{min-height:0;padding:20px 8px 0 0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
 
 .mall-editor-content{min-width:0}.mall-editor-section+.mall-editor-section{margin-top:22px}
 .mall-editor-section{min-width:0}

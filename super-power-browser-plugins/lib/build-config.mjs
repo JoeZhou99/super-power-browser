@@ -10,7 +10,7 @@ export function validateBuildConfig(input = {}) {
     if (mode === 'superpower' && /(^|\.)zhanfubrowser\.com$/i.test(u.hostname)) throw new Error('SuperPower Browser 构建不能使用此服务域名');
   }
   if (new URL(authOrigin).pathname !== '/') throw new Error('authOrigin 必须为不带路径的源地址');
-  return { mode, apiBase: apiBase.replace(/\/$/, ''), authOrigin: new URL(authOrigin).origin, version: '0.3.1' };
+  return { mode, apiBase: apiBase.replace(/\/$/, ''), authOrigin: new URL(authOrigin).origin, version: '0.3.2' };
 }
 
 export function rewriteServices(text, config) {
