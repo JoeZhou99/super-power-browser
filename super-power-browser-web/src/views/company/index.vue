@@ -5,6 +5,7 @@ import { ElMessage, ElMessageBox } from 'element-plus';
 import { ArrowDown, MoreFilled, Plus, Refresh, Search } from '@element-plus/icons-vue';
 import { mallApi } from '@/api/mall/mall.api';
 import { request } from '@/utils/request';
+import { passwordError, usernameError } from '@/views/login/public-auth';
 import {
   companyApi,
   type ApplicationStatus,
@@ -233,10 +234,12 @@ function editMember(member?: CompanyMember) {
   memberDialog.value = true;
 }
 function changeMemberDepartment() { memberForm.roleIds = defaultRoleIds(memberForm.departmentId); }
-function validPassword(password: string) { return password.length >= 12 && new TextEncoder().encode(password).length <= 72; }
 async function saveMember() {
   if (!memberForm.username.trim() || !memberForm.displayName.trim() || !memberForm.departmentId) return void ElMessage.warning('请填写成员账号、姓名和所属部门');
-  if ((!memberForm.id || memberForm.password) && !validPassword(memberForm.password)) return void ElMessage.warning('密码至少 12 位，UTF-8 编码不超过 72 字节');
+  const accountError = !memberForm.id ? usernameError(memberForm.username) : '';
+  if (accountError) return void ElMessage.warning(accountError);
+  const credentialError = !memberForm.id || memberForm.password ? passwordError(memberForm.password) : '';
+  if (credentialError) return void ElMessage.warning(credentialError);
   if (!memberForm.roleIds.length) return void ElMessage.warning('请至少选择一个角色');
   await run(async () => {
     const body = { ...memberForm, username: memberForm.username.trim(), displayName: memberForm.displayName.trim() };
@@ -264,7 +267,9 @@ const passwordMember = ref<CompanyMember>();
 const newPassword = ref('');
 function resetPassword(member: CompanyMember) { passwordMember.value = member; newPassword.value = ''; passwordDialog.value = true; }
 async function savePassword() {
-  if (!passwordMember.value || !validPassword(newPassword.value)) return void ElMessage.warning('密码至少 12 位，UTF-8 编码不超过 72 字节');
+  if (!passwordMember.value) return;
+  const error = passwordError(newPassword.value);
+  if (error) return void ElMessage.warning(error);
   await run(async () => {
     const member = passwordMember.value!;
     await companyApi.saveMember(member.id, { displayName: member.displayName, enabled: member.enabled, password: newPassword.value });
@@ -535,12 +540,12 @@ async function grantShops(targets: ShopGrant[], revoke = false) {
 
   <el-dialog v-model="memberDialog" :title="memberForm.id ? '编辑成员' : '添加成员'" width="620px" :close-on-click-modal="false" @closed="memberForm.password = ''">
     <el-form label-width="100px" :disabled="busy">
-      <el-form-item label="成员账号" required><el-input v-model="memberForm.username" :disabled="Boolean(memberForm.id)" maxlength="80" autocomplete="off" /></el-form-item>
+      <el-form-item label="成员账号" required :error="!memberForm.id && memberForm.username ? usernameError(memberForm.username) : ''"><el-input v-model.trim="memberForm.username" :disabled="Boolean(memberForm.id)" maxlength="80" autocomplete="off" placeholder="3–80 位字母、数字或下划线" /></el-form-item>
       <el-form-item label="姓名" required><el-input v-model="memberForm.displayName" maxlength="120" /></el-form-item>
       <el-form-item label="联系电话"><el-input v-model="memberForm.phone" maxlength="40" /></el-form-item>
       <el-form-item label="所属部门" required><el-select v-model="memberForm.departmentId" :disabled="!isCompanyManager" @change="changeMemberDepartment"><el-option v-for="department in availableDepartments" :key="department.id" :value="department.id" :label="department.name" /></el-select></el-form-item>
       <el-form-item label="角色" required><el-select v-model="memberForm.roleIds" multiple placeholder="选择本部门角色"><el-option v-for="role in memberRoleOptions" :key="role.id" :value="role.id" :disabled="!role.enabled" :label="`${role.name} · ${memberTypes[role.memberType]}${role.enabled ? '' : '（已停用）'}`" /></el-select></el-form-item>
-      <el-form-item v-if="!memberForm.id" label="初始密码" required><el-input v-model="memberForm.password" type="password" show-password autocomplete="new-password" placeholder="至少 12 位密码" /></el-form-item>
+      <el-form-item v-if="!memberForm.id" label="初始密码" required><el-input v-model="memberForm.password" type="password" show-password autocomplete="new-password" placeholder="8–16 位，包含大写、小写字母和数字" /></el-form-item>
       <el-form-item v-if="memberForm.id" label="成员状态"><el-radio-group v-model="memberForm.enabled"><el-radio :value="true">启用</el-radio><el-radio :value="false">停用</el-radio></el-radio-group></el-form-item>
     </el-form>
     <p class="form-note">更换部门后需重新选择该部门角色。只有下级成员可被管理，自己的角色和权限不能在此修改。</p>
@@ -549,7 +554,7 @@ async function grantShops(targets: ShopGrant[], revoke = false) {
 
   <el-dialog v-model="passwordDialog" title="重置成员密码" width="480px" :close-on-click-modal="false" @closed="newPassword = ''">
     <p>为 {{ passwordMember?.displayName }}（{{ passwordMember?.username }}）设置新密码，保存后该成员的已有登录将失效。</p>
-    <el-input v-model="newPassword" type="password" show-password autocomplete="new-password" :disabled="busy" placeholder="至少 12 位密码" />
+    <el-input v-model="newPassword" type="password" show-password autocomplete="new-password" :disabled="busy" placeholder="8–16 位，包含大写、小写字母和数字" />
     <template #footer><el-button :disabled="busy" @click="passwordDialog = false">取消</el-button><el-button type="primary" :loading="busy" @click="savePassword">重置密码</el-button></template>
   </el-dialog>
 

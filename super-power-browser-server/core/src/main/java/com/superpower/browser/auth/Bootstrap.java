@@ -21,7 +21,7 @@ public class Bootstrap implements ApplicationRunner {
     @Override @Transactional
     public void run(ApplicationArguments args) {
         if (repository.hasUsers()) return;
-        String hash = AuthService.encodePassword(password);
+        String hash = AuthService.encodeBootstrapPassword(password);
         String tenantId = id();
         repository.createTenant(tenantId);
         repository.initializeDepartment(tenantId,tenantId,"默认部门",true);

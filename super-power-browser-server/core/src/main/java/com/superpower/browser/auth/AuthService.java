@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.time.Instant;
 import java.util.*;
+import java.util.regex.Pattern;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +17,8 @@ import static com.superpower.browser.shared.BusinessException.require;
 @Service
 public class AuthService implements MemberDirectory {
     public static final Set<String> PERMISSIONS = Set.of("ai.use","ai.purchase","shop.view","shop.create","shop.edit","shop.open","shop.delete","shop.export","shop.grant","device.view","device.edit","device.buy","device.renew","device.export","wallet.view","wallet.recharge","order.view","order.export","member.manage","role.manage");
+    private static final Pattern USERNAME = Pattern.compile("^[A-Za-z0-9_]{3,80}$");
+    private static final Pattern PASSWORD_UPPER = Pattern.compile("[A-Z]"), PASSWORD_LOWER = Pattern.compile("[a-z]"), PASSWORD_DIGIT = Pattern.compile("[0-9]");
     private final AuthRepository repository;
     private final AuditRepository audit;
     private final WalletAccounts wallets;
@@ -333,8 +336,9 @@ public class AuthService implements MemberDirectory {
         if(flag(request,"approved")) {
             List<String> roles=request.containsKey("roleIds")?strings(request,"roleIds"):List.of(repository.defaultRole(departmentId));
             assignableRoles(actor,departmentId,roles);
-            require(!repository.usernameExists(text(application,"username")),409,"该用户名已被使用，请拒绝申请后让申请人更换用户名");
-            userId=id(); repository.createUser(userId,actor.tenantId(),text(application,"username"),text(application,"passwordHash"),text(application,"displayName"),false,departmentId);
+            String username=username(application);
+            require(!repository.usernameExists(username),409,"该用户名已被使用，请拒绝申请后让申请人更换用户名");
+            userId=id(); repository.createUser(userId,actor.tenantId(),username,text(application,"passwordHash"),text(application,"displayName"),false,departmentId);
             repository.phone(userId,text(application,"phone")); repository.replaceRoles(userId,roles);
         }
         String status=flag(request,"approved")?"APPROVED":"REJECTED";
@@ -343,12 +347,19 @@ public class AuthService implements MemberDirectory {
     }
 
     private static String username(Map<String,Object> request) {
-        String value=required(request,"username",80); require(value.length()>=3&&!value.chars().anyMatch(Character::isWhitespace),400,"用户名需为 3 至 80 个非空白字符"); return value;
+        String value=text(request,"username").trim(); require(USERNAME.matcher(value).matches(),400,"用户名需为 3 至 80 位英文字母、数字或下划线"); return value;
     }
     private static String displayName(Map<String,Object> request,String fallback) { return text(request,"displayName").trim().isEmpty()?fallback:required(request,"displayName",120); }
     private static String phone(Map<String,Object> request) { String value=text(request,"phone").trim(); require(value.length()<=40,400,"联系电话最多 40 字"); return value; }
     static String encodePassword(String password) {
-        require(password.length()>=12&&password.getBytes(StandardCharsets.UTF_8).length<=72,400,"密码至少 12 位且 UTF-8 编码不超过 72 字节"); return new BCryptPasswordEncoder().encode(password);
+        // Match the legacy member form, including its UTF-16 length and allowed extra characters.
+        require(password.length()>=8&&password.length()<=16&&PASSWORD_UPPER.matcher(password).find()&&PASSWORD_LOWER.matcher(password).find()&&PASSWORD_DIGIT.matcher(password).find(),400,"密码需为 8 至 16 位，且包含大写字母、小写字母和数字");
+        return new BCryptPasswordEncoder().encode(password);
+    }
+    /** Only initial administrator provisioning keeps the existing generated-secret contract. */
+    static String encodeBootstrapPassword(String password) {
+        require(password.length()>=12&&password.getBytes(StandardCharsets.UTF_8).length<=72,400,"初始化管理员密码至少 12 位且 UTF-8 编码不超过 72 字节");
+        return new BCryptPasswordEncoder().encode(password);
     }
     private static String randomToken() { byte[] bytes=new byte[32]; new SecureRandom().nextBytes(bytes); return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes); }
     private static String hash(String token) {

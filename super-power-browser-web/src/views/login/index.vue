@@ -131,10 +131,10 @@ async function submit() {
 
           <el-form :key="isRegister ? 'register' : 'login'" ref="formRef" :model="form" :rules="rules" label-position="top" class="auth-form" :aria-busy="busy" @submit.prevent="submit" @input="formError = ''">
             <el-form-item label="用户名" prop="username">
-              <el-input v-model.trim="form.username" name="username" :placeholder="isRegister ? '设置登录用户名（3–80 个字符）' : '请输入用户名'" autocomplete="username" :maxlength="isRegister ? 80 : undefined" :prefix-icon="User" :disabled="busy" autocapitalize="none" :spellcheck="false" />
+              <el-input v-model.trim="form.username" name="username" :placeholder="isRegister ? '3–80 位字母、数字或下划线' : '请输入用户名'" autocomplete="username" :maxlength="isRegister ? 80 : undefined" :prefix-icon="User" :disabled="busy" autocapitalize="none" :spellcheck="false" />
             </el-form-item>
             <el-form-item label="密码" prop="password">
-              <el-input v-model="form.password" name="password" :placeholder="isRegister ? '设置密码，至少 12 个字符' : '请输入密码'" type="password" show-password :autocomplete="isRegister ? 'new-password' : 'current-password'" :prefix-icon="Lock" :disabled="busy" @keydown="checkCapsLock" @keyup="checkCapsLock" @blur="capsLock = false" />
+              <el-input v-model="form.password" name="password" :placeholder="isRegister ? '8–16 位，包含大写、小写字母和数字' : '请输入密码'" type="password" show-password :autocomplete="isRegister ? 'new-password' : 'current-password'" :prefix-icon="Lock" :disabled="busy" @keydown="checkCapsLock" @keyup="checkCapsLock" @blur="capsLock = false" />
             </el-form-item>
             <el-form-item v-if="isRegister" label="确认密码" prop="confirmPassword">
               <el-input v-model="form.confirmPassword" name="confirm-password" placeholder="请再次输入密码" type="password" show-password autocomplete="new-password" :prefix-icon="Lock" :disabled="busy" @keydown="checkCapsLock" @keyup="checkCapsLock" @blur="capsLock = false" />

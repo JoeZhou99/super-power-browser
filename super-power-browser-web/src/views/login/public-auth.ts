@@ -37,13 +37,13 @@ export async function publicAuth<T>(path: string, options: { body?: unknown; sig
 export function usernameError(value: string): string {
   if (!value.trim()) return '请输入用户名';
   if (value.trim().length < 3 || value.trim().length > 80) return '用户名长度应为 3–80 个字符';
-  if (/\s/.test(value.trim())) return '用户名不能包含空格';
+  if (!/^[A-Za-z0-9_]+$/.test(value.trim())) return '用户名只能包含字母、数字和下划线';
   return '';
 }
 
 export function passwordError(value: string): string {
   if (!value) return '请输入密码';
-  if (value.length < 12) return '密码至少需要 12 个字符';
-  if (new TextEncoder().encode(value).length > 72) return '密码过长，请缩短密码（中文等字符会占用更多长度）';
+  if (value.length < 8 || value.length > 16) return '密码长度应为 8–16 位';
+  if (!/[a-z]/.test(value) || !/[A-Z]/.test(value) || !/[0-9]/.test(value)) return '密码必须包含大写字母、小写字母和数字';
   return '';
 }

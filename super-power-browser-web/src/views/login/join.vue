@@ -173,10 +173,10 @@ onBeforeUnmount(() => {
               <el-input v-model.trim="form.displayName" name="name" autocomplete="name" placeholder="请输入真实姓名" :maxlength="120" :disabled="busy" :prefix-icon="User" />
             </el-form-item>
             <el-form-item label="登录用户名" prop="username">
-              <el-input v-model.trim="form.username" name="username" autocomplete="username" placeholder="设置登录用户名（3–80 个字符）" :maxlength="80" :disabled="busy" :prefix-icon="User" autocapitalize="none" :spellcheck="false" />
+              <el-input v-model.trim="form.username" name="username" autocomplete="username" placeholder="3–80 位字母、数字或下划线" :maxlength="80" :disabled="busy" :prefix-icon="User" autocapitalize="none" :spellcheck="false" />
             </el-form-item>
             <el-form-item label="密码" prop="password">
-              <el-input v-model="form.password" name="password" autocomplete="new-password" type="password" show-password placeholder="设置密码，至少 12 个字符" :disabled="busy" :prefix-icon="Lock" />
+              <el-input v-model="form.password" name="password" autocomplete="new-password" type="password" show-password placeholder="8–16 位，包含大写、小写字母和数字" :disabled="busy" :prefix-icon="Lock" />
             </el-form-item>
             <el-form-item label="确认密码" prop="confirmPassword">
               <el-input v-model="form.confirmPassword" name="confirm-password" autocomplete="new-password" type="password" show-password placeholder="请再次输入密码" :disabled="busy" :prefix-icon="Lock" />
