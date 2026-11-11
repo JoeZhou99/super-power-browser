@@ -19,10 +19,11 @@ async function refreshConfig(reset=false){
     if(current!==configRequest||!props.modelValue)return;
     browserConfig.value=config;
     if(reset){
-      Object.assign(props.form.fingerprint,{...config.defaults,webRtc:'disabled',speechVoices:'privacy',fonts:'privacy',canvas:'privacy',audio:'privacy',clientRects:'privacy',fontMetrics:'privacy',webglFingerprint:'privacy'});
+      Object.assign(props.form.fingerprint,{...config.defaults,languageMode:config.defaults.language==='auto'?'ip':'custom',webRtc:'disabled',speechVoices:'privacy',fonts:'privacy',canvas:'privacy',audio:'privacy',clientRects:'privacy',fontMetrics:'privacy',webglFingerprint:'privacy'});
     }else if(!props.form.id){
       // Only initialize a new form. Reopening an existing shop never replaces saved values.
       for(const key of ['language','timezone','resolution'] as const)if(!props.form.fingerprint[key])props.form.fingerprint[key]=config.defaults[key];
+      props.form.fingerprint.languageMode=props.form.fingerprint.language==='auto'?'ip':'custom';
     }
   }catch(error){
     if(current===configRequest&&props.modelValue)configError.value=error instanceof Error?error.message:'浏览器配置加载失败';

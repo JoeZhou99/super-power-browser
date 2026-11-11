@@ -75,3 +75,31 @@ test('SSR close during port release cannot spawn a child after cancellation', as
   await waiting;controller.abort();await tunnel.close();release();await rejection;
   assert.equal(spawned, 0);assert.equal(stopped, 0);
 });
+
+
+test('device checks and IP rotation use authenticated published provider lists', async () => {
+  const providers=['https://configured-check.test/ip'],observed=[],tokens=[];
+  class Runtime {async listen(){} get url(){return 'http://127.0.0.1:1';} async close(){}}
+  const api={token:'customer-session',request:async route=>route.endsWith('/connection')
+    ?{ipType:2,webType:1,changeIpUrl:'https://rotate.test/'}:{}};
+  const checks=new ProxyChecks(api,{Runtime,rotate:async()=>{},
+    operations:async({token})=>{tokens.push(token);return {networkChecks:{enabled:true,proxyProviders:providers}};},
+    collect:async options=>{observed.push(options.providers);return {available:true,ip:'1.1.1.1'};}});
+  const id='00000000-0000-0000-0000-000000000999';
+  assert.equal((await checks.check(id)).connected,true);
+  assert.equal((await checks.changeIp(id)).connected,true);
+  assert.deepEqual(observed,[providers,providers]);assert.deepEqual(tokens,['customer-session','customer-session']);
+});
+
+
+test('unavailable operations configuration neither rotates IP nor records a false failed proxy check',async()=>{
+  let rotated=0,started=0;const requests=[];
+  const api={token:'customer-session',request:async(route,options)=>{requests.push({route,options});return {ipType:2,changeIpUrl:'https://rotate.example.com/'};}};
+  class Runtime {constructor(){started++;}}
+  const checks=new ProxyChecks(api,{Runtime,rotate:async()=>{rotated++;},operations:async()=>{throw new Error('configuration-unavailable');}});
+  const id='00000000-0000-0000-0000-000000000998';
+  await assert.rejects(checks.check(id),/configuration-unavailable/);
+  await assert.rejects(checks.changeIp(id),/configuration-unavailable/);
+  assert.equal(rotated,0);assert.equal(started,0);
+  assert.ok(requests.every(({options})=>!options.body));
+});

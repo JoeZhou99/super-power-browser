@@ -205,3 +205,15 @@ test('local location remains parallel and cancels remaining work after matching 
   assert.equal(result.available, true);
   assert.equal(result.ip, '1.1.1.1');
 });
+
+
+test('published local providers invalidate cached observations without contacting old endpoints', async () => {
+  const {localGeo}=require('../src/main/pluginManage/NetworkInfo'),seen=[];
+  const request=async url=>{seen.push(url);return geo(url.includes('second')?'8.8.8.8':'1.1.1.1');};
+  const first={providers:['https://first-config.test/ip'],request};
+  assert.equal((await localGeo(first)).ip,'1.1.1.1');
+  assert.equal((await localGeo(first)).ip,'1.1.1.1');
+  const second={providers:['https://second-config.test/ip'],request};
+  assert.equal((await localGeo(second)).ip,'8.8.8.8');
+  assert.deepEqual(seen,[...first.providers,...second.providers]);
+});

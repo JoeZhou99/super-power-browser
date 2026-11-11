@@ -75,11 +75,48 @@ class BrowserConfigurationTest {
         }
         var unknown=edit("browser-defaults");unknown.put("values",Map.of("timezone","Europe/London","language","not-enabled","resolution","1366x768"));
         status(400,()->configs.save(operator,"browser-defaults",unknown));
-        for(String key:List.of("timezones","languages")) {
-            var unsupported=edit(key);entries(unsupported).get(0).put("value","auto");status(400,()->configs.save(operator,key,unsupported));
-        }
+        var unsupported=edit("languages");entries(unsupported).get(0).put("value","__local__");status(400,()->configs.save(operator,"languages",unsupported));
         status(400,()->configs.save(operator,"languages",Map.of("revision",1,"entries",List.of("invalid"))));
         status(404,()->configs.get(operator,"capabilities"));
+    }
+    @Test void localeModesCanBeOperationalDefaultsWithoutChangingExistingCustomValues() {
+        assertTrue(json(configs.client().get("languages")).contains("auto"));
+        assertTrue(json(configs.client().get("timezones")).contains("__local__"));
+        var defaults=edit("browser-defaults");defaults.put("values",Map.of("timezone","auto","language","auto","resolution","1366x768"));
+        configs.save(operator,"browser-defaults",defaults);
+        var fresh=new HashMap<String,Object>();configs.applyDefaults(fresh,null);
+        assertEquals(Map.of("timezone","auto","language","auto","resolution","1366x768"),fresh);
+        var old=Map.<String,Object>of("timezone","Europe/Berlin","language","de-DE","resolution","1920x1080");
+        var existing=new HashMap<String,Object>();configs.applyDefaults(existing,old);assertEquals(old,existing);
+        defaults=edit("browser-defaults");defaults.put("values",Map.of("timezone","__local__","language","en-US","resolution","1366x768"));
+        configs.save(operator,"browser-defaults",defaults);fresh.clear();configs.applyDefaults(fresh,null);assertEquals("__local__",fresh.get("timezone"));
+        var disable=edit("timezones");entries(disable).stream().filter(e->text(e,"value").equals("__local__")).findFirst().orElseThrow().put("enabled",false);
+        status(400,()->configs.save(operator,"timezones",disable));
+    }
+    @Test void upgradingAnExistingDictionaryAppendsLocaleModesOnceAndPreservesOperationalEdits() {
+        var documents=new LinkedHashMap<String,Map<String,Object>>();
+        for(String key:List.of("timezones","languages","resolutions")) {
+            var doc=edit(key);entries(doc).removeIf(e->Set.of("auto","__local__").contains(text(e,"value")));
+            entries(doc).get(0).put("label","已配置的标签");documents.put(key,Map.of("entries",entries(doc)));
+        }
+        var customDefaults=Map.of("timezone","Europe/London","language","en-GB","resolution","1280x720");
+        documents.put("browser-defaults",Map.of("values",customDefaults));documents.put("platform-sites",Map.of());
+        jdbc.execute("DROP ALL OBJECTS");Flyway.configure().dataSource(source).target("21").load().migrate();
+        for(var doc:documents.entrySet())jdbc.update("INSERT INTO browser_config(config_key,payload,revision) VALUES(?,?,5)",doc.getKey(),json(doc.getValue()));
+        jdbc.update("UPDATE config_state SET revision=8 WHERE id=1");
+        Flyway.configure().dataSource(source).load().migrate();configs.initialize();
+        assertEquals(customDefaults,configs.client().get("defaults"));assertEquals(10,number(configs.client(),"revision"));
+        for(String key:List.of("timezones","languages")) {
+            var stored=object(jdbc.queryForObject("SELECT payload FROM browser_config WHERE config_key=?",String.class,key));
+            assertEquals("已配置的标签",entries(stored).get(0).get("label"));
+            assertTrue(entries(stored).stream().anyMatch(e->text(e,"value").equals("auto")&&flag(e,"enabled")));
+            assertEquals(6,jdbc.queryForObject("SELECT revision FROM browser_config WHERE config_key=?",Integer.class,key));
+        }
+        auth.bootstrap("ops-admin",PASSWORD);operator=(ConfigOperator)auth.login(Map.of("username","ops-admin","password",PASSWORD)).get("user");
+        var languages=edit("languages");entries(languages).removeIf(e->text(e,"value").equals("auto"));configs.save(operator,"languages",languages);
+        var zones=edit("timezones");entries(zones).stream().filter(e->text(e,"value").equals("__local__")).findFirst().orElseThrow().put("enabled",false);configs.save(operator,"timezones",zones);
+        String before=json(configs.client());configs.initialize();assertEquals(before,json(configs.client()));
+        assertFalse(json(configs.client().get("languages")).contains("auto"));assertFalse(json(configs.client().get("timezones")).contains("__local__"));
     }
     @Test void platformUpdatesAndDisablingDoNotRewriteStoredShopUrls() {
         var doc=edit("platform-sites");var first=entries(doc).get(0);String siteId=text(first,"id"),oldUrl=text(first,"url"),oldPlatform=text(first,"platformName");

@@ -2,8 +2,9 @@ const fs=require('node:fs/promises');
 const path=require('node:path');
 const {createHash}=require('node:crypto');
 const {userAgentData}=require('./UserAgent');
+const {followsProxy}=require('./ProxyLocale');
 
-function compileFingerprint(environment,kernel){
+function compileFingerprint(environment,kernel,{deferProxyLocale=false}={}){
   if(kernel.protocol!=='fingerprint-chromium/1')throw new Error('独立模式不支持此内核协议，请选择已发布的开源内核');
   const fp=environment.fingerprint;
   if(fp.hardwareConcurrency!==undefined&&(!Number.isInteger(fp.hardwareConcurrency)||fp.hardwareConcurrency<1||fp.hardwareConcurrency>128))throw new Error('CPU 并发数必须是 1 至 128 的整数');
@@ -12,11 +13,12 @@ function compileFingerprint(environment,kernel){
   if(fp.fontList?.length||fp.webglVendor||fp.webglRenderer)throw new Error('当前独立内核使用原生生成的字体与 GPU 配置，暂不支持自定义列表或 GPU 字符串');
   const privacy=key=>fp[key]!=='real';
   if(privacy('canvas')!==privacy('fontMetrics')||privacy('canvas')!==privacy('webglFingerprint'))throw new Error('当前内核的 Canvas、字体测量和 WebGL 噪声使用同一开关，请将三项设为相同模式');
-  const language=fp.language==='auto'?environment.proxy.language:fp.language;
-  const timezone=fp.timezone==='auto'?environment.proxy.timezone:fp.timezone;
-  if(!language||!timezone)throw new Error('设备未提供语言与时区，请在店铺环境配置中选择');
-  new Intl.DateTimeFormat('en-US',{timeZone:timezone});
-  if(!/^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?(?:,[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?)*$/.test(language))throw new Error('语言配置不合法');
+  const automatic=followsProxy(fp);
+  const language=automatic.language?environment.runtimeLocale?.language:fp.language;
+  const timezone=automatic.timezone?environment.runtimeLocale?.timezone:fp.timezone==='__local__'?Intl.DateTimeFormat().resolvedOptions().timeZone:fp.timezone;
+  if((!language&&!(deferProxyLocale&&automatic.language))||(!timezone&&!(deferProxyLocale&&automatic.timezone)))throw new Error('未获取代理出口语言与时区，请检查代理或选择自定义值');
+  if(timezone)new Intl.DateTimeFormat('en-US',{timeZone:timezone});
+  if(language&&!/^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?(?:,[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?)*$/.test(language))throw new Error('语言配置不合法');
   if(!/^[1-9]\d{2,3}x[1-9]\d{2,3}$/.test(fp.resolution))throw new Error('窗口尺寸不合法');
   const system=fp.os==='Mac'?'Macintosh; Intel Mac OS X 10_15_7':'Windows NT 10.0; Win64; x64';
   const uaVersion=environment.kernelVersion.includes('.')?environment.kernelVersion:environment.kernelVersion+'.0.0.0';

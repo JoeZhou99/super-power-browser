@@ -3,9 +3,10 @@ const path=require('node:path');
 const {pathToFileURL}=require('node:url');
 const {createHash}=require('node:crypto');
 const AdmZip=require('adm-zip');
+const {effectiveRouting,effectiveAccessPolicy}=require('../services/OperationsConfig');
 async function json(file,fallback){try{return JSON.parse(await fs.readFile(file,'utf8'));}catch(error){if(error.code==='ENOENT')return fallback;throw error;}}
 async function atomic(file,text){const temporary=file+'.spb-tmp';await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(temporary,text,{mode:0o600});await fs.rename(temporary,file);}
-async function preparePlugins(resources,profile,{environment,session,websocketPort,proxyUrl,resourceProxyUrl,apiUrl,cookie='',localGeo=null}){
+async function preparePlugins(resources,profile,{environment,session,websocketPort,proxyUrl,resourceProxyUrl,apiUrl,cookie='',localGeo=null,operations=null}){
   const {encodeBootstrap}=await import(pathToFileURL(path.join(__dirname,'bootstrap.mjs')).href);
   const dirs=[],pluginIdMap={},builds=[];
   for(const name of ['RXMallHelper','RXAccountManage']){
@@ -36,8 +37,8 @@ async function preparePlugins(resources,profile,{environment,session,websocketPo
   const resource=resourceProxyUrl?new URL(resourceProxyUrl):null;
   const localResourceProxy=resource?{host:resource.hostname,port:Number(resource.port),username:decodeURIComponent(resource.username),password:decodeURIComponent(resource.password)}:undefined;
   const configuration={desktopProtocol:'super-power-browser-desktop/1',kernelProtocol:'fingerprint-chromium/1',browserId:environment.id,sysMallId:environment.id,accessToken:session.token,websocketPort,pluginIdMap,
-    proxyInfo:{proxyAuthUrl:`http://${loopback.host}@`,proxyIp:environment.proxy.host},staticProxy:{exchange:`http://${resource?.host||loopback.host}@`},localProxy,localResourceProxy,proxyRouting:environment.proxy.proxyOptions?.routing||{},preferredCandidateIndex:environment.preferredCandidateIndex??0,
-    localGeo,accessRules:environment.fingerprint.accessRules,language_setPlugin:'zh-CN',language:'zh-CN',appVersion:'5.3.17',browserVersion:environment.kernelVersion,
+    proxyInfo:{proxyAuthUrl:`http://${loopback.host}@`,proxyIp:environment.proxy.host},staticProxy:{exchange:`http://${resource?.host||loopback.host}@`},localProxy,localResourceProxy,proxyRouting:effectiveRouting(environment.proxy,operations),preferredCandidateIndex:environment.preferredCandidateIndex??0,
+    localGeo,accessRules:effectiveAccessPolicy(environment.fingerprint,operations),passkeyRules:operations?.passkeyRules,language_setPlugin:'zh-CN',language:'zh-CN',appVersion:'5.3.17',browserVersion:environment.kernelVersion,
     cookie,installPlugins:[],commonParams:{is_plugin_sync_cookie:1},logoInfo:{brand_name:'SuperPower',main_logo:`chrome-extension://${pluginIdMap.RXMallHelper}/branding/mark.svg`},openUrl:environment.startUrl,
     apiBase:new URL('/extension',apiUrl).href,authOrigin:new URL(apiUrl).origin};
   const bundle=encodeBootstrap(configuration);

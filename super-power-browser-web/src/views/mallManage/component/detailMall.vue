@@ -5,7 +5,10 @@ import {date} from '@/utils/format';
 import {usePermissions} from '@/store/modules/permission.store';
 const props=defineProps<{shop:any}>(),emit=defineEmits(['close','edit','bind']),permissions=usePermissions();
 const details=ref<any>(props.shop),tab=ref('detail'),events=ref<any[]>([]),page=ref(1),total=ref(0),busy=ref(false);
-const fingerprint=computed(()=>typeof details.value.fingerprint==='string'?JSON.parse(details.value.fingerprint):details.value.fingerprint||{});
+const fingerprint=computed(()=>{
+  const value=typeof details.value.fingerprint==='string'?JSON.parse(details.value.fingerprint):details.value.fingerprint||{};
+  return {...value,language:value.language==='auto'||value.languageMode==='ip'?'跟随 IP':value.language,timezone:value.timezone==='auto'?'匹配 IP':value.timezone==='__local__'?'本地时区':value.timezone};
+});
 const actions:Record<string,string>={'shop.create':'创建店铺','shop.edit':'编辑店铺','shop.bind':'绑定／解绑设备','shop.copy':'复制店铺','shop.grant':'授权成员','shop.revoke':'撤销授权','shop.recycle':'回收／恢复店铺','shop.delete':'删除店铺'};
 const selectedEvent=ref<any>();
 const fields:Record<string,string>={name:'店铺名称',sourceId:'源店铺 ID',deviceId:'网络资源 ID',members:'成员 ID',fields:'复制字段',recycled:'回收状态'};

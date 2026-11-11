@@ -4,10 +4,12 @@ const net=require('node:net');
 const {spawn}=require('node:child_process');
 const {ProxyRuntime,upstream,proxyError}=require('../services/ProxyRuntime');
 const {ProxyRoutes}=require('../services/ProxyRoutes');
+const {loadOperations,effectiveRouting}=require('../services/OperationsConfig');
 const WebSocket=require('ws');
 const {preparePlugins,clearBootstrap}=require('../pluginManage/PluginService');
 const {DesktopBridge}=require('../pluginManage/DesktopBridge');
 const {prepareLaunch,compileFingerprint}=require('../runtime/IndependentKernel');
+const {followsProxy,localeProbe,resolveProxyLocale}=require('../runtime/ProxyLocale');
 const {localGeo,collectGeo,validateExit,expectedExit}=require('../pluginManage/NetworkInfo');
 const {NativeWindow}=require('./NativeWindow');
 const {activatePlugins}=require('../pluginManage/PluginActivation');
@@ -17,7 +19,7 @@ const {cancelled,check,waitFor,pause}=require('../runtime/Cancellation');
 async function freePort(){const server=net.createServer();await new Promise((resolve,reject)=>server.once('error',reject).listen(0,'127.0.0.1',resolve));const port=server.address().port;await new Promise(resolve=>server.close(resolve));return port;}
 async function cdp(url,method){return new Promise((resolve,reject)=>{const socket=new WebSocket(url);const timer=setTimeout(()=>{socket.terminate();reject(new Error('浏览器响应超时'));},8000);const finish=(error,value)=>{clearTimeout(timer);socket.close();error?reject(error):resolve(value);};socket.on('open',()=>socket.send(JSON.stringify({id:1,method})));socket.on('message',raw=>{const reply=JSON.parse(raw);if(reply.id===1)finish(reply.error?new Error(reply.error.message):null,reply.result);});socket.on('error',error=>finish(error));socket.on('close',()=>{if(method==='Browser.close')finish(null,{});});});}
 class BrowserHost {
-  constructor(config,api,{onApplicationAction,onActionError=()=>{}}={}){this.config=config;this.api=api;this.onApplicationAction=onApplicationAction;this.onActionError=onActionError;this.windows=new NativeWindow();this.running=new Map();this.pending=new Map();this.starting=new Map();this.preparing=new Map();this.journal=path.join(config.dataPath,'running-independent.json');this.kernels=new KernelManager(config,api,{inUse:version=>[...this.running.values()].some(run=>run.kernelVersion===version)});}
+  constructor(config,api,{onApplicationAction,onActionError=()=>{},operations=loadOperations}={}){this.operations=operations;this.config=config;this.api=api;this.onApplicationAction=onApplicationAction;this.onActionError=onActionError;this.windows=new NativeWindow();this.running=new Map();this.pending=new Map();this.starting=new Map();this.preparing=new Map();this.journal=path.join(config.dataPath,'running-independent.json');this.kernels=new KernelManager(config,api,{inUse:version=>[...this.running.values()].some(run=>run.kernelVersion===version)});}
   states(){return {...Object.fromEntries([...this.preparing.keys()].map(id=>[id,'starting'])),...Object.fromEntries([...this.running].map(([id,run])=>[id,run.status]))};}
   progress(){return Object.fromEntries(this.preparing);}
   async writeJournal(){await fs.mkdir(this.config.dataPath,{recursive:true});await fs.writeFile(this.journal,JSON.stringify([...this.running].filter(([,r])=>r.debuggerUrl).map(([id,r])=>({id,debuggerUrl:r.debuggerUrl,port:r.port}))),{mode:0o600});}
@@ -54,15 +56,18 @@ class BrowserHost {
     const started=performance.now(),startupTimings={},mark=name=>{startupTimings[name]=Math.round(performance.now()-started);};
     let local={available:false},initialNetwork;
     // Local geolocation is display information and must not delay the shop window.
-    const localReady=localGeo().then(value=>(local=value),()=>local);
     const environment=await this.api.request(`/environments/${id}/launch-config`,{signal});check(signal);
+    const operations=await this.operations({url:this.config.operationsUrl,token:this.api.token,signal});check(signal);
+    effectiveRouting(environment.proxy,operations);
+    const networkChecks=operations?.networkChecks.enabled?operations.networkChecks:undefined;
+    const localReady=localGeo({providers:networkChecks?.localProviders}).then(value=>(local=value),()=>local);
     mark('configuration');
     const profile=path.join(this.config.profiles,id,process.platform==='win32'?environment.kernelVersion:`${process.platform}-${process.arch}-${environment.kernelVersion}`);
     const kernel=await this.kernels.ensure(environment.kernelVersion,state=>this.preparing.set(id,state),{signal});check(signal);
     mark('kernel');
     const executable=kernel.executable;
     this.preparing.set(id,{version:kernel.version,stage:'starting',percent:null,message:'正在准备店铺环境'});
-    compileFingerprint(environment,kernel);
+    compileFingerprint(environment,kernel,{deferProxyLocale:true});
     await fs.mkdir(profile,{recursive:true});await fs.mkdir(this.config.downloads,{recursive:true});
     const iconPath=path.join(profile,'superpower.ico');
     if(process.platform==='win32')await fs.copyFile(path.join(this.config.resources,'branding/app.ico'),iconPath);
@@ -85,7 +90,7 @@ class BrowserHost {
         run.resourceProxy.on('failure',error=>{run.proxyFailure=error.message;void this.close(id).catch(this.onActionError);});
       }
       const probeNetwork=async()=>{
-        const exit=await collectGeo({proxyUrl:proxy.url,expectedIp:expectedExit(environment.proxy),firstValid:true,signal:probeSignal});
+        const exit=await collectGeo({proxyUrl:proxy.url,providers:networkChecks?.proxyProviders,...localeProbe(environment.fingerprint,networkChecks?.proxyProviders),expectedIp:expectedExit(environment.proxy),firstValid:true,signal:probeSignal});
         const verdict=validateExit(environment.proxy,exit);
         run.networkChecks=[...(run.networkChecks||[]),{at:new Date().toISOString(),available:exit.available,allowed:verdict.allowed,message:verdict.message,durationMs:exit.durationMs,providers:exit.diagnostics}].slice(-8);
         return exit;
@@ -98,7 +103,7 @@ class BrowserHost {
             const candidate=new ProxyRuntime(connection,{resources:this.config.resources,signal:AbortSignal.any([sessionSignal,probeSignal])});
             try{
               await candidate.listen();
-              const exit=await collectGeo({proxyUrl:candidate.url,expectedIp:expectedExit(environment.proxy),firstValid:true,signal:probeSignal});
+              const exit=await collectGeo({proxyUrl:candidate.url,providers:networkChecks?.proxyProviders,expectedIp:expectedExit(environment.proxy),firstValid:true,signal:probeSignal});
               const verdict=validateExit(environment.proxy,exit);
               if(!verdict.allowed)throw proxyError(verdict.message);
             }finally{await candidate.close();}
@@ -130,6 +135,22 @@ class BrowserHost {
         catch(error){check(signal);run.routeRestoreFailure=error.message;}
       }
       environment.preferredCandidateIndex=proxy.candidateIndex;
+      const automatic=followsProxy(environment.fingerprint);
+      if(automatic.language||automatic.timezone){
+        // Locale is part of startup, as in the legacy client. A route restored
+        // above must be probed again; never reuse the previous route's country.
+        if(!initialNetwork){
+          const prepared={completedAt:null};
+          prepared.promise=probeNetwork().finally(()=>{prepared.completedAt=Date.now();});
+          initialNetwork=prepared;
+        }
+        const exit=await waitFor(initialNetwork.promise,probeSignal);
+        if(!exit.available)resolveProxyLocale(environment.fingerprint,exit);
+        const verdict=validateExit(environment.proxy,exit);
+        if(!verdict.allowed)throw proxyError(verdict.message);
+        environment.runtimeLocale=resolveProxyLocale(environment.fingerprint,exit);
+        mark('locale');
+      }
       run.bridge=new DesktopBridge({id,proxy:environment.proxy,runtime:proxy,routes,onAction:async(action,args)=>{
         if(action==='GetProxyRoutes')return routes.state();
         if(action==='TransferSpeed')return routes.latency(args);
@@ -139,9 +160,9 @@ class BrowserHost {
           if(generation!==run.pluginGeneration)throw new Error('插件已更新，请重新检测');
           const prepared=initialNetwork;initialNetwork=null;
           if(!run.networkProbe){
-            // A slow startup probe is still valid while pending. Expire only
-            // completed results, otherwise opening the page starts a duplicate.
-            const probe=(prepared&&(!prepared.completedAt||Date.now()-prepared.completedAt<10000)?prepared.promise:probeNetwork()).then(exit=>{
+            // Locale modes await this sample before spawning. Keep it through
+            // plugin preparation so the first check does not repeat that work.
+            const probe=(prepared&&(run.status==='starting'||!prepared.completedAt||Date.now()-prepared.completedAt<10000)?prepared.promise:probeNetwork()).then(exit=>{
               if(generation===run.pluginGeneration){run.networkChecked=true;mark('network');}
               return {local,exit,...validateExit(environment.proxy,exit)};
             }).finally(()=>{if(run.networkProbe===probe)run.networkProbe=null;});
@@ -162,7 +183,7 @@ class BrowserHost {
       }});
       const websocketPort=await run.bridge.listen();
       check(signal);
-      const plugins=await preparePlugins(this.config.resources,profile,{environment,session:run.session,websocketPort,proxyUrl:proxy.url,resourceProxyUrl:run.resourceProxy?.url,apiUrl:this.config.apiUrl,cookie:saved.cookie,localGeo:local.available?local:null});
+      const plugins=await preparePlugins(this.config.resources,profile,{environment,session:run.session,websocketPort,operations,proxyUrl:proxy.url,resourceProxyUrl:run.resourceProxy?.url,apiUrl:this.config.apiUrl,cookie:saved.cookie,localGeo:local.available?local:null});
       mark('plugins');
       run.bridge.configure(plugins.bundle,Object.values(plugins.pluginIdMap));
       const {args}=await prepareLaunch(environment,{kernel,profile,proxyUrl:proxy.browserUrl,plugins:plugins.dirs,debugPort:run.port,downloads:this.config.downloads});

@@ -972,7 +972,13 @@ async function ot() {
     Object.keys(S).map(async (e) => {
       const t = S[e];
       try {
-        const n = (await d.getInfoByKey({ key: t.configKey }))?.data?.contents;
+        const configured = globalThis.__SP_BUILD__?.mode === "superpower" && globalThis.__SP_BOOTSTRAP__?.passkeyRules?.enabled === true
+          ? globalThis.__SP_BOOTSTRAP__?.passkeyRules?.[e === "login" ? "loginMatches" : "registerMatches"]
+          : undefined;
+        let n;
+        try { n = (await d.getInfoByKey({ key: t.configKey }))?.data?.contents; }
+        catch (error) { if (!configured?.length) throw error; }
+        if ((!Array.isArray(n) || !n.length) && configured?.length) n = configured;
         if (!Array.isArray(n) || !n.length || !n.every((r) => typeof r == "string"))
           throw new Error("配置为空或格式无效");
         await $(e, [...new Set(n)]);

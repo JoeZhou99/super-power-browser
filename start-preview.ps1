@@ -1,4 +1,4 @@
-param([switch]$BackendOnly,[switch]$EnableOperations)
+param([switch]$BackendOnly,[switch]$EnableOperations,[switch]$SharedDatabase)
 $ErrorActionPreference='Stop'
 $projectRoot=$PSScriptRoot
 $previewDir=Join-Path $projectRoot '.local-preview'
@@ -31,10 +31,13 @@ if(-not $health){
     $h2Jar=Join-Path $previewDir 'h2-2.4.240.jar'
     if(-not (Test-Path -LiteralPath $h2Jar)){throw 'Preview H2 driver is missing.'}
     $dbFile=(Join-Path $previewDir 'database').Replace('\','/')
+    $databaseUrl="jdbc:h2:file:$dbFile;MODE=MySQL;NON_KEYWORDS=ROLE"
+    if($SharedDatabase){$databaseUrl+=';AUTO_SERVER=TRUE'}
     $env:ADMIN_USERNAME=$access.username
     $env:ADMIN_PASSWORD=$access.password
     $env:APP_DATA_KEY=$access.dataKey
-    $javaArgs=@("-Dloader.path=$h2Jar",'-cp',(Join-Path $projectRoot 'super-power-browser-server/api/target/api-0.1.0.jar'),'org.springframework.boot.loader.launch.PropertiesLauncher',"--spring.datasource.url=jdbc:h2:file:$dbFile;MODE=MySQL;NON_KEYWORDS=ROLE",'--spring.datasource.username=sa','--spring.datasource.password=','--server.address=127.0.0.1','--server.port=18080')
+    $javaArgs=@("-Dloader.path=$h2Jar",'-cp',(Join-Path $projectRoot 'super-power-browser-server/api/target/api-0.1.0.jar'),'org.springframework.boot.loader.launch.PropertiesLauncher',"--spring.datasource.url=$databaseUrl",'--spring.datasource.username=sa','--spring.datasource.password=','--server.address=127.0.0.1','--server.port=18080')
+    if($SharedDatabase){$javaArgs=@('-Dh2.bindAddress=127.0.0.1')+$javaArgs}
     $javaProcess=Start-Process -FilePath (Get-Command java).Source -ArgumentList $javaArgs -WorkingDirectory $projectRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $previewDir 'api.log') -RedirectStandardError (Join-Path $previewDir 'api-error.log') -PassThru
     $javaProcess.Id|Set-Content -LiteralPath (Join-Path $previewDir 'api.pid') -Encoding ASCII
     for($attempt=0;$attempt -lt 45;$attempt++){

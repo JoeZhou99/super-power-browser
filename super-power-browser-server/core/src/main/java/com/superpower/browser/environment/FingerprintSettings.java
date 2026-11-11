@@ -13,6 +13,7 @@ public final class FingerprintSettings {
         for(String key:List.of("canvas","audio","clientRects","fontMetrics","webglFingerprint","fonts","speechVoices")) choice(fp,key,Set.of("privacy","real"));
         choice(fp,"webRtc",Set.of("privacy","real","replace","disabled"));
         choice(fp,"os",Set.of("Windows","Mac","Android"));
+        choice(fp,"languageMode",Set.of("ip","custom"));
         if(kernel.split("\\.")[0].equals("144")) {
             require(!Objects.equals(fp.get("os"),"Android"),400,"当前独立内核不支持 Android 环境");
             require(!Objects.equals(fp.get("webRtc"),"replace"),400,"当前独立内核尚未实现 WebRTC 指定 IP 替换");
@@ -25,7 +26,7 @@ public final class FingerprintSettings {
             if(fp.containsKey(key))require(fp.get(key) instanceof Boolean,400,key+" 必须为开关值");
         if(fp.containsKey("resolution"))require(fp.get("resolution") instanceof String s&&s.matches("[1-9][0-9]{2,3}x[1-9][0-9]{2,3}"),400,"窗口尺寸格式不正确");
         if(fp.containsKey("language"))require(fp.get("language") instanceof String s&&s.matches("(?:auto|[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?(?:,[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?)*)"),400,"语言格式不正确");
-        if(fp.containsKey("timezone"))try {String zone=String.valueOf(fp.get("timezone"));if(!zone.equals("auto"))ZoneId.of(zone);}catch(Exception e){throw new BusinessException(400,"时区不合法");}
+        if(fp.containsKey("timezone"))try {require(fp.get("timezone") instanceof String,400,"时区必须为文本");String zone=(String)fp.get("timezone");if(!Set.of("auto","__local__").contains(zone))ZoneId.of(zone);}catch(Exception e){throw new BusinessException(400,"时区不合法");}
         if(fp.containsKey("fontList"))strings(fp.get("fontList"),"隐私字体",100,100);
         String ua=Objects.toString(fp.get("userAgent"),"");
         if(!ua.isBlank()) {

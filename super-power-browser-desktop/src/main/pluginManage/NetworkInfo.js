@@ -11,10 +11,13 @@ function publicIp(value){
 }
 function normalize(data){
   const ip=publicIp(String(data.ip||''));if(!ip)throw new Error('服务未返回公网 IP');
-  const country_code=String(data.country_code||data.country||'');
+  const country_code=String(data.country_code||data.country||'').toUpperCase();
   let country_name=String(data.country_name||data.country||'');
   if(/^[A-Z]{2}$/i.test(country_code))country_name=new Intl.DisplayNames(['zh-CN'],{type:'region'}).of(country_code.toUpperCase());
-  return {ip,country_code,country_name,region_name:String(data.region_name||data.region||''),city_name:String(data.city_name||data.city||'')};
+  const result={ip,country_code,country_name,region_name:String(data.region_name||data.region||''),city_name:String(data.city_name||data.city||'')};
+  const timezone=typeof data.timezone==='string'?data.timezone:data.timezone?.id||data.geo?.tz;
+  if(typeof timezone==='string'&&timezone.length<=100){try{new Intl.DateTimeFormat('en-US',{timeZone:timezone});result.timezone=timezone;}catch{}}
+  return result;
 }
 const proxyProviders=['https://myip.ipip.net/','https://ifconfig.me/ip','https://lumtest.com/myip.json'];
 const localProviders=['https://ipwho.is/','https://ipinfo.io/json','https://api.ipify.org?format=json'];
@@ -44,7 +47,7 @@ function requestJson(url,agent,signal){return new Promise((resolve,reject)=>{
 // Match the legacy connectivity probe's sequential attempts and 8-second
 // allowance, but cap the whole round at 12 seconds (below the 15-second RPC).
 // Local geolocation remains parallel and never delays the shop window.
-async function collectGeo({proxyUrl,expectedIp='',timeout=proxyUrl?12000:5000,requestTimeout=8000,providers=proxyUrl?proxyProviders:localProviders,request=requestJson,firstValid=false,signal}={}){
+async function collectGeo({proxyUrl,expectedIp='',timeout=proxyUrl?12000:5000,requestTimeout=8000,providers=proxyUrl?proxyProviders:localProviders,request=requestJson,accept=()=>true,firstValid=false,signal}={}){
   check(signal);
   const started=performance.now(),diagnostics=[];
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
@@ -66,6 +69,7 @@ async function collectGeo({proxyUrl,expectedIp='',timeout=proxyUrl?12000:5000,re
       const geo=await waitFor(request(url,agent,connection.signal),connection.signal);
       check(connection.signal);
       if(!publicIp(geo.ip))throw new Error('检测服务未返回公网 IP');
+      if(!accept(geo))throw new Error('检测服务未返回所需的出口地区信息');
       detail.result='success';
       if(expectedIp)detail.matchesExpected=canonical(geo.ip)===canonical(expectedIp);
       if(!first||(!first.country_code&&geo.country_code))first=geo;
@@ -108,9 +112,16 @@ async function collectGeo({proxyUrl,expectedIp='',timeout=proxyUrl?12000:5000,re
   }finally{clearTimeout(timer);signal?.removeEventListener('abort',abort);controller.abort();}
 }
 let localCache=null,localPending=null;
-async function localGeo(){
-  if(localCache&&Date.now()-localCache.at<60000)return localCache.value;
-  if(!localPending)localPending=collectGeo().then(value=>{localCache={at:Date.now(),value};return value;}).finally(()=>{localPending=null;});
-  return localPending;
+async function localGeo({providers=localProviders,request=requestJson}={}){
+  const key=JSON.stringify(providers);
+  if(localCache?.key===key&&Date.now()-localCache.at<60000)return localCache.value;
+  if(localPending?.key!==key){
+    const pending={key};
+    pending.promise=collectGeo({providers,request}).then(value=>{
+      if(localPending===pending)localCache={key,at:Date.now(),value};return value;
+    }).finally(()=>{if(localPending===pending)localPending=null;});
+    localPending=pending;
+  }
+  return localPending.promise;
 }
 module.exports={publicIp,normalize,parseResponse,collectGeo,localGeo,validateExit,expectedExit};

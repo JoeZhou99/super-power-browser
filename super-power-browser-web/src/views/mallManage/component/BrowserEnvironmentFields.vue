@@ -1,13 +1,45 @@
 <script setup lang="ts">
-import {computed,ref} from 'vue';
+import {computed,ref,watch} from 'vue';
 import type {BrowserConfig,BrowserConfigOption} from '@/api/config/browser-config.api';
 const props=defineProps<{form:any;kernels:any[];kernelError:string;config?:BrowserConfig;configLoading:boolean}>();
 const emit=defineEmits(['new-ua','reset-defaults']);
 const advanced=ref(false);
 const timezoneSearch=ref('');
+const customLanguage=ref(''),customTimezone=ref('');
+const languageOptions=computed(()=>(props.config?.languages||[]).filter(option=>option.value!=='auto'));
+const customTimezoneOptions=computed(()=>(props.config?.timezones||[]).filter(option=>option.value!=='auto'));
+watch(()=>props.form.fingerprint,fp=>{
+  customLanguage.value=typeof fp.language==='string'&&fp.language!=='auto'?fp.language:'';
+  customTimezone.value=typeof fp.timezone==='string'&&fp.timezone!=='auto'?fp.timezone:'';
+},{immediate:true});
+watch(()=>props.form.fingerprint.language,value=>{if(typeof value==='string'&&value&&value!=='auto')customLanguage.value=value;});
+watch(()=>props.form.fingerprint.timezone,value=>{if(typeof value==='string'&&value&&value!=='auto')customTimezone.value=value;});
+function customValue(saved:string,configured:string|undefined,options:BrowserConfigOption[]){
+  return saved||(configured&&configured!=='auto'?configured:'')||options[0]?.value||'';
+}
+const languageFallback=computed(()=>customValue(customLanguage.value,props.config?.defaults.language,languageOptions.value));
+const timezoneFallback=computed(()=>customValue(customTimezone.value,props.config?.defaults.timezone,customTimezoneOptions.value));
+const languageMode=computed({
+  get:()=>props.form.fingerprint.language==='auto'||props.form.fingerprint.languageMode==='ip'?'ip':'custom',
+  set:(mode:string)=>{
+    if(mode==='ip'){
+      const value=props.form.fingerprint.language;if(value&&value!=='auto')customLanguage.value=value;
+      props.form.fingerprint.language='auto';props.form.fingerprint.languageMode='ip';
+    }else if(languageFallback.value){props.form.fingerprint.language=languageFallback.value;props.form.fingerprint.languageMode='custom';}
+  }
+});
+const timezoneMode=computed({
+  get:()=>props.form.fingerprint.timezone==='auto'?'ip':'custom',
+  set:(mode:string)=>{
+    if(mode==='ip'){
+      const value=props.form.fingerprint.timezone;if(value&&value!=='auto')customTimezone.value=value;
+      props.form.fingerprint.timezone='auto';
+    }else if(timezoneFallback.value)props.form.fingerprint.timezone=timezoneFallback.value;
+  }
+});
 const timezoneOptions=computed(()=>{
   const term=timezoneSearch.value.trim().toLocaleLowerCase();
-  return (props.config?.timezones||[]).filter(option=>!term||`${option.label} ${option.value}`.toLocaleLowerCase().includes(term));
+  return customTimezoneOptions.value.filter(option=>!term||`${option.label} ${option.value}`.toLocaleLowerCase().includes(term));
 });
 const ruleMode=computed({get:()=>props.form.fingerprint.accessRules?.mode||'blacklist',set:mode=>{props.form.fingerprint.accessRules={...(props.form.fingerprint.accessRules||{domains:[]}),mode};}});
 const ruleDomains=computed({get:()=>(props.form.fingerprint.accessRules?.domains||[]).join('\n'),set:(value:string)=>{props.form.fingerprint.accessRules={mode:ruleMode.value,...props.form.fingerprint.accessRules,domains:value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean)};}});
@@ -18,7 +50,7 @@ function syncNoise(key:string){if(['canvas','fontMetrics','webglFingerprint'].in
   <section class="mall-editor-section" aria-labelledby="browser-environment-heading">
     <div class="mall-section-heading"><h3 id="browser-environment-heading">浏览器环境</h3><p>配置将在下次打开店铺时生效</p></div>
     <el-form label-position="top" class="mall-section-form">
-  <el-form-item label="语言"><div class="mall-field-row"><el-radio-group v-model="form.fingerprint.languageMode"><el-radio value="ip" disabled>跟随 IP</el-radio><el-radio value="custom">自定义</el-radio></el-radio-group><el-select v-model="form.fingerprint.language" filterable :loading="configLoading" :disabled="!config" class="mall-inline-control" aria-label="浏览器语言"><el-option v-if="savedOption(form.fingerprint.language,config?.languages)" :value="form.fingerprint.language" :label="form.fingerprint.language+'（当前值）'" disabled/><el-option v-for="option in config?.languages||[]" :key="option.value" :value="option.value" :label="option.label"/></el-select></div></el-form-item>
+  <el-form-item label="语言"><div class="mall-field-row"><el-radio-group v-model="languageMode" :disabled="!config||configLoading" aria-label="语言设置方式"><el-radio value="ip" :disabled="!config?.languages.some(option=>option.value==='auto')">跟随 IP</el-radio><el-radio value="custom" :disabled="!languageFallback">自定义</el-radio></el-radio-group><el-select v-if="languageMode==='custom'" v-model="form.fingerprint.language" filterable :loading="configLoading" :disabled="!config" class="mall-inline-control" aria-label="浏览器语言"><el-option v-if="savedOption(form.fingerprint.language,languageOptions)" :value="form.fingerprint.language" :label="form.fingerprint.language+'（当前值）'" disabled/><el-option v-for="option in languageOptions" :key="option.value" :value="option.value" :label="option.label"/></el-select><span v-else class="muted">打开店铺时按代理出口地区设置语言</span></div></el-form-item>
   <el-form-item label="WebGL"><el-radio-group v-model="form.fingerprint.webgl"><el-radio :value="true">开启</el-radio><el-radio :value="false">关闭</el-radio></el-radio-group></el-form-item>
   <el-form-item label="默认浏览器"><el-radio-group :model-value="'Chrome'"><el-radio value="Chrome">Chrome</el-radio><el-radio value="Firefox" disabled>Firefox</el-radio></el-radio-group></el-form-item>
   <el-form-item label="内核版本" required><el-select v-model="form.kernelVersion" filterable @change="emit('new-ua')"><el-option v-if="form.kernelVersion&&!kernels.some(k=>k.version===form.kernelVersion)" :value="form.kernelVersion" :label="form.kernelVersion+'（当前电脑不可用）'" disabled/><el-option v-for="kernel in kernels" :key="kernel.version" :value="kernel.version" :label="kernel.version+(kernel.recommended?'（推荐）':'')" :disabled="kernel.disabled"/></el-select><span v-if="kernelError" class="muted">{{kernelError}}</span></el-form-item>
@@ -27,7 +59,7 @@ function syncNoise(key:string){if(['canvas','fontMetrics','webglFingerprint'].in
   <el-form-item label="窗口尺寸"><el-select v-model="form.fingerprint.resolution" filterable :loading="configLoading" :disabled="!config" aria-label="窗口尺寸"><el-option v-if="savedOption(form.fingerprint.resolution,config?.resolutions)" :value="form.fingerprint.resolution" :label="form.fingerprint.resolution+'（当前值）'" disabled/><el-option v-for="option in config?.resolutions||[]" :key="option.value" :value="option.value" :label="option.label"/></el-select><el-tooltip content="设置浏览器窗口大小；网页读取的屏幕尺寸仍由当前内核和显示器决定"><span class="muted mall-field-help">窗口大小说明</span></el-tooltip></el-form-item>
   <el-form-item label="操作系统"><el-radio-group v-model="form.fingerprint.os" @change="emit('new-ua')"><el-radio value="Windows">Windows</el-radio><el-radio value="Mac">MAC OS</el-radio><el-radio value="Android" disabled>Android</el-radio></el-radio-group></el-form-item>
   <el-form-item label="高级设置" class="mall-form-wide"><el-button link type="primary" @click="advanced=!advanced">{{advanced?'收起':'展开'}}</el-button><el-button v-if="advanced" link :loading="configLoading" @click="emit('reset-defaults')">恢复默认设置</el-button></el-form-item>
-  <template v-if="advanced"><el-form-item label="WebRTC"><el-radio-group v-model="form.fingerprint.webRtc"><el-radio value="privacy">隐私</el-radio><el-radio value="replace" disabled>替换</el-radio><el-radio value="real">真实</el-radio><el-radio value="disabled">禁用</el-radio></el-radio-group></el-form-item><el-form-item label="SpeechVoices"><el-radio-group v-model="form.fingerprint.speechVoices"><el-radio value="privacy">隐私</el-radio><el-radio value="real">真实</el-radio></el-radio-group></el-form-item><el-form-item label="时区"><div class="mall-field-row"><el-radio-group :model-value="'custom'"><el-radio value="ip" disabled>匹配 IP</el-radio><el-radio value="custom">自定义</el-radio></el-radio-group><el-select v-model="form.fingerprint.timezone" filterable :filter-method="(query:string)=>timezoneSearch=query" @visible-change="timezoneSearch=''" :loading="configLoading" :disabled="!config" class="mall-inline-control" aria-label="时区"><el-option v-if="savedOption(form.fingerprint.timezone,config?.timezones)" :value="form.fingerprint.timezone" :label="form.fingerprint.timezone+'（当前值）'" disabled/><el-option v-for="option in timezoneOptions" :key="option.value" :value="option.value" :label="option.label"/></el-select></div></el-form-item><el-form-item label="字体"><el-radio-group v-model="form.fingerprint.fonts"><el-radio value="privacy">隐私</el-radio><el-radio value="real">真实</el-radio></el-radio-group></el-form-item></template>
+  <template v-if="advanced"><el-form-item label="WebRTC"><el-radio-group v-model="form.fingerprint.webRtc"><el-radio value="privacy">隐私</el-radio><el-radio value="replace" disabled>替换</el-radio><el-radio value="real">真实</el-radio><el-radio value="disabled">禁用</el-radio></el-radio-group></el-form-item><el-form-item label="SpeechVoices"><el-radio-group v-model="form.fingerprint.speechVoices"><el-radio value="privacy">隐私</el-radio><el-radio value="real">真实</el-radio></el-radio-group></el-form-item><el-form-item label="时区"><div class="mall-field-row"><el-radio-group v-model="timezoneMode" :disabled="!config||configLoading" aria-label="时区设置方式"><el-radio value="ip" :disabled="!config?.timezones.some(option=>option.value==='auto')">匹配 IP</el-radio><el-radio value="custom" :disabled="!timezoneFallback">自定义</el-radio></el-radio-group><el-select v-if="timezoneMode==='custom'" v-model="form.fingerprint.timezone" filterable :filter-method="(query:string)=>timezoneSearch=query" @visible-change="timezoneSearch=''" :loading="configLoading" :disabled="!config" class="mall-inline-control" aria-label="时区"><el-option v-if="savedOption(form.fingerprint.timezone,customTimezoneOptions)" :value="form.fingerprint.timezone" :label="(form.fingerprint.timezone==='__local__'?'本地时区':form.fingerprint.timezone)+'（当前值）'" disabled/><el-option v-for="option in timezoneOptions" :key="option.value" :value="option.value" :label="option.label"/></el-select><span v-else class="muted">打开店铺时使用代理出口所在地时区</span></div></el-form-item><el-form-item label="字体"><el-radio-group v-model="form.fingerprint.fonts"><el-radio value="privacy">隐私</el-radio><el-radio value="real">真实</el-radio></el-radio-group></el-form-item></template>
   <template v-if="advanced"><el-form-item v-for="item in [{key:'canvas',label:'Canvas'},{key:'audio',label:'Audio'},{key:'clientRects',label:'Client Rects'},{key:'fontMetrics',label:'字体测量'},{key:'webglFingerprint',label:'WebGL 指纹'}]" :key="item.key" :label="item.label"><el-radio-group v-model="form.fingerprint[item.key]" @change="syncNoise(item.key)"><el-radio value="privacy">隐私</el-radio><el-radio value="real">真实</el-radio></el-radio-group></el-form-item><el-form-item label="硬件加速"><el-switch v-model="form.fingerprint.hardwareAcceleration"/></el-form-item><el-form-item label="访问范围"><el-radio-group v-model="ruleMode"><el-radio value="blacklist">禁止指定网站</el-radio><el-radio value="whitelist">仅允许指定网站</el-radio></el-radio-group></el-form-item><el-form-item label="网站域名" class="mall-form-wide"><el-input v-model="ruleDomains" type="textarea" :rows="3" placeholder="每行一个域名，例如 example.com；留空不限制"/><span class="muted">设备检测与本地控制页面不受允许列表限制。</span></el-form-item></template>
       <p v-if="advanced" class="mall-environment-note">Canvas、字体测量与 WebGL 指纹会同步切换。</p>
     </el-form>

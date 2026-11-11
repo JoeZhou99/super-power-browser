@@ -31,10 +31,25 @@ public class BrowserConfiguration {
         seed("resolutions",Map.of("entries",resolutionSeeds()));
         seed("browser-defaults",Map.of("values",Map.of("timezone","Asia/Shanghai","language","zh-CN","resolution","1920x1080")));
         seed("platform-sites",Map.of()); // The existing platform_site catalog remains the source of truth.
+        if(!flag(one(db.select("SELECT locale_modes_initialized FROM config_state WHERE id=1")),"localeModesInitialized")) {
+            appendLocaleModes("timezones",List.of(entry("auto","跟随代理 IP",true,0),entry("__local__","本地时区",true,0)));
+            appendLocaleModes("languages",List.of(entry("auto","跟随代理 IP",true,0)));
+            db.execute("UPDATE config_state SET locale_modes_initialized=TRUE WHERE id=1");
+        }
     }
     private void seed(String key,Map<String,Object> payload) {
         if(db.select("SELECT config_key FROM browser_config WHERE config_key=?",key).isEmpty())
             db.execute("INSERT INTO browser_config(config_key,payload) VALUES(?,?)",key,json(payload));
+    }
+    private void appendLocaleModes(String key,List<Map<String,Object>> additions) {
+        var current=payload(key);var options=new ArrayList<>(entries(current));int before=options.size();
+        int order=options.stream().mapToInt(option->(int)number(option,"sortOrder")).max().orElse(-1)+1;
+        for(var addition:additions)if(options.stream().noneMatch(option->text(option,"value").equals(text(addition,"value"))))
+            options.add(entry(text(addition,"value"),text(addition,"label"),true,Math.min(order++,1_000_000)));
+        if(options.size()==before)return;
+        current.put("entries",options);
+        db.execute("UPDATE browser_config SET payload=?,revision=revision+1,updated_at=CURRENT_TIMESTAMP WHERE config_key=?",json(current),key);
+        db.execute("UPDATE config_state SET revision=revision+1 WHERE id=1");
     }
     private void lock() { one(db.select("SELECT id FROM config_state WHERE id=1 FOR UPDATE")); }
 
@@ -124,8 +139,8 @@ public class BrowserConfiguration {
             String value=string(row,"value",100),label=string(row,"label",160);
             require(unique.add(value),400,"配置值重复："+value);
             switch(key) {
-                case "timezones" -> require(ZoneId.getAvailableZoneIds().contains(value),400,"时区须为有效 IANA 时区标识，当前不支持匹配 IP");
-                case "languages" -> require(value.matches("[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?(?:,[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?)*"),400,"浏览器语言格式不正确，当前不支持匹配 IP");
+                case "timezones" -> require(Set.of("auto","__local__").contains(value)||ZoneId.getAvailableZoneIds().contains(value),400,"时区须为有效 IANA 时区标识、auto（跟随代理 IP）或 __local__（本地时区）");
+                case "languages" -> require(value.equals("auto")||value.matches("[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?(?:,[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})?)*"),400,"浏览器语言须为语言代码或 auto（跟随代理 IP）");
                 case "resolutions" -> require(value.matches("[1-9][0-9]{2,3}x[1-9][0-9]{2,3}"),400,"窗口尺寸须为宽x高，例如 1920x1080");
                 default -> throw new BusinessException(404,"配置项不存在");
             }
@@ -186,11 +201,13 @@ public class BrowserConfiguration {
     private static Map<String,Object> entry(String value,String label,boolean enabled,int order) { return Map.of("value",value,"label",label,"enabled",enabled,"sortOrder",order); }
     private static List<Map<String,Object>> timezoneSeeds() {
         var result=new ArrayList<Map<String,Object>>();
-        for(String id:new TreeSet<>(ZoneId.getAvailableZoneIds()))result.add(entry(id,id,true,result.size()));return result;
+        for(String id:new TreeSet<>(ZoneId.getAvailableZoneIds()))result.add(entry(id,id,true,result.size()));
+        result.add(entry("auto","跟随代理 IP",true,result.size()));result.add(entry("__local__","本地时区",true,result.size()));return result;
     }
     private static List<Map<String,Object>> languageSeeds() {
         String[][] values={{"zh-CN","简体中文"},{"zh-TW","繁體中文"},{"en-US","English (United States)"},{"en-GB","English (United Kingdom)"},{"ja-JP","日本語"},{"ko-KR","한국어"},{"fr-FR","Français"},{"de-DE","Deutsch"},{"es-ES","Español (España)"},{"es-MX","Español (México)"},{"pt-BR","Português (Brasil)"},{"pt-PT","Português (Portugal)"},{"it-IT","Italiano"},{"ru-RU","Русский"},{"th-TH","ไทย"},{"vi-VN","Tiếng Việt"},{"id-ID","Bahasa Indonesia"},{"ms-MY","Bahasa Melayu"},{"fil-PH","Filipino"},{"hi-IN","हिन्दी"},{"ar-SA","العربية"},{"tr-TR","Türkçe"},{"nl-NL","Nederlands"},{"pl-PL","Polski"},{"uk-UA","Українська"},{"sv-SE","Svenska"}};
-        var result=new ArrayList<Map<String,Object>>();for(var value:values)result.add(entry(value[0],value[1],true,result.size()));return result;
+        var result=new ArrayList<Map<String,Object>>();for(var value:values)result.add(entry(value[0],value[1],true,result.size()));
+        result.add(entry("auto","跟随代理 IP",true,result.size()));return result;
     }
     private static List<Map<String,Object>> resolutionSeeds() {
         var result=new ArrayList<Map<String,Object>>();
