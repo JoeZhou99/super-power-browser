@@ -88,9 +88,13 @@ const fetch=async(input,options)=>{const base=(await chrome.storage.session.get(
       // complete PAC. Network repair remains available.
       workerText = workerText.replace('setProxyDirect() {', 'setProxyDirect() {\n      if (globalThis.__SP_BUILD__?.mode === "superpower") return;');
       workerText = workerText.replace('async getPacScript(e, t) {', `async getPacScript(e, t) {
-        if (globalThis.__SP_BUILD__?.mode === 'superpower') return __spProxyPac(globalThis.__SP_BOOTSTRAP__);`);
-      workerText = workerText.replace('x.reportOpenedTabUrls("check-page-completed"),', `x.reportOpenedTabUrls("check-page-completed"),
-        globalThis.__SP_EVENT__?.('CheckCompleted').then(()=>chrome.storage.local.set({spStartup:{state:'ready',message:'店铺服务已连接，环境检测完成',at:new Date().toISOString()}})).catch(error=>console.error(error.message)),`);
+        if (globalThis.__SP_BUILD__?.mode === 'superpower') return __spProxyPac(globalThis.__SP_BOOTSTRAP__,{verified:globalThis.__SP_NETWORK_VERIFIED__===true});`);
+      if(config.mode==='superpower'){
+        workerText=workerText.replace('const o = t.check_env,','const o = "1",');
+        workerText=workerText.replace('e.type === h.event_type.check_completed)','e.type === h.event_type.check_completed && globalThis.__SP_NETWORK_VERIFIED__===true)');
+        workerText=workerText.replace('e.type === h.event_type.report_opened_tab_urls)','e.type === h.event_type.report_opened_tab_urls && globalThis.__SP_NETWORK_VERIFIED__===true)');
+        workerText=workerText.replace('readyType: h.event_type.init_proxy_complete,','readyType: h.event_type.init_proxy_complete,\n              prepareNetwork: () => globalThis.__SP_BEGIN_NETWORK_CHECK__(),');
+      }
       if(config.mode==='superpower')workerText=workerText.replace('const t = Number(e);\n  return Number.isFinite(t) ? t : null;', 'return String(e);');
       if(config.mode==='superpower'){
         const bridgeFile=path.join(target,'js/desktop-bridge.js');

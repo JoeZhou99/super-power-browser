@@ -84,14 +84,31 @@ class ConfigurationHttpTest {
         body(call("GET","/api/admin/configs/kernel-switches",operator,null),404);
         var after=body(call("GET","/api/admin/config-audit",operator,null),200);assertEquals(before.get("total"),after.get("total"));
     }
+    @Test @SuppressWarnings("unchecked") void legacyShopSiteNamesRequireAnUnambiguousPlatformAndUrl() {
+        var jdbc=new JdbcTemplate(context.getBean(javax.sql.DataSource.class));
+        String url="https://site-label.example.test",platform="Site label test";
+        jdbc.update("INSERT INTO platform_site(id,category_name,platform_name,site_name,url,enabled,sort_order) VALUES('site-label-a','test',?,'美国',?,TRUE,9999)",platform,url);
+        var create=Map.<String,Object>of("name","legacy site label shop","platform",platform,"startUrl",url,"kernelVersion","144");
+        String id=text(body(call("POST","/api/environments",customer,create),200),"id");
+        assertEquals("美国",text(body(call("GET","/api/environments/"+id,customer,null),200),"platformSiteName"));
+        jdbc.update("INSERT INTO platform_site(id,category_name,platform_name,site_name,url,enabled,sort_order) VALUES('site-label-b','test',?,'加拿大',?,TRUE,9999)",platform,url);
+        assertEquals("",text(body(call("GET","/api/environments/"+id,customer,null),200),"platformSiteName"));
+        var explicit=new HashMap<String,Object>(create);explicit.put("platformSiteId","site-label-b");
+        body(call("PATCH","/api/environments/"+id,customer,explicit),200);
+        var listed=body(call("GET","/api/environments?query=legacy%20site%20label%20shop",customer,null),200);
+        assertEquals("加拿大",text(((List<Map<String,Object>>)listed.get("items")).get(0),"platformSiteName"));
+    }
     @Test @SuppressWarnings("unchecked") void siteCatalogChangesPreserveRealExistingShopUrlSnapshots() {
         String operator=operator();var doc=body(call("GET","/api/admin/configs/platform-sites",operator,null),200);
-        var entries=(List<Map<String,Object>>)doc.get("entries");var first=entries.get(0);String siteId=text(first,"id"),originalUrl=text(first,"url");
+        var entries=(List<Map<String,Object>>)doc.get("entries");var first=entries.get(0);String siteId=text(first,"id"),originalUrl=text(first,"url"),siteName=text(first,"siteName");
         var create=Map.<String,Object>of("name","catalog snapshot shop","platformSiteId",siteId,"kernelVersion","144");
         String id=text(body(call("POST","/api/environments",customer,create),200),"id");
         first.put("url","https://changed.example.test/login");first.put("enabled",false);
         body(call("PUT","/api/admin/configs/platform-sites",operator,doc),200);
         var existing=body(call("GET","/api/environments/"+id,customer,null),200);assertEquals(originalUrl,text(existing,"startUrl"));
+        assertEquals(siteName,text(existing,"platformSiteName"));
+        var listed=body(call("GET","/api/environments?query=catalog%20snapshot%20shop",customer,null),200);
+        assertEquals(siteName,text(((List<Map<String,Object>>)listed.get("items")).get(0),"platformSiteName"));
         existing.remove("fingerprint");existing.put("name","renamed snapshot shop");
         body(call("PATCH","/api/environments/"+id,customer,existing),200);
         assertEquals(originalUrl,text(body(call("GET","/api/environments/"+id,customer,null),200),"startUrl"));

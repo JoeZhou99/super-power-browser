@@ -13,11 +13,14 @@ public class DeviceImportService {
     // Each call crosses the DeviceService transaction boundary. Invalid rows do
     // not roll back successful rows; each row reports its own result.
     public Map<String,Object> importBatch(Actor actor,List<Map<String,Object>> rows){
-        actor.allow("device.edit");require(!rows.isEmpty()&&rows.size()<=30,400,"每批请提交 1—30 台设备");
+        actor.allow("proxy.edit");require(!rows.isEmpty()&&rows.size()<=30,400,"每批请提交 1—30 台设备");
         var errors=new ArrayList<Map<String,Object>>();var ids=new ArrayList<String>();int index=0;
         for(var row:rows){
             index++;
-            try{ids.add(devices.importOwnRow(actor,row));}
+            try{
+                require(row!=null&&!row.containsKey("relayPoolId"),400,"加速线路由企业授权自动分配，不支持指定线路组");
+                ids.add(devices.importOwnRow(actor,row));
+            }
             catch(BusinessException error){errors.add(Map.of("index",index,"message",error.getMessage()));}
         }
         return Map.of("successCount",ids.size(),"errorCount",errors.size(),"errorMsgData",errors,"ids",ids);

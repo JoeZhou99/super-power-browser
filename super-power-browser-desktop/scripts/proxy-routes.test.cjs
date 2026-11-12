@@ -62,6 +62,70 @@ test('total latency uses the authorized site and releases its temporary lease wi
   assert.equal(started, 1);
 });
 
+test('pool measurements verify the fixed exit, display the relay first hop, and never expose credentials',async()=>{
+  const raw={protocol:'http',host:'fixed-exit.test',port:8080,password:'exit-secret',mapIp:'1.1.1.1',
+    proxyOptions:{transit:{protocol:'socks5',host:'relay.test',port:1080,password:'relay-secret'}},
+    relayPool:{id:'pool',name:'平台加速',revision:2,candidates:[{id:'relay',name:'香港 A',region:'香港',poolId:'hk-pool',poolName:'香港分组'}]}};
+  let closed=0,measures=0,valid=false;
+  class Runtime{constructor(config){this.config=config;this.url='http://127.0.0.1:12345';}async listen(){}async close(){closed++;}}
+  const live=new ProxyRuntime(raw),routes=new ProxyRoutes(raw,live,{target:'https://shop.test/',Runtime,
+    tcp:async connection=>{assert.equal(connection.host,'relay.test');return 25;},
+    validate:async runtime=>{assert.equal(runtime.config.host,'fixed-exit.test');if(!valid)throw new Error('fixed exit mismatch');},
+    measure:async()=>{measures++;return 300;}});
+  const selection={candidateIndex:0,snapshotId:routes.snapshotId};
+  await assert.rejects(routes.latency(selection),/fixed exit mismatch/);
+  assert.equal(measures,0);assert.equal(closed,1);assert.equal(live.candidateIndex,0);
+  valid=true;const measurement=await routes.latency(selection);
+  assert.equal(measurement.delay,300);assert.equal(measurement.entryLatencyMs,25);
+  assert.ok(Date.parse(measurement.sampledAt));assert.equal(closed,2);
+  const state=routes.state();assert.equal(state.candidates[0].name,'香港 A');assert.equal(state.candidates[0].ip,'relay.test');
+  assert.equal(state.candidates[0].poolId,'hk-pool');assert.equal(state.candidates[0].poolName,'香港分组');
+  assert.equal(state.candidates[0].health.available,true);assert.ok(!JSON.stringify(state).includes('secret'));
+});
+
+test('a failed temporary proxy start clears stale healthy measurements and releases the lease',async()=>{
+  let closed=0;
+  class Runtime{async listen(){throw new Error('temporary startup failure');}async close(){closed++;}}
+  const raw=proxy(),live=new ProxyRuntime(raw),routes=new ProxyRoutes(raw,live,{Runtime});
+  routes.health.set(1,{available:true,delay:10,entryLatencyMs:2,sampledAt:'2026-11-11T00:00:00Z'});
+  await assert.rejects(routes.latency({candidateIndex:1,snapshotId:routes.snapshotId}),/temporary startup failure/);
+  assert.equal(routes.state().candidates[1].health.available,false);
+  assert.equal(routes.state().candidates[1].health.delay,null);assert.equal(closed,1);assert.equal(live.candidateIndex,0);
+});
+
+test('startup readiness uses the live exit once without entry TCP, merchant HEAD or temporary sessions',async()=>{
+  const raw=proxy(), live=new ProxyRuntime(raw), network={available:true,ip:'1.1.1.1',country_code:'US',timezone:'America/New_York'};
+  let validations=0;
+  const forbidden=()=>{throw new Error('diagnostic probe must not gate startup');};
+  const routes=new ProxyRoutes({...raw,relayPool:{id:'pool'}},live,{Runtime:forbidden,tcp:forbidden,measure:forbidden,
+    validate:async runtime=>{assert.equal(runtime,live);validations++;return network;}});
+  const result=await routes.ready();
+  assert.equal(result.network,network);assert.equal(validations,1);assert.equal(result.candidateIndex,0);
+  assert.equal(result.delay,null);assert.equal(result.entryLatencyMs,null);assert.equal(result.available,true);
+  assert.ok(Number.isFinite(result.exitLatencyMs));assert.equal(routes.measuring,false);
+  assert.ok(!JSON.stringify(routes.state()).includes('America/New_York'),'network details are not exposed as relay metadata');
+});
+
+test('readiness failures preserve exit rejection and only expose safe diagnostics',async()=>{
+  const raw=proxy(),live=new ProxyRuntime(raw),routes=new ProxyRoutes(raw,live,{validate:async()=>{throw new Error('unsafe-secret-connection');}});
+  await assert.rejects(routes.ready(),/unsafe-secret-connection/);
+  assert.equal(routes.state().candidates[0].health.available,false);
+  assert.ok(!JSON.stringify(routes.state()).includes('unsafe-secret-connection'));assert.equal(routes.measuring,false);
+  const missing=new ProxyRoutes(raw,live);
+  await assert.rejects(missing.ready(),/未配置代理出口校验/);
+});
+
+test('cancelling live readiness releases exclusivity without restarting or changing routes',async()=>{
+  const raw=proxy(),live=new ProxyRuntime(raw),controller=new AbortController();let entered;
+  const started=new Promise(resolve=>{entered=resolve;});
+  const routes=new ProxyRoutes(raw,live,{validate:async(_,signal)=>{entered();await new Promise((resolve,reject)=>signal.addEventListener('abort',()=>reject(signal.reason),{once:true}));}});
+  const ready=routes.ready({signal:controller.signal}),rejected=assert.rejects(ready,{name:'AbortError'});
+  await started;
+  await assert.rejects(routes.ready(),/正在测速/);
+  controller.abort();await rejected;
+  assert.equal(routes.measuring,false);assert.equal(live.candidateIndex,0);
+});
+
 async function server(t, handler) {
   const sockets = new Set(), value = http.createServer(handler);
   value.on('connection', socket => { sockets.add(socket); socket.on('error', () => {}); socket.once('close', () => sockets.delete(socket)); });

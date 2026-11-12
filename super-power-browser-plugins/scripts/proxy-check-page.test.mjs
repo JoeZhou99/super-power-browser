@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 import {networkPresentation} from '../lib/network-presentation.mjs';
+import {pollNetworkInfo} from '../runtime/network-check.mjs';
 
 // Execute the same transformed component and detection-card render expression
 // that the build writes to the extension; source-only tests missed this path.
@@ -16,10 +17,10 @@ const shop=()=>({has_one_platform:{},has_one_agent_ip:{ip:'proxy.test'},
   has_one_user_agent:{ua},has_one_mac_user_agent:{ua},platformName:'TikTok',check_env:'1'});
 const routes=()=>({snapshotId,candidateIndex:0,candidates:[{candidateIndex:0,ip:'proxy.test',port:1080,proxy_type:'socks5'}]});
 
-function fixture({details=async()=>({errorCode:0,data:shop()}),routeList=async()=>routes(),network=async()=>({allowed:true,exit:{available:true,ip:'203.0.113.4'}}),desktop=true,schedule=setTimeout,autoReady=false}={}) {
+function fixture({details=async()=>({errorCode:0,data:shop()}),routeList=async()=>routes(),network=async()=>({allowed:true,attemptId:1,exit:{available:true,ip:'203.0.113.4'}}),complete=async()=>({allowed:true}),desktop=true,schedule=setTimeout,autoReady=false,poll=pollNetworkInfo}={}) {
   const messages=[],listeners=[],counters={details:0,routes:0,network:0};
   const globals={
-    Ye:{},Ge:'',Ke:'',ze:'',He:'',qe:'',Qe:'',We:'',Date,setTimeout:schedule,Y:value=>value,ie:()=>[],F:value=>value,
+    Ye:{},Ge:'',Ke:'',ze:'',He:'',qe:'',Qe:'',We:'',Date,setTimeout:schedule,pollNetworkInfo:poll,Y:value=>value,ie:()=>[],F:value=>value,
     sessionStorage:{getItem:()=>null,setItem(){}},
     console:{log(){},warn(){},error(){}},_:{warn(){},info(){},error(){}},
     navigator:{userAgent:ua},X:{compareVersion:()=>1},y:{warning(){}},
@@ -30,7 +31,8 @@ function fixture({details=async()=>({errorCode:0,data:shop()}),routeList=async()
     chrome:{storage:{local:{get:async()=>({})}},runtime:{onMessage:{addListener:listener=>listeners.push(listener)},
       sendMessage:async message=>{
         messages.push(message);
-        if(message.type==='sp:network-info'){counters.network++;return network();}
+        if(message.type==='sp:network-info'){counters.network++;return network(message);}
+        if(message.type==='sp:network-complete')return complete(message);
         if(autoReady&&message.type==='set_proxy')schedule(()=>listeners.forEach(listener=>listener({type:'init_proxy_complete'})),500);
         return {};
       }}},
@@ -130,7 +132,30 @@ test('a real failed exit check keeps the completed UA result and can recover',as
   assert.deepEqual(renderedCards(f.state).map(card=>card.text),['成功','成功','成功']);
 });
 
-test('consecutive exit failures trigger one automatic retry and manual retry starts a fresh bounded attempt',async t=>{
+test('pending check stays visible, ignores repeated readiness, and only opens after desktop acknowledgement',async()=>{
+  let release,confirm;const f=fixture({network:()=>new Promise(resolve=>release=resolve),complete:()=>new Promise(resolve=>confirm=resolve)});
+  await f.state.getMallInfo();const pending=f.state.checkIpHandle();
+  await f.state.checkIpHandle();f.listeners[0]({type:'init_proxy_complete'});
+  assert.equal(f.counters.network,1);assert.equal(f.state.spNetwork.pending,true);assert.equal(f.state.checkIpEnd,false);
+  release({allowed:true,attemptId:3,exit:{available:true,ip:'203.0.113.8'}});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.state.checkIp,false);assert.equal(f.state.checkIpEnd,false);
+  confirm({allowed:true});await pending;
+  await f.state.checkIpHandle();f.listeners[0]({type:'init_proxy_complete'});
+  assert.equal(f.counters.network,1);assert.equal(f.state.checkIp,true);
+  assert.equal(f.messages.filter(message=>message.type==='sp:network-complete').length,1);
+});
+
+test('SuperPower check_env=2 never bypasses exit verification or a rejected completion',async()=>{
+  const f=fixture({details:async()=>({errorCode:0,data:{...shop(),check_env:'2'}}),complete:async()=>({allowed:false,message:'检测状态已变化'})});
+  await f.state.getMallInfo();f.listeners[0]({type:'init_proxy_complete'});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(f.counters.network,1);assert.equal(f.state.checkIp,false);assert.equal(f.state.loadIp,false);
+  assert.match(f.state.displayCheckResult,/检测状态已变化/);
+  assert.equal(f.messages.some(message=>message.type==='check_completed'),false);
+});
+
+test('desktop failures do not trigger a second automatic attempt and manual retry is sent once',async t=>{
   const scheduled=[];
   const f=await watcherFixture({autoReady:true,schedule:(callback,delay)=>scheduled.push({callback,delay}),
     network:async()=>({allowed:false,exit:{available:false},message:'代理出口检测失败，请检查代理后重试'})});
@@ -145,10 +170,10 @@ test('consecutive exit failures trigger one automatic retry and manual retry sta
     return delays;
   };
   await f.state.getMallInfo();await flush();
-  assert.deepEqual(await finishAttempts(),[500,1000,500]);
-  assert.equal(f.counters.network,2);
-  assert.equal(f.messages.filter(message=>message.type==='set_proxy').length,2);
-  assert.equal(f.state.maxRetryTimes,1);
+  assert.deepEqual(await finishAttempts(),[500]);
+  assert.equal(f.counters.network,1);
+  assert.equal(f.messages.filter(message=>message.type==='set_proxy').length,1);
+  assert.equal(f.state.maxRetryTimes,0);
   assert.equal(f.state.loadIp,false);
   assert.equal(f.state.checkIp,false);
   assert.equal(f.state.checkUa,true);
@@ -157,12 +182,13 @@ test('consecutive exit failures trigger one automatic retry and manual retry sta
 
   await f.state.spRetry();await flush();
   assert.equal(f.state.maxRetryTimes,0);
-  assert.deepEqual(await finishAttempts(),[500,1000,500]);
-  assert.equal(f.counters.network,4);
+  assert.deepEqual(await finishAttempts(),[500]);
+  assert.equal(f.counters.network,2);
   assert.equal(f.counters.details,2);
   assert.equal(f.counters.routes,2);
-  assert.equal(f.messages.filter(message=>message.type==='set_proxy').length,4);
-  assert.equal(f.state.maxRetryTimes,1);
+  assert.equal(f.messages.filter(message=>message.type==='set_proxy').length,2);
+  assert.equal(f.messages.filter(message=>message.type==='sp:network-info'&&message.retry===true).length,1);
+  assert.equal(f.state.maxRetryTimes,0);
   assert.equal(f.state.loadIp,false);
   assert.equal(f.state.checkIp,false);
   assert.equal(f.messages.some(message=>message.type==='check_completed'),false);
@@ -267,10 +293,26 @@ test('the complete transformed check page mounts and updates with its actual Vue
   const state=app.mount(root);
   assert.equal(mounted,true);assert.deepEqual(errors,[]);assert.equal(root.children.length,1);
   const texts=node=>[node.text,...(node.children||[]).flatMap(texts)];
+  assert.equal(state.hasTransferProxyPool,false);
   assert.equal(texts(root).filter(text=>text==='检测中').length,3);
   state.loadIp=false;state.loadUa=false;
   await new Promise(resolve=>setImmediate(resolve));
   assert.deepEqual(errors,[]);
   assert.equal(texts(root).filter(text=>text==='未检测').length,3);
+  state.initJson={desktopProtocol:'super-power-browser-desktop/1',appVersion:'5.3.17',commonParams:{app:'fixture'}};
+  state.transferProxies=[{candidateIndex:0,ip:'relay.test',port:1080,proxy_type:'socks5',name:'香港 A',region:'香港',poolName:'香港分组'}];
+  state.applyRelaySnapshot({relayPool:{id:'pool',name:'共享加速'},automatic:true,relayStatus:'healthy',candidateIndex:0,candidates:[{
+    candidateIndex:0,health:{available:true,entryLatencyMs:25,delay:380,sampledAt:'2026-11-11T00:00:00Z'},
+  }]});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(errors,[]);
+  assert.ok(texts(root).some(text=>String(text).includes('共享加速 · 自动故障切换')));
+  assert.equal(state.hasTransferProxyPool,true);
+  assert.ok(texts(root).some(text=>String(text).includes('香港分组 · 香港 A · 香港')));
+  assert.ok(texts(root).some(text=>String(text).includes('入口 TCP 25ms · 网站响应 380ms')));
+  state.spRelayAutomatic=false;state.spRelayStatus='locked';
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.deepEqual(errors,[]);
+  assert.ok(texts(root).some(text=>String(text).includes('手动锁定')));
   app.unmount();
 });

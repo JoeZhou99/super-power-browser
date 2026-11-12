@@ -45,6 +45,10 @@ class AuthRepository {
         rows(db.select("SELECT DISTINCT p.permission FROM member_role m JOIN role r ON m.role_id=r.id JOIN app_user u ON u.id=m.user_id AND u.department_id=r.department_id JOIN role_permission p ON p.role_id=r.id WHERE m.user_id=? AND u.deleted=FALSE AND r.enabled=TRUE AND r.tenant_id=?", userId, tenantId)).forEach(p -> result.add(text(p,"permission")));
         return Set.copyOf(result);
     }
+    /** Disabled roles still protect a member from takeover before an owner re-enables the role. */
+    List<Map<String,Object>> assignedAuthority(String tenantId,String userId) {
+        return rows(db.select("SELECT r.member_type,p.permission FROM member_role m JOIN role r ON r.id=m.role_id JOIN app_user u ON u.id=m.user_id AND u.department_id=r.department_id LEFT JOIN role_permission p ON p.role_id=r.id WHERE m.user_id=? AND u.deleted=FALSE AND r.tenant_id=?",userId,tenantId));
+    }
     Map<String,Object> member(String tenantId, String userId) {
         var member=one(db.select("SELECT id,tenant_id,username,display_name,phone,owner,enabled,department_id FROM app_user WHERE id=? AND tenant_id=? AND deleted=FALSE", userId, tenantId));
         member.put("memberType",memberType(member)); return member;

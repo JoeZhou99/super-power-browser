@@ -16,6 +16,7 @@ public class ProxyController {
     private final EnvironmentService environments;
     public ProxyController(ProxyService proxies,EnvironmentService environments){this.proxies=proxies;this.environments=environments;}
     @GetMapping Object list(@AuthenticationPrincipal Actor actor,@RequestParam(defaultValue="0") int webType,@RequestParam(defaultValue="") String protocol,@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="20") int size,@RequestParam(defaultValue="false") boolean recycled){return proxies.list(actor,webType,protocol,query,page,size,recycled);}
+    @GetMapping("/export") Object export(@AuthenticationPrincipal Actor actor,@RequestParam(defaultValue="0") int webType,@RequestParam(defaultValue="") String protocol,@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="false") boolean recycled){return proxies.export(actor,webType,protocol,query,page,recycled);}
     @GetMapping("/{id}") Object get(@AuthenticationPrincipal Actor actor,@PathVariable String id){return proxies.get(actor,id);}
     @PostMapping Object create(@AuthenticationPrincipal Actor actor,@RequestBody Map<String,Object> body){return Map.of("id",proxies.save(actor,null,body));}
     @PatchMapping("/{id}") Object update(@AuthenticationPrincipal Actor actor,@PathVariable String id,@RequestBody Map<String,Object> body){return Map.of("id",proxies.save(actor,id,body));}

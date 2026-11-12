@@ -16,7 +16,8 @@ export function validateTransportHost(value = '') {
 }
 
 export function prepareProxyOptions(protocol, saved = {}, changingProtocol = false) {
-  const options = JSON.parse(JSON.stringify(saved || {}));
+  const allowed = ['encryption', 'transportProtocol', 'protocolParameter', 'obfs', 'obfsParameter', 'tls', 'vmessUser', 'vlessUser'];
+  const options = JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(saved || {}).filter(([key]) => allowed.includes(key)))));
   if (changingProtocol) for (const key of ['encryption', 'transportProtocol', 'protocolParameter', 'obfs', 'obfsParameter', 'vmessUser', 'vlessUser']) delete options[key];
   if (['https', 'vmess', 'vless'].includes(protocol)) options.tls = { serverName: '', allowInsecure: false, ...options.tls };
   if (protocol === 'ss') options.encryption ||= 'aes-128-gcm';

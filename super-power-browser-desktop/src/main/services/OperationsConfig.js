@@ -65,12 +65,15 @@ async function loadOperations({url=configuredUrl,token,signal,fetcher=globalThis
   }
 }
 function effectiveRouting(proxy,operations){
+  // A managed pool changes only the path to the bound exit. Neither legacy
+  // per-device rules nor global direct/CDN exceptions may bypass that exit.
+  if(proxy.relayPool)return {};
   const options=proxy.proxyOptions||{};
-  if(options.routing&&groups.some(key=>Array.isArray(options.routing[key])&&options.routing[key].length))return options.routing;
+  const local=options.routing&&groups.some(key=>Array.isArray(options.routing[key])&&options.routing[key].length);
+  if(local)return options.resourceProxy?options.routing:{...options.routing,resourceDomains:[],cdnDomains:[]};
   if(!operations?.networkRouting.enabled)return {};
   const routing=Object.fromEntries(groups.map(key=>[key,operations.networkRouting[key]]));
-  if(!options.resourceProxy&&(routing.resourceDomains.length||routing.cdnDomains.length))
-    throw new Error('全局资源或 CDN 分流已启用，请先为此店铺配置专用资源代理');
+  if(!options.resourceProxy){routing.resourceDomains=[];routing.cdnDomains=[];}
   return routing;
 }
 function effectiveAccessPolicy(fingerprint,operations){

@@ -8,6 +8,7 @@ export interface ProxyRecord {
   expiresAt?: string | null; mapIp?: string; boundCount: number; hasChangeIpUrl?: boolean;
   checkConnected?: boolean | null; checkIp?: string; checkCountryName?: string;
   checkLatencyMs?: number | null; checkMessage?: string; checkedAt?: string | null;
+  acceleration?: {mode: 'automatic'; status: 'auto' | 'direct' | 'unsupported' | 'unavailable' | 'inactive'; reason: string; poolCount: number; candidateCount: number};
 }
 export interface ProxyInput {
   name: string; host: string; port: number; protocol: ProxyProtocol; username: string;
@@ -22,6 +23,7 @@ export interface ProxyQuery {
 }
 export const proxyApi = {
   list: (query: ProxyQuery, signal?: AbortSignal) => request<{items: ProxyRecord[]; total: number}>('/proxies?' + queryString(query as Record<string, unknown>), {signal}),
+  export: (query: ProxyQuery) => request<{items: ProxyRecord[]; total: number}>('/proxies/export?' + queryString(query as Record<string, unknown>)),
   get: (id: string, signal?: AbortSignal) => request<ProxyRecord>(`/proxies/${encodeURIComponent(id)}`, {signal}),
   credentials: (id: string, signal?: AbortSignal) => request<ProxyCredentials>(`/proxies/${encodeURIComponent(id)}/credentials`, {cache: 'no-store', signal}),
   create: (data: ProxyInput) => post('/proxies', data) as Promise<{id: string}>,

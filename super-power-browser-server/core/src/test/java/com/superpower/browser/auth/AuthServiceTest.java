@@ -275,4 +275,148 @@ class AuthServiceTest {
             old.execute("DROP ALL OBJECTS");
         }
     }
+
+    @Test void permissionCatalogFollowsMenusAndFiltersUnassignablePermissionsAndDependencies() {
+        Actor boss=owner("catalog_owner");
+        var groups=auth.permissionNodes(boss);
+        assertEquals(List.of("shop","device","proxy","ai","wallet","order","member","role"),groups.stream().map(PermissionCatalog.Group::code).toList());
+        var nodes=groups.stream().flatMap(group->group.children().stream()).toList();
+        assertEquals(23,nodes.size());
+        assertEquals(9,nodes.stream().filter(node->node.minMemberType()<=1).count());
+        assertEquals(16,nodes.stream().filter(node->node.minMemberType()<=2).count());
+        assertEquals("/proxy/list",groups.stream().filter(group->group.code().equals("proxy")).findFirst().orElseThrow().menuPath());
+        String memberId=member(boss,boss.departmentId(),"catalog_worker",1);
+        status(403,()->auth.permissionNodes(auth.authorizedUser(memberId)));
+        member(boss,boss.departmentId(),"catalog_admin",2);
+        var adminNodes=auth.permissionNodes(actor("catalog_admin")).stream().flatMap(group->group.children().stream()).map(PermissionCatalog.Permission::code).toList();
+        assertTrue(adminNodes.containsAll(List.of("proxy.view","proxy.edit","member.manage")));
+        assertFalse(adminNodes.contains("wallet.view"));
+        var incomplete=PermissionCatalog.assignableGroups(Set.of("shop.open","proxy.edit","role.manage"));
+        assertEquals(List.of("role"),incomplete.stream().map(PermissionCatalog.Group::code).toList());
+    }
+
+    @Test void savingRolesValidatesTypeAndDependencyScopeAndNeverAcceptsEmptyPermissions() {
+        Actor boss=owner("permission_owner");String department=boss.departmentId();
+        String custom=auth.saveRole(boss,null,Map.of("name","日常运营","memberType",1,"permissions",List.of("shop.open","proxy.edit","shop.open")));
+        var repository=context.getBean(AuthRepository.class);
+        assertEquals(Set.of("shop.view","shop.open","proxy.view","proxy.edit"),Set.copyOf(repository.rolePermissions(custom)));
+        status(400,()->auth.saveRole(boss,custom,Map.of("name","不可越级","memberType",1,"permissions",List.of("member.manage"))));
+        status(400,()->auth.saveRole(boss,custom,Map.of("name","不可越级","memberType",2,"permissions",List.of("wallet.recharge"))));
+        status(400,()->auth.saveRole(boss,custom,Map.of("name","空权限","permissions",List.of())));
+        status(400,()->auth.saveRole(boss,custom,Map.of("name","未知权限","permissions",List.of("unknown.manage"))));
+        assertEquals("日常运营",text(repository.role(boss.tenantId(),custom),"name"));
+        String limitedRole=auth.saveRole(boss,null,Map.of("name","受限管理员","memberType",2,"permissions",List.of("role.manage","shop.open")));
+        String limited=auth.saveMember(boss,null,Map.of("username","limited_admin","displayName","受限管理员","password",PASSWORD,"roleIds",List.of(limitedRole)));
+        Actor stale=auth.authorizedUser(limited);
+        jdbc.update("DELETE FROM role_permission WHERE role_id=? AND permission='shop.view'",limitedRole);
+        status(403,()->auth.saveRole(stale,null,Map.of("name","缺失依赖","memberType",1,"permissions",List.of("shop.open"))));
+        member(boss,department,"permission_admin",2);
+        String legacy=auth.saveRole(boss,null,Map.of("name","历史越级角色","memberType",1,"permissions",List.of("shop.view")));
+        jdbc.update("INSERT INTO role_permission(role_id,permission) VALUES(?,'wallet.view')",legacy);
+        Actor administrator=actor("permission_admin");
+        status(403,()->auth.saveRole(administrator,legacy,Map.of("name","篡改历史角色","permissions",List.of("shop.view"))));
+        status(403,()->auth.deleteRole(administrator,legacy));
+        assertTrue(repository.rolePermissions(legacy).contains("wallet.view"));
+    }
+
+    @Test void roleChangesTakeEffectForExistingSessionsAndDoNotRetainRemovedDependencies() {
+        Actor boss=owner("revocation_owner");
+        String roleId=auth.saveRole(boss,null,Map.of("name","店铺运营","memberType",1,"permissions",List.of("shop.open")));
+        auth.saveMember(boss,null,Map.of("username","revocation_worker","displayName","运营","password",PASSWORD,"roleIds",List.of(roleId)));
+        String session=text(auth.login(Map.of("username","revocation_worker","password",PASSWORD)),"token");
+        assertTrue(auth.authenticate(session).permissions().containsAll(Set.of("shop.view","shop.open")));
+        auth.saveRole(boss,roleId,Map.of("name","代理查看","permissions",List.of("proxy.view")));
+        assertEquals(Set.of("proxy.view"),auth.authenticate(session).permissions());
+        auth.saveRole(boss,roleId,Map.of("name","代理查看","enabled",false,"permissions",List.of("proxy.view")));
+        assertTrue(auth.authenticate(session).permissions().isEmpty());
+    }
+
+    @Test void legacyRolesCanBeDisabledWithoutRegrantingInvalidPermissionsOrChangingTheirDefinition() {
+        Actor boss=owner("legacy_disable_owner");var repository=context.getBean(AuthRepository.class);
+        String legacy=auth.saveRole(boss,null,Map.of("name","历史资金角色","description","保留的旧配置","memberType",1,"permissions",List.of("shop.view")));
+        jdbc.update("INSERT INTO role_permission(role_id,permission) VALUES(?,'wallet.view')",legacy);
+        auth.saveMember(boss,null,Map.of("username","legacy_disable_worker","displayName","历史成员","password",PASSWORD,"roleIds",List.of(legacy)));
+        String token=text(auth.login(Map.of("username","legacy_disable_worker","password",PASSWORD)),"token");
+        var unchanged=Map.<String,Object>of("name","历史资金角色","description","保留的旧配置","memberType",1,"permissions",List.of("shop.view","wallet.view"),"enabled",false);
+        assertTrue(auth.authenticate(token).permissions().contains("wallet.view"));
+        for(String field:List.of("name","description","memberType","permissions","enabled")) {
+            var edited=new HashMap<>(unchanged);
+            edited.put(field,switch(field) {
+                case "name","description" -> "修改了配置";
+                case "memberType" -> 2;
+                case "permissions" -> List.of("shop.view","wallet.view","ai.use");
+                default -> true;
+            });
+            status(400,()->auth.saveRole(boss,legacy,edited));
+        }
+        auth.saveRole(boss,legacy,unchanged);
+        assertFalse(flag(repository.role(boss.tenantId(),legacy),"enabled"));
+        assertEquals(Set.of("shop.view","wallet.view"),Set.copyOf(repository.rolePermissions(legacy)));
+        assertTrue(auth.authenticate(token).permissions().isEmpty());
+        var enable=new HashMap<>(unchanged);enable.put("enabled",true);
+        status(400,()->auth.saveRole(boss,legacy,enable));
+        status(400,()->auth.saveRole(boss,null,unchanged));
+        String empty=auth.saveRole(boss,null,Map.of("name","历史空角色","permissions",List.of("shop.view")));
+        jdbc.update("DELETE FROM role_permission WHERE role_id=?",empty);
+        auth.saveRole(boss,empty,Map.of("name","历史空角色","permissions",List.of(),"enabled",false));
+        assertFalse(flag(repository.role(boss.tenantId(),empty),"enabled"));
+        status(400,()->auth.saveRole(boss,empty,Map.of("name","历史空角色","permissions",List.of(),"enabled",true)));
+        status(400,()->auth.saveRole(boss,null,Map.of("name","新增空角色","permissions",List.of(),"enabled",false)));
+    }
+
+    @Test void disablingLegacyRolesStillChecksOperatorScopeAndEveryAffectedMembersAuthority() {
+        Actor boss=owner("legacy_scope_owner");String department=boss.departmentId();
+        member(boss,department,"legacy_scope_admin",2);Actor administrator=actor("legacy_scope_admin");
+        String funds=auth.saveRole(boss,null,Map.of("name","历史资金权限","permissions",List.of("shop.view")));
+        jdbc.update("INSERT INTO role_permission(role_id,permission) VALUES(?,'wallet.view')",funds);
+        status(403,()->auth.saveRole(administrator,funds,Map.of("name","历史资金权限","permissions",List.of("shop.view","wallet.view"),"enabled",false)));
+        String assigned=auth.saveRole(boss,null,Map.of("name","历史管理权限","permissions",List.of("shop.view")));
+        jdbc.update("INSERT INTO role_permission(role_id,permission) VALUES(?,'member.manage')",assigned);
+        String higher=member(boss,department,"legacy_scope_super",3);
+        auth.bindRoles(boss,higher,List.of(role(boss,department,3),assigned));
+        status(403,()->auth.saveRole(administrator,assigned,Map.of("name","历史管理权限","permissions",List.of("shop.view","member.manage"),"enabled",false)));
+        var repository=context.getBean(AuthRepository.class);
+        assertTrue(flag(repository.role(boss.tenantId(),funds),"enabled"));
+        assertTrue(flag(repository.role(boss.tenantId(),assigned),"enabled"));
+    }
+
+    @Test void limitedAdministratorsCannotTakeOverMembersWithPermissionsTheyCannotAssign() {
+        Actor boss=owner("scope_owner");String department=boss.departmentId();
+        member(boss,department,"scope_admin",2);Actor administrator=actor("scope_admin");
+        assertFalse(administrator.permissions().contains("ai.use"));
+        String aiRole=auth.saveRole(boss,null,Map.of("name","AI 运营","memberType",1,"permissions",List.of("ai.use")));
+        String worker=auth.saveMember(boss,null,Map.of("username","scope_worker","displayName","AI 运营","password",PASSWORD,"roleIds",List.of(aiRole)));
+        status(403,()->auth.saveMember(administrator,worker,Map.of("displayName","接管账号","password","Newpass8")));
+        status(403,()->auth.saveMember(administrator,worker,Map.of("displayName","停用账号","enabled",false)));
+        status(403,()->auth.bindRoles(administrator,worker,List.of(role(boss,department,1))));
+        assertEquals(Set.of("ai.use"),actor("scope_worker").permissions());
+        auth.saveRole(boss,aiRole,Map.of("name","AI 运营","enabled",false,"permissions",List.of("ai.use")));
+        assertTrue(actor("scope_worker").permissions().isEmpty());
+        status(403,()->auth.saveMember(administrator,worker,Map.of("displayName","趁角色停用重置","password","Newpass8")));
+        String superMember=member(boss,department,"scope_super",3),superRole=role(boss,department,3);
+        auth.saveRole(boss,superRole,Map.of("name","暂停的超级管理员","enabled",false,"permissions",new ArrayList<>(AuthService.PERMISSIONS)));
+        assertEquals(1,actor("scope_super").memberType());
+        status(403,()->auth.saveMember(administrator,superMember,Map.of("displayName","趁级别停用重置","password","Newpass8")));
+        auth.saveMember(boss,worker,Map.of("displayName","所有者重置","password","Newpass8"));
+        assertEquals(worker,((Actor)auth.login(Map.of("username","scope_worker","password","Newpass8")).get("user")).id());
+    }
+
+    @Test void proxyPermissionMigrationPreservesOnlyCorrespondingExistingDeviceGrants() {
+        try(var legacy=source()) {
+            Flyway.configure().dataSource(legacy).target("23").load().migrate();var old=new JdbcTemplate(legacy);
+            old.update("INSERT INTO tenant(id,name) VALUES('proxy-legacy','legacy')");
+            old.update("INSERT INTO department(id,tenant_id,name,is_default) VALUES('proxy-legacy','proxy-legacy','default',TRUE)");
+            for(String roleId:List.of("viewer","editor","exporter","unrelated")) {
+                old.update("INSERT INTO role(id,tenant_id,name,department_id) VALUES(?,'proxy-legacy',?,'proxy-legacy')",roleId,roleId);
+            }
+            old.update("INSERT INTO role_permission(role_id,permission) VALUES('viewer','device.view'),('viewer','proxy.view'),('editor','device.edit'),('exporter','device.export'),('unrelated','shop.view')");
+            Flyway.configure().dataSource(legacy).load().migrate();
+            assertEquals(Set.of("device.view","proxy.view"),new HashSet<>(old.queryForList("SELECT permission FROM role_permission WHERE role_id='viewer'",String.class)));
+            assertEquals(Set.of("device.edit","proxy.edit"),new HashSet<>(old.queryForList("SELECT permission FROM role_permission WHERE role_id='editor'",String.class)));
+            assertEquals(Set.of("device.export","proxy.export"),new HashSet<>(old.queryForList("SELECT permission FROM role_permission WHERE role_id='exporter'",String.class)));
+            assertEquals(List.of("shop.view"),old.queryForList("SELECT permission FROM role_permission WHERE role_id='unrelated'",String.class));
+            assertEquals(4,old.queryForObject("SELECT COUNT(*) FROM role WHERE member_type=1",Integer.class));
+            old.execute("DROP ALL OBJECTS");
+        }
+    }
 }

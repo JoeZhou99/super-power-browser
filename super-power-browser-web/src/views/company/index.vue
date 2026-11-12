@@ -6,6 +6,7 @@ import { ArrowDown, MoreFilled, Plus, Refresh, Search } from '@element-plus/icon
 import { mallApi } from '@/api/mall/mall.api';
 import { request } from '@/utils/request';
 import { passwordError, usernameError } from '@/views/login/public-auth';
+import { changePermissions, normalizePermissions, permissionGroupsForType } from './role-permissions.mjs';
 import {
   companyApi,
   type ApplicationStatus,
@@ -15,6 +16,7 @@ import {
   type Department,
   type MemberApplication,
   type MemberInvitation,
+  type PermissionGroup,
 } from '@/api/company/company.api';
 
 type PageTab = 'members' | 'roles' | 'applications';
@@ -26,7 +28,7 @@ const actor = ref<CompanyActor>();
 const departments = ref<Department[]>([]);
 const members = ref<CompanyMember[]>([]);
 const roles = ref<CompanyRole[]>([]);
-const nodes = ref<string[]>([]);
+const permissionGroups = ref<PermissionGroup[]>([]);
 const invitations = ref<MemberInvitation[]>([]);
 const applications = ref<MemberApplication[]>([]);
 const loading = ref(false);
@@ -45,24 +47,11 @@ const activeTab = ref<PageTab>(route.path.endsWith('/roles') ? 'roles' : route.q
 
 const memberTypes: Record<number, string> = { 1: '普通成员', 2: '管理员', 3: '超级管理员' };
 const scopeDescriptions: Record<number, string> = {
-  1: '访问本人创建或被授权的店铺与设备。',
-  2: '管理本部门普通成员，以及本部门的店铺与设备。',
-  3: '管理企业各部门及其成员，访问企业全部店铺与设备；超级管理员由企业所有者管理。',
+  1: '访问本人创建或被授权的店铺，开店时使用店铺绑定的设备或代理；管理网络资源需另有相应功能权限。',
+  2: '在授予的功能权限内管理本部门普通成员及资源；可用权限比普通成员更多。',
+  3: '可配置企业全部核心功能，资源范围覆盖各部门；超级管理员由企业所有者管理。',
 };
-const permissionLabels: Record<string, string> = {
-  'ai.use': '使用 SuperPower AI', 'ai.purchase': '订购 AI 套餐',
-  'shop.view': '查看店铺', 'shop.create': '创建／复制店铺', 'shop.edit': '编辑、绑定与常用',
-  'shop.open': '打开店铺', 'shop.delete': '店铺回收与删除', 'shop.export': '导出店铺', 'shop.grant': '管理店铺授权',
-  'device.view': '查看设备与代理', 'device.edit': '编辑、检测与回收设备', 'device.buy': '购买设备',
-  'device.renew': '续费与加速', 'device.export': '导出设备',
-  'wallet.view': '查看余额', 'wallet.recharge': '账户充值', 'order.view': '查看订单', 'order.export': '导出订单',
-  'member.manage': '成员管理', 'role.manage': '角色管理',
-};
-const permissionSections = [
-  { prefix: 'ai', label: 'AI' }, { prefix: 'shop', label: '店铺' },
-  { prefix: 'device', label: '设备与代理' }, { prefix: 'wallet', label: '账户' },
-  { prefix: 'order', label: '订单' }, { prefix: 'member', label: '成员' }, { prefix: 'role', label: '角色' },
-];
+const permissionLabels = computed<Record<string, string>>(() => Object.fromEntries(permissionGroups.value.flatMap(group => group.children).map(node => [node.code, node.label])));
 const can = (permission: string) => Boolean(actor.value?.permissions.includes(permission));
 const isCompanyManager = computed(() => Boolean(actor.value?.owner || (actor.value?.memberType ?? 1) >= 3));
 const canManageDepartments = computed(() => can('member.manage') && isCompanyManager.value);
@@ -77,7 +66,10 @@ const typeName = (member: CompanyMember) => member.owner ? '企业所有者' : m
 function canManageMember(member: CompanyMember, permission = 'member.manage') {
   if (!actor.value || !can(permission) || member.owner || member.id === actor.value.id) return false;
   if (actor.value.owner) return true;
-  return actor.value.memberType > member.memberType
+  const assigned = member.roles.map(id => roles.value.find(role => role.id === id));
+  if (assigned.some(role => !role || !role.permissions.every(code => can(code)))) return false;
+  const assignedType = Math.max(member.memberType, ...assigned.map(role => role?.memberType ?? 1));
+  return actor.value.memberType > assignedType
     && (actor.value.memberType >= 3 || actor.value.departmentId === member.departmentId);
 }
 
@@ -147,7 +139,7 @@ async function load() {
       canCreateMember.value ? companyApi.applications(requestedStatus) : Promise.resolve([]),
     ]);
     if (generation !== loadGeneration) return;
-    [departments.value, members.value, roles.value, nodes.value, invitations.value, applications.value] = results;
+    [departments.value, members.value, roles.value, permissionGroups.value, invitations.value, applications.value] = results;
     if (departmentId.value && !departments.value.some(department => department.id === departmentId.value)) departmentId.value = '';
     if (!isCompanyManager.value) departmentId.value = actor.value.departmentId;
     selectedMembers.value = [];
@@ -309,20 +301,67 @@ async function deleteMember() {
 const roleDialog = ref(false);
 const roleForm = reactive({ id: '', name: '', description: '', departmentId: '', memberType: 1, enabled: true, permissions: [] as string[], builtin: false });
 const allowedTypes = computed(() => [1, 2, 3].filter(type => actor.value?.owner || type < (actor.value?.memberType ?? 1)));
-const roleSections = computed(() => permissionSections.map(section => ({ ...section, nodes: nodes.value.filter(node => node.startsWith(section.prefix + '.')) })));
+const permissionQuery = ref('');
+const permissionCategory = ref('all');
+const rolePermissionNotice = ref('');
+const roleSections = computed(() => permissionGroupsForType(permissionGroups.value, roleForm.memberType));
+const roleNodes = computed(() => roleSections.value.flatMap(section => section.children));
+const visibleRoleSections = computed(() => {
+  const search = permissionQuery.value.trim().toLowerCase();
+  return roleSections.value.filter(section => permissionCategory.value === 'all' || permissionCategory.value === section.code)
+    .map(section => ({ ...section, children: section.children.filter(node => !search || `${section.label} ${node.label} ${node.code}`.toLowerCase().includes(search)) }))
+    .filter(section => section.children.length);
+});
+const sectionCodes = (section: PermissionGroup) => section.children.map(node => node.code);
+const selectedInSection = (section: PermissionGroup) => section.children.filter(node => roleForm.permissions.includes(node.code)).length;
+const roleTemplates = [
+  { code: 'operations', name: '店铺运营', memberType: 1, description: '日常开店、创建与编辑店铺，查看绑定的设备和代理', permissions: ['shop.view', 'shop.open', 'shop.create', 'shop.edit', 'device.view', 'proxy.view'] },
+  { code: 'team', name: '部门管理', memberType: 2, description: '管理本部门成员、角色和店铺授权', permissions: ['member.manage', 'role.manage', 'shop.view', 'shop.open', 'shop.grant', 'device.view', 'proxy.view'] },
+  { code: 'finance', name: '财务管理', memberType: 3, description: '查看账户、充值以及查看和导出订单', permissions: ['wallet.view', 'wallet.recharge', 'order.view', 'order.export'] },
+];
+const availableTemplates = computed(() => roleTemplates.filter(template => allowedTypes.value.includes(template.memberType)
+  && (!roleForm.builtin || template.memberType === roleForm.memberType)
+  && template.permissions.every(permission => can(permission))));
+function permissionsForType(type: number) { return permissionGroupsForType(permissionGroups.value, type).flatMap(section => section.children); }
+function rolePermissionSummary(role: CompanyRole) {
+  return role.permissions.map(permission => permissionLabels.value[permission] || permission).join('、') || '未配置功能权限';
+}
 function editRole(role?: CompanyRole, copy = false) {
   Object.assign(roleForm, {
     id: copy ? '' : role?.id || '', name: role ? role.name + (copy ? ' 副本' : '') : '', description: role?.description || '',
     departmentId: role?.departmentId || defaultDepartmentId(), memberType: role?.memberType || 1, enabled: role?.enabled ?? true,
     permissions: role ? [...role.permissions] : [], builtin: copy ? false : role?.builtin || false,
   });
+  permissionQuery.value = '';
+  permissionCategory.value = 'all';
+  rolePermissionNotice.value = '';
+  reconcileRolePermissions();
   roleDialog.value = true;
 }
+function reconcileRolePermissions() {
+  const previous = [...roleForm.permissions];
+  roleForm.permissions = normalizePermissions(permissionGroups.value, roleForm.memberType, previous);
+  const removed = previous.filter(code => !roleForm.permissions.includes(code));
+  if (removed.length) rolePermissionNotice.value = `有 ${removed.length} 项权限不适用于当前成员类型或超出你的授权范围，已从本次编辑中移除，保存后生效。`;
+  if (!roleSections.value.some(section => section.code === permissionCategory.value)) permissionCategory.value = 'all';
+}
+function changeRoleType() { rolePermissionNotice.value = ''; reconcileRolePermissions(); }
+function applyRoleTemplate(code: string) {
+  const template = availableTemplates.value.find(item => item.code === code);
+  if (!template) return;
+  roleForm.memberType = template.memberType;
+  roleForm.permissions = normalizePermissions(permissionGroups.value, template.memberType, template.permissions);
+  if (!roleForm.name.trim()) roleForm.name = template.name;
+  permissionCategory.value = 'all';
+  permissionQuery.value = '';
+  rolePermissionNotice.value = '';
+}
 function selectPermissions(values: string[], checked: boolean) {
-  roleForm.permissions = checked ? [...new Set([...roleForm.permissions, ...values])] : roleForm.permissions.filter(value => !values.includes(value));
+  roleForm.permissions = changePermissions(permissionGroups.value, roleForm.memberType, roleForm.permissions, values, checked);
 }
 async function saveRole() {
   if (!roleForm.name.trim() || !roleForm.departmentId) return void ElMessage.warning('请填写角色名称和所属部门');
+  if (!roleForm.permissions.length) return void ElMessage.warning('请至少选择一项功能权限');
   await run(async () => {
     await companyApi.saveRole(roleForm.id, { ...roleForm, name: roleForm.name.trim() });
     roleDialog.value = false;
@@ -513,7 +552,7 @@ async function grantShops(targets: ShopGrant[], revoke = false) {
             <el-table-column label="部门" min-width="120"><template #default="{ row }">{{ departmentName(row.departmentId) }}</template></el-table-column>
             <el-table-column label="成员类型" min-width="110"><template #default="{ row }">{{ memberTypes[row.memberType] }}</template></el-table-column>
             <el-table-column label="已绑定" width="80"><template #default="{ row }"><el-tooltip :content="roleMembers(row.id).map(member => member.displayName).join('、') || '暂无成员'"><span>{{ roleMembers(row.id).length }} 人</span></el-tooltip></template></el-table-column>
-            <el-table-column label="功能权限" width="90"><template #default="{ row }"><el-tooltip :content="row.permissions.map((permission: string) => permissionLabels[permission] || permission).join('、') || '无功能权限'"><span>{{ row.permissions.length }} 项</span></el-tooltip></template></el-table-column>
+            <el-table-column label="功能权限" min-width="125"><template #default="{ row }"><el-tooltip :content="rolePermissionSummary(row)"><span>已选 {{ row.permissions.length }} 项</span></el-tooltip><div v-if="can('role.manage')" class="cell-secondary">当前可配置 {{ permissionsForType(row.memberType).length }} 项</div></template></el-table-column>
             <el-table-column label="状态" width="80"><template #default="{ row }"><el-switch :model-value="row.enabled" :disabled="busy || !canManageRole(row)" @change="roleStatus(row, Boolean($event))" /></template></el-table-column>
             <el-table-column label="操作" width="155" fixed="right"><template #default="{ row }"><template v-if="canManageRole(row)"><el-button link type="primary" :disabled="busy" @click="editRole(row)">编辑</el-button><el-button link type="primary" :disabled="busy" @click="editRole(row, true)">复制</el-button><el-tooltip v-if="!row.builtin" content="请先调整该角色绑定成员的角色" :disabled="!roleMembers(row.id).length"><span><el-button link type="danger" :disabled="busy || roleMembers(row.id).length > 0" @click="deleteRole(row)">删除</el-button></span></el-tooltip></template><span v-else class="cell-secondary">无管理权限</span></template></el-table-column>
           </el-table>
@@ -566,21 +605,33 @@ async function grantShops(targets: ShopGrant[], revoke = false) {
     <template #footer><el-button :disabled="busy" @click="deleteDialog = false">取消</el-button><el-button type="danger" :loading="busy" @click="deleteMember">确认删除</el-button></template>
   </el-dialog>
 
-  <el-drawer v-model="roleDialog" :title="roleForm.id ? '编辑角色' : '新增角色'" size="780px" :close-on-click-modal="false">
+  <el-drawer v-model="roleDialog" :title="roleForm.id ? '编辑角色' : '新增角色'" size="min(900px, 100vw)" :close-on-click-modal="false">
     <el-form label-position="top" class="role-fields" :disabled="busy">
       <el-form-item label="角色名称" required><el-input v-model="roleForm.name" maxlength="100" /></el-form-item>
       <el-form-item label="所属部门" required><el-select v-model="roleForm.departmentId" :disabled="Boolean(roleForm.id) || !isCompanyManager"><el-option v-for="department in availableDepartments" :key="department.id" :value="department.id" :label="department.name" /></el-select></el-form-item>
-      <el-form-item label="成员类型" required><el-select v-model="roleForm.memberType" :disabled="roleForm.builtin"><el-option v-for="type in allowedTypes" :key="type" :value="type" :label="memberTypes[type]" /></el-select></el-form-item>
+      <el-form-item label="成员类型" required><el-select v-model="roleForm.memberType" :disabled="roleForm.builtin" @change="changeRoleType"><el-option v-for="type in allowedTypes" :key="type" :value="type" :label="`${memberTypes[type]} · ${permissionsForType(type).length} 项可配置权限`" /></el-select></el-form-item>
       <el-form-item label="状态"><el-switch v-model="roleForm.enabled" active-text="启用" inactive-text="停用" /></el-form-item>
       <el-form-item label="角色描述" class="wide"><el-input v-model="roleForm.description" type="textarea" maxlength="200" :rows="2" show-word-limit /></el-form-item>
     </el-form>
     <el-alert :closable="false" type="info" :title="scopeDescriptions[roleForm.memberType]" />
-    <div class="permission-heading"><h3>功能权限</h3><span>{{ roleForm.permissions.length }} 项已选</span><el-button link type="primary" :disabled="busy" @click="selectPermissions(nodes, true)">全选</el-button><el-button link :disabled="busy" @click="selectPermissions(nodes, false)">清空</el-button></div>
-    <div class="permission-grid"><section v-for="section in roleSections" :key="section.prefix" class="permission-section">
-      <el-checkbox :model-value="section.nodes.length > 0 && section.nodes.every(node => roleForm.permissions.includes(node))" :indeterminate="section.nodes.some(node => roleForm.permissions.includes(node)) && !section.nodes.every(node => roleForm.permissions.includes(node))" :disabled="busy || !section.nodes.length" @change="selectPermissions(section.nodes, Boolean($event))">{{ section.label }}</el-checkbox>
-      <el-checkbox-group v-model="roleForm.permissions" :disabled="busy"><el-checkbox v-for="node in section.nodes" :key="node" :value="node">{{ permissionLabels[node] || node }}</el-checkbox></el-checkbox-group>
-      <p v-if="!section.nodes.length" class="cell-secondary">无可分配权限</p>
-    </section></div>
+    <div v-if="availableTemplates.length" class="role-templates"><span>快捷配置</span><el-tooltip v-for="template in availableTemplates" :key="template.code" :content="template.description"><el-button size="small" :disabled="busy" @click="applyRoleTemplate(template.code)">{{ template.name }}</el-button></el-tooltip></div>
+    <el-alert v-if="rolePermissionNotice" class="permission-notice" :title="rolePermissionNotice" type="warning" :closable="false" show-icon />
+    <div class="permission-heading"><h3>功能权限</h3><span>已选 {{ roleForm.permissions.length }} / 可配置 {{ roleNodes.length }} 项</span><el-button link type="primary" :disabled="busy || !roleNodes.length" @click="selectPermissions(roleNodes.map(node => node.code), true)">全选</el-button><el-button link :disabled="busy || !roleForm.permissions.length" @click="selectPermissions(roleNodes.map(node => node.code), false)">清空</el-button></div>
+    <el-input v-model="permissionQuery" :prefix-icon="Search" placeholder="搜索菜单或功能权限" clearable class="permission-search" />
+    <div class="permission-workspace">
+      <nav class="permission-categories" aria-label="功能权限分类">
+        <button type="button" :class="{ active: permissionCategory === 'all' }" @click="permissionCategory = 'all'"><span>全部菜单</span><small>{{ roleNodes.length }}</small></button>
+        <button v-for="section in roleSections" :key="section.code" type="button" :class="{ active: permissionCategory === section.code }" @click="permissionCategory = section.code"><span>{{ section.label }}</span><small>{{ selectedInSection(section) }}/{{ section.children.length }}</small></button>
+      </nav>
+      <div class="permission-panels">
+        <section v-for="section in visibleRoleSections" :key="section.code" class="permission-section">
+          <div class="permission-section-heading"><el-checkbox :model-value="selectedInSection(section) === section.children.length" :indeterminate="selectedInSection(section) > 0 && selectedInSection(section) < section.children.length" :disabled="busy" @change="selectPermissions(sectionCodes(section), Boolean($event))">{{ section.label }}</el-checkbox><small>{{ selectedInSection(section) }} / {{ section.children.length }}</small></div>
+          <div class="permission-options"><el-checkbox v-for="node in section.children" :key="node.code" :model-value="roleForm.permissions.includes(node.code)" :disabled="busy" @change="selectPermissions([node.code], Boolean($event))"><span>{{ node.label }}</span><small v-if="node.dependencies.length" class="permission-dependency">需要：{{ node.dependencies.map(code => permissionLabels[code] || code).join('、') }}</small></el-checkbox></div>
+        </section>
+        <el-empty v-if="!visibleRoleSections.length" :description="roleNodes.length ? '没有匹配的功能权限' : '当前成员类型没有可分配的功能权限'" :image-size="65" />
+      </div>
+    </div>
+    <p class="form-note">勾选操作会同时勾选必要的查看权限；取消查看权限会一并取消依赖它的操作。店铺访问范围在成员的“店铺授权”中设置。</p>
     <template #footer><el-button :disabled="busy" @click="roleDialog = false">取消</el-button><el-button type="primary" :loading="busy" @click="saveRole">保存</el-button></template>
   </el-drawer>
 
@@ -600,6 +651,7 @@ async function grantShops(targets: ShopGrant[], revoke = false) {
   </el-dialog>
 
   <el-drawer v-model="grantsDialog" :title="`店铺授权 · ${grantMember?.displayName || ''}`" size="800px">
+    <el-alert class="permission-notice" type="info" :closable="false" title="成员获得店铺授权和打开店铺权限后，可使用店铺绑定的设备或代理。编辑、导出网络资源及查看代理密码需要另有管理权限。" />
     <div class="content-toolbar"><el-button type="primary" :disabled="busy || !selectedShops.length || !grantMember?.enabled" @click="grantShops(selectedShops)">批量授权</el-button><el-button :disabled="busy || !selectedShops.length" @click="grantShops(selectedShops, true)">撤销授权</el-button><el-input v-model="shopQuery" placeholder="搜索店铺 / 平台 / 账号" clearable /></div>
     <el-table :data="displayedShops" row-key="id" @selection-change="selectedShops = $event"><el-table-column type="selection" width="45" /><el-table-column prop="name" label="店铺名称" /><el-table-column prop="platform" label="平台" /><el-table-column prop="accountName" label="店铺账号" /><el-table-column label="授权状态" width="95"><template #default="{ row }"><el-tag :type="row.granted ? 'success' : 'info'">{{ row.granted ? '已授权' : '未授权' }}</el-tag></template></el-table-column><el-table-column label="操作" width="100"><template #default="{ row }"><el-button link type="primary" :disabled="busy || (!row.granted && !grantMember?.enabled)" @click="grantShops([row], row.granted)">{{ row.granted ? '撤销授权' : '授权' }}</el-button></template></el-table-column></el-table>
   </el-drawer>
@@ -645,10 +697,26 @@ async function grantShops(targets: ShopGrant[], revoke = false) {
 .permission-heading { display: flex; align-items: center; gap: 12px; margin: 22px 0 12px; }
 .permission-heading h3 { margin: 0 auto 0 0; font-size: 16px; }
 .permission-heading > span { color: #8b96aa; font-size: 12px; }
-.permission-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.permission-section { border: 1px solid #e8edf5; border-radius: 7px; padding: 12px 16px; }
-.permission-section > .el-checkbox { font-weight: 600; }
-.permission-section :deep(.el-checkbox-group) { display: flex; flex-direction: column; align-items: flex-start; margin-left: 10px; }
+.role-templates { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 16px 0; }
+.role-templates > span { margin-right: 4px; color: #788399; font-size: 13px; }
+.role-templates .el-button + .el-button { margin-left: 0; }
+.permission-notice { margin-bottom: 16px; }
+.permission-search { margin-bottom: 12px; }
+.permission-workspace { display: grid; grid-template-columns: 160px minmax(0, 1fr); border: 1px solid #e8edf5; border-radius: 8px; overflow: hidden; }
+.permission-categories { display: block; background: #f8faff; border-right: 1px solid #e8edf5; padding: 8px; }
+.permission-categories button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 12px 10px; margin-bottom: 4px; border: 0; border-radius: 5px; color: #526078; background: transparent; cursor: pointer; text-align: left; }
+.permission-categories button.active { color: #386bff; background: #eaf0ff; }
+.permission-categories small, .permission-section-heading small { color: #8b96aa; }
+.permission-panels { min-width: 0; padding: 0 18px; }
+.permission-section { padding: 12px 0 16px; border-bottom: 1px solid #e8edf5; }
+.permission-section:last-child { border-bottom: 0; }
+.permission-section-heading { display: flex; align-items: center; justify-content: space-between; }
+.permission-section-heading > .el-checkbox { font-weight: 600; }
+.permission-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px 0 0 8px; }
+.permission-options > .el-checkbox { margin: 0; height: auto; align-items: flex-start; }
+.permission-options :deep(.el-checkbox__input) { margin-top: 3px; }
+.permission-options :deep(.el-checkbox__label) { white-space: normal; line-height: 1.5; }
+.permission-dependency { display: block; margin-top: 2px; color: #8b96aa; font-size: 11px; }
 .invitation-create { display: flex; gap: 12px; margin: 20px 0; }
 .invitation-result { padding: 16px; border: 1px solid #dce7ff; border-radius: 7px; background: #f8faff; margin-bottom: 24px; }
 .invitation-result p { margin-bottom: 0; }
@@ -661,6 +729,8 @@ async function grantShops(targets: ShopGrant[], revoke = false) {
   .company-workspace { grid-template-columns: minmax(0, 1fr); }
   .department-panel { border-right: 0; border-bottom: 1px solid #e8edf5; max-height: 220px; overflow-y: auto; }
   .sidebar-note { display: none; }
-  .permission-grid, .role-fields { grid-template-columns: minmax(0, 1fr); }
+  .role-fields, .permission-options { grid-template-columns: minmax(0, 1fr); }
+  .permission-workspace { grid-template-columns: 125px minmax(0, 1fr); }
+  .permission-heading { flex-wrap: wrap; }
 }
 </style>

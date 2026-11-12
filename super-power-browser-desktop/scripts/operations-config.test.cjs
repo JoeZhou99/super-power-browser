@@ -74,11 +74,14 @@ test('global routing feeds actual PAC without changing proxy snapshot; nonempty 
   const vm=require('node:vm'),ops=validateOperations(publication());
   const proxy={protocol:'http',host:'proxy.example.com',port:8080,username:'synthetic',password:'synthetic',proxyOptions:{}};
   const before=JSON.stringify(proxy),snapshot=proxySnapshotId(proxy);
-  assert.throws(()=>effectiveRouting(proxy,ops),/\u4e13\u7528\u8d44\u6e90\u4ee3\u7406/);
+  assert.deepEqual(effectiveRouting(proxy,ops),{directDomains:['direct.example.com'],resourceDomains:[],cdnDomains:[]});
   ops.networkRouting.resourceDomains=[];ops.networkRouting.cdnDomains=[];
   const routing=effectiveRouting(proxy,ops);
   assert.deepEqual(routing,{directDomains:['direct.example.com'],resourceDomains:[],cdnDomains:[]});
-  const select=vm.runInNewContext(createProxyPac({localProxy:{host:'127.0.0.1',port:20000},proxyRouting:routing})+'\nFindProxyForURL;');
+  const config={localProxy:{host:'127.0.0.1',port:20000},proxyRouting:routing};
+  const pending=vm.runInNewContext(createProxyPac(config)+'\nFindProxyForURL;');
+  assert.equal(pending('https://direct.example.com/','direct.example.com'),'PROXY 127.0.0.1:20000');
+  const select=vm.runInNewContext(createProxyPac(config,{verified:true})+'\nFindProxyForURL;');
   assert.equal(select('https://direct.example.com/','direct.example.com'),'DIRECT');
   assert.equal(select('https://resources.example.com/','resources.example.com'),'PROXY 127.0.0.1:20000');
   assert.equal(JSON.stringify(proxy),before);assert.equal(proxySnapshotId(proxy),snapshot);
@@ -92,6 +95,19 @@ test('global routing feeds actual PAC without changing proxy snapshot; nonempty 
   assert.deepEqual(effectiveAccessPolicy({},ops),policy);
   const ownPolicy={mode:'blacklist',domains:['own.example.com'],exceptions:[]};
   assert.deepEqual(effectiveAccessPolicy({accessRules:ownPolicy},ops),ownPolicy);
+});
+
+test('managed relay pools keep every destination on the same exit despite global or former local bypass rules',async()=>{
+  const {createProxyPac}=await import(pathToFileURL(path.resolve(__dirname,'../../super-power-browser-plugins/runtime/proxy-routing.mjs')));
+  const vm=require('node:vm'),ops=validateOperations(publication());
+  const proxy={protocol:'http',host:'exit.example.com',port:8080,relayPool:{id:'pool',name:'共享线路',candidates:[{id:'relay'}]},
+    proxyOptions:{transit:{protocol:'socks5',host:'relay.example.com',port:1080},routing:{directDomains:['legacy.example.com']}}};
+  const before=JSON.stringify(proxy),routing=effectiveRouting(proxy,ops);
+  assert.deepEqual(routing,{});assert.equal(JSON.stringify(proxy),before);
+  const select=vm.runInNewContext(createProxyPac({localProxy:{host:'127.0.0.1',port:20000},proxyRouting:routing},{verified:true})+'\nFindProxyForURL;');
+  for(const host of ['direct.example.com','resources.example.com','cdn.example.com','legacy.example.com','shop.example.com'])
+    assert.equal(select('https://'+host+'/',host),'PROXY 127.0.0.1:20000');
+  assert.ok(effectiveAccessPolicy({},ops),'unrelated access restrictions remain active');
 });
 
 test('disabled groups preserve existing runtime behavior and anonymous access is rejected',async()=>{

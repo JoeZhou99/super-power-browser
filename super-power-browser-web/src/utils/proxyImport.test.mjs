@@ -115,16 +115,16 @@ test('VLESS Reality shares retain all key fields and reject unsupported transpor
   assert.equal(plain.port, 80); assert.equal(plain.proxyOptions.vlessUser.flow, '');
 });
 
-test('editing advanced options preserves original relay/backup credentials and never mutates the record', () => {
+test('editing protocol options excludes retired custom routes and never mutates the record', () => {
   const saved = {vlessUser:{id:uuid, network:'tcp', security:'reality', flow:'xtls-rprx-vision', encryption:'none', serverName:'certificate.test', publicKey, shortId:'aabb'}, transit:{protocol:'https',host:'relay.test',port:443,username:'relay-user',password:'relay-password',proxyOptions:{tls:{serverName:'relay.test',allowInsecure:false}}}, alternatives:[{protocol:'socks5',host:'backup.test',port:1080,username:'backup-user',password:'backup-password'}]};
   const options = prepareProxyOptions('vless', saved);
   options.vlessUser.serverName = 'updated.test';
   const result = validateProxyOptions('vless', options);
-  assert.deepEqual(result.transit, saved.transit); assert.deepEqual(result.alternatives, saved.alternatives);
+  assert.equal(result.transit, undefined); assert.equal(result.alternatives, undefined);
   assert.equal(saved.vlessUser.serverName, 'certificate.test');
   const changedProtocol = prepareProxyOptions('vmess', options, true);
-  assert.equal(changedProtocol.vlessUser, undefined); assert.deepEqual(changedProtocol.transit, saved.transit);
-  assert.deepEqual(changedProtocol.alternatives, saved.alternatives); assert.equal(changedProtocol.tls.allowInsecure, false);
+  assert.equal(changedProtocol.vlessUser, undefined); assert.equal(changedProtocol.transit, undefined);
+  assert.equal(changedProtocol.alternatives, undefined); assert.equal(changedProtocol.tls.allowInsecure, false);
 });
 
 test('mixed batches retain each protocol settings and sanitize malformed links', () => {

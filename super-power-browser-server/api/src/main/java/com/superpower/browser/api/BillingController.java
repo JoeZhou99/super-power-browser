@@ -21,5 +21,5 @@ public class BillingController {
     @PostMapping("/orders/{id}/payment") Object pay(@AuthenticationPrincipal Actor a,@PathVariable String id) { return billing.continuePayment(a,id); }
     @PostMapping("/orders/{id}/refresh") Object refresh(@AuthenticationPrincipal Actor a,@PathVariable String id) { return billing.refresh(a,id); }
     @PostMapping("/orders/{id}/cancel") void cancel(@AuthenticationPrincipal Actor a,@PathVariable String id) { billing.cancel(a,id); }
-    @GetMapping("/orders/export") Object export(@AuthenticationPrincipal Actor a,@RequestParam(defaultValue="1") int page) { a.allow("order.export"); return billing.list(a,"","",page,200); }
+    @GetMapping("/orders/export") Object export(@AuthenticationPrincipal Actor a,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="") String status,@RequestParam Map<String,String> filters) { a.allow("order.export"); return billing.filtered(a,query,status,page,200,filters); }
 }

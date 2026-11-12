@@ -210,7 +210,7 @@
           </p>
           <p v-else>{{ t("zhifuAgent.settings.planUnsubscribedDesc") }}</p>
         </div>
-        <button type="button" class="plan-renew" @click="openRenew">
+        <button v-if="hasPerm('ai.purchase')" type="button" class="plan-renew" @click="openRenew">
           {{
             activePlan && showAsSubscribed
               ? t("zhifuAgent.settings.planRenew")
@@ -314,6 +314,7 @@ import appSettingsIcon from "@/ai/assets/icons/appSettings.png";
 import modelManageIcon from "@/ai/assets/icons/modelManageIcon.png";
 import { useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
 import { useUserStore } from "@/ai/store/modules/user.store";
+import { hasPerm } from "@/ai/utils/permission";
 import type { Conversation } from "../type";
 import {
   conversationKind,
@@ -435,6 +436,7 @@ async function loadPlan() {
 }
 
 function openRenew() {
+  if (!hasPerm('ai.purchase')) return;
   renewVisible.value = true;
 }
 
@@ -449,7 +451,7 @@ async function claimBenefit() {
 watch(
   () => store.planBuySignal,
   (value) => {
-    if (value) renewVisible.value = true;
+    if (value) openRenew();
   }
 );
 

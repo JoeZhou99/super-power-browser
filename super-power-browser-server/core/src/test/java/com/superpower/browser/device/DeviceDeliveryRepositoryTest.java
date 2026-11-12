@@ -59,7 +59,7 @@ class DeviceDeliveryRepositoryTest {
         String orderId=id();var snapshot=Map.<String,Object>of("quantity",1,"ipType",1,"productId","synthetic-package","autoRenew",false);
         jdbc.update("INSERT INTO business_order(id,tenant_id,creator_id,request_id,kind,amount_cents,channel,payment_status,snapshot,expires_at) VALUES(?,'tenant','active',?,'PURCHASE',100,'balance','PAID',?,?)",orderId,orderId,json(snapshot),Timestamp.from(Instant.now().plusSeconds(3600)));
         var order=row(jdbc.queryForMap("SELECT * FROM business_order WHERE id=?",orderId));
-        var options=Map.<String,Object>of("encryption","aes-256-gcm","transit",Map.of("protocol","socks5","host","relay.example.com","port",1080,"password","relay-secret"));
+        var options=Map.<String,Object>of("encryption","aes-256-gcm");
         var connection=new DeviceSupplier.Connection("synthetic","SS node",1,"ss","proxy.example.com",8388,"","ss-secret","Test","2099-01-01T00:00:00Z",options);
         transactions.executeWithoutResult(status->fulfillment.apply(order,new DeviceSupplier.Delivery(List.of(connection),connection.expiresAt())));
         String encrypted=jdbc.queryForObject("SELECT proxy_options FROM device WHERE purchase_order_id=?",String.class,orderId);

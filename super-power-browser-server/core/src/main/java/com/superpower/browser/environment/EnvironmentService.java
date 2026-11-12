@@ -30,6 +30,12 @@ public class EnvironmentService {
         a.allow("shop.view"); require(page>0 && size>0 && size<=200,400,"分页参数不合法");
         return repository.list(a,category,query,page,size,recycled);
     }
+    @Transactional(readOnly=true)
+    public List<Map<String,Object>> exportSelected(Actor a,List<String> ids) {
+        a.allow("shop.export");a.allow("shop.view");
+        require(!ids.isEmpty()&&ids.size()<=200,400,"每次请选择 1—200 个店铺");
+        return repository.selected(a,ids.stream().distinct().toList());
+    }
     public Map<String,Object> aiList(Actor a,String query,String platforms,int page,int size) {
         a.allow("shop.view");require(page>0&&size>0&&size<=200&&query.length()<=200&&platforms.length()<=1000,400,"店铺查询参数不合法");
         return repository.aiList(a,query,platforms.isBlank()?List.of():Arrays.asList(platforms.split(",")),page,size);
@@ -133,7 +139,9 @@ public class EnvironmentService {
     }
     public List<Map<String,Object>> forDevice(Actor a,String deviceId) { a.allow("shop.view");return repository.forDevice(a,deviceId); }
     public List<Map<String,Object>> forMember(Actor a,String memberId) {
-        a.allow("shop.grant");members.describe(a.tenantId(),List.of(memberId));
+        a.allow("shop.grant");
+        var member=members.describe(a.tenantId(),List.of(memberId)).get(0);
+        require(a.owner()||a.memberType()==3||a.departmentId().equals(text(member,"departmentId")),403,"只能管理本部门成员的店铺授权");
         return repository.forMember(a,memberId);
     }
     public void checkAccess(Actor a,String id) {

@@ -44,7 +44,7 @@ public class AuthController {
     @GetMapping("/member-applications") Object applications(@AuthenticationPrincipal Actor a,@RequestParam(defaultValue="") String status) { return auth.applications(a,status); }
     @PostMapping("/member-applications/{id}/review") void reviewApplication(@AuthenticationPrincipal Actor a,@PathVariable String id,@RequestBody Map<String,Object> b) { auth.reviewApplication(a,id,b); }
     @GetMapping("/roles") Object roles(@AuthenticationPrincipal Actor a) { return auth.roles(a); }
-    @GetMapping("/permission-nodes") Object permissions(@AuthenticationPrincipal Actor a) { a.allow("role.manage");return a.permissions(); }
+    @GetMapping("/permission-nodes") Object permissions(@AuthenticationPrincipal Actor a) { return auth.permissionNodes(a); }
     @PostMapping("/roles") Object addRole(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object> b) { return Map.of("id",auth.saveRole(a,null,b)); }
     @PatchMapping("/roles/{id}") Object editRole(@AuthenticationPrincipal Actor a,@PathVariable String id,@RequestBody Map<String,Object> b) { return Map.of("id",auth.saveRole(a,id,b)); }
     @DeleteMapping("/roles/{id}") void deleteRole(@AuthenticationPrincipal Actor a,@PathVariable String id) { auth.deleteRole(a,id); }

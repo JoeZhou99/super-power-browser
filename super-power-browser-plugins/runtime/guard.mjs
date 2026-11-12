@@ -1,7 +1,7 @@
 // Runs before the extension worker. Never clear or replace a browser proxy
 // before authenticated startup configuration and the host contract are valid.
 import {configureProxyAuthentication} from './proxy-auth.mjs';
-import {createProxyPac} from './proxy-routing.mjs';
+import {createProxyPac,controlPlaneOrigin} from './proxy-routing.mjs';
 const bytes = text => Uint8Array.from(atob(text), c => c.charCodeAt(0));
 const utf8 = new TextEncoder();
 export async function readBootstrap(configText, initText, cryptoApi = crypto) {
@@ -80,9 +80,10 @@ export async function boot(chromeApi = chrome, fetcher = fetch) {
   };
   const [buildText, configText, initText] = await Promise.all(['runtime/build.json', 'config.dat', 'init.json'].map(read));
   const build = JSON.parse(buildText), bootstrap = await readBootstrap(configText, initText);
-  if(build.mode==='superpower'&&bootstrap.apiBase){
-    const endpoint=new URL(bootstrap.apiBase);
-    if(endpoint.protocol!=='https:'&&!(endpoint.protocol==='http:'&&['127.0.0.1','localhost'].includes(endpoint.hostname)))throw new Error('插件后台地址必须使用 HTTPS 或本机地址');
+  if(build.mode==='superpower'){
+    bootstrap.apiBase ||= build.apiBase;
+    bootstrap.authOrigin ||= build.authOrigin;
+    controlPlaneOrigin(bootstrap);
     build.compiledApiBase=build.apiBase;build.apiBase=bootstrap.apiBase;build.authOrigin=bootstrap.authOrigin;
   }
   let controlsProxy=false;

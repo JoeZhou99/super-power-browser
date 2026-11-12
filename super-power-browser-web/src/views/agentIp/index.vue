@@ -22,7 +22,7 @@ async function recycle(row:any){try{await ElMessageBox.confirm(recycled.value?'�
 async function restore(row:any){await post(`/devices/${row.id}/restore`);await load();}
 async function autoRenew(row:any){await patch(`/devices/${row.id}/auto-renew`,{enabled:!row.autoRenew});await load();}
 async function check(row:any){if(!window.api)throw new Error('请在桌面客户端中检测代理连接');const result=await window.api.checkProxy(row.id);ElMessage({message:result.message,type:result.connected?'success':'error'});}
-async function exportAll(){const all:any[]=[];for(let p=1;;p++){const r=await request('/devices?'+queryString({type:type.value,category:category.value,query:query.value,recycled:recycled.value,page:p,size:200}));all.push(...r.items);if(all.length>=r.total)break;}await downloadWorkbook('设备列表.xlsx',all,exportColumns);}
+async function exportAll(){if(!permissions.can('device.export'))return;const all:any[]=[];for(let p=1;;p++){const r=await request('/devices/export?'+queryString({type:type.value,category:category.value,query:query.value,recycled:recycled.value,page:p}));all.push(...r.items);if(all.length>=r.total)break;}await downloadWorkbook('设备列表.xlsx',all,exportColumns);}
 async function searchShops(){shopChoices.value=(await request(`/environments?query=${encodeURIComponent(shopSearch.value)}&size=100`)).items;}
 async function showBindings(row:any){bindings.value=row;boundShops.value=await request(`/devices/${row.id}/environments`);shopId.value='';await searchShops();}
 async function bindShop(){await mallApi.bind(shopId.value,bindings.value.id);await showBindings(bindings.value);await load();}

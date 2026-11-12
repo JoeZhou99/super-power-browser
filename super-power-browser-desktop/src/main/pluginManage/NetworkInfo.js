@@ -35,8 +35,22 @@ function expectedExit(proxy){return Number(proxy.webType)===1?'':publicIp(proxy.
 function validateExit(proxy,exit){
   if(!exit?.available||!publicIp(exit.ip||''))return {allowed:false,message:exit?.failure==='timeout'?'代理出口检测超时，请稍后重试或检查代理线路':'代理出口检测失败，请检查代理后重试'};
   const expected=expectedExit(proxy);
-  if(expected&&canonical(expected)!==canonical(exit.ip))return {allowed:false,message:'实际出口 IP 与绑定的固定 IP 不一致'};
+  if(expected&&canonical(expected)!==canonical(exit.ip))return {allowed:false,code:'PROXY_EXIT_MISMATCH',message:'实际出口 IP 与绑定的固定 IP 不一致'};
   return {allowed:true,message:'代理出口检测通过'};
+}
+function createExitValidation(proxy){
+  let fixed=expectedExit(proxy);
+  return {
+    get expectedIp(){return fixed;},
+    validate(exit){
+      const result=validateExit(proxy,exit);
+      if(!result.allowed||!proxy.relayPool)return result;
+      // A domain gateway has no known public address until the first successful
+      // probe. Pin that actual exit for this session before comparing relays.
+      fixed ||= exit.ip;
+      return validateExit({...proxy,webType:2,mapIp:fixed},exit);
+    },
+  };
 }
 function requestJson(url,agent,signal){return new Promise((resolve,reject)=>{
   const request=https.get(url,{agent,signal,headers:{Accept:'application/json'}},response=>{
@@ -46,8 +60,10 @@ function requestJson(url,agent,signal){return new Promise((resolve,reject)=>{
 });}
 // Match the legacy connectivity probe's sequential attempts and 8-second
 // allowance, but cap the whole round at 12 seconds (below the 15-second RPC).
+// Managed routes may opt into two simultaneous providers so one unavailable
+// detection site cannot consume the whole round. Ordinary calls stay sequential.
 // Local geolocation remains parallel and never delays the shop window.
-async function collectGeo({proxyUrl,expectedIp='',timeout=proxyUrl?12000:5000,requestTimeout=8000,providers=proxyUrl?proxyProviders:localProviders,request=requestJson,accept=()=>true,firstValid=false,signal}={}){
+async function collectGeo({proxyUrl,expectedIp='',timeout=proxyUrl?12000:5000,requestTimeout=8000,providers=proxyUrl?proxyProviders:localProviders,providerConcurrency=1,request=requestJson,accept=()=>true,firstValid=false,signal}={}){
   check(signal);
   const started=performance.now(),diagnostics=[];
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),timeout);
@@ -75,7 +91,7 @@ async function collectGeo({proxyUrl,expectedIp='',timeout=proxyUrl?12000:5000,re
       if(!first||(!first.country_code&&geo.country_code))first=geo;
       responses[index]={...geo,source:detail.provider};
       const key=geo.country_code+'|'+geo.ip;
-      if(proxyUrl&&firstValid&&(!expectedIp||detail.matchesExpected))confirmed=geo;
+      if(proxyUrl&&firstValid&&(!expectedIp||detail.matchesExpected)){confirmed=geo;controller.abort();}
       else if(!proxyUrl&&geo.country_code&&observed.has(key)){confirmed=geo;controller.abort();}
       else observed.add(key);
     }catch(error){
@@ -92,10 +108,17 @@ async function collectGeo({proxyUrl,expectedIp='',timeout=proxyUrl?12000:5000,re
   };
   try{
     if(proxyUrl){
-      for(let index=0;index<providers.length;index++){
-        await attempt(providers[index],index);
-        if(confirmed||controller.signal.aborted)break;
-      }
+      const concurrency=Number(providerConcurrency)>=2?2:1;
+      let next=0;
+      const worker=async()=>{
+        while(next<providers.length&&!confirmed&&!controller.signal.aborted){
+          const index=next++;
+          await attempt(providers[index],index);
+        }
+      };
+      // Join every worker, including cancelled attempts, before exposing a
+      // result; each attempt releases its timer, listeners and proxy agent.
+      await Promise.allSettled(Array.from({length:Math.min(concurrency,providers.length)},worker));
     }else await Promise.allSettled(providers.map(attempt));
     check(signal);
     const diagnostic={durationMs:Math.round(performance.now()-started),diagnostics:diagnostics.filter(Boolean)};
@@ -124,4 +147,4 @@ async function localGeo({providers=localProviders,request=requestJson}={}){
   }
   return localPending.promise;
 }
-module.exports={publicIp,normalize,parseResponse,collectGeo,localGeo,validateExit,expectedExit};
+module.exports={publicIp,normalize,parseResponse,collectGeo,localGeo,validateExit,expectedExit,createExitValidation};

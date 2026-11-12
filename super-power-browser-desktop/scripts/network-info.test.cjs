@@ -1,7 +1,27 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const http = require('node:http');
-const { collectGeo, validateExit } = require('../src/main/pluginManage/NetworkInfo');
+const { collectGeo, validateExit, createExitValidation } = require('../src/main/pluginManage/NetworkInfo');
+
+test('a domain exit is pinned once for a managed session and never changes with a candidate',()=>{
+  const validation=createExitValidation({host:'gateway.example.com',webType:2,relayPool:{id:'pool'}});
+  assert.equal(validation.expectedIp,'');
+  assert.equal(validation.validate({available:false}).allowed,false);
+  assert.equal(validation.expectedIp,'','failed probes cannot establish an exit');
+  assert.equal(validation.validate({available:true,ip:'1.1.1.1'}).allowed,true);
+  assert.equal(validation.expectedIp,'1.1.1.1');
+  assert.equal(validation.validate({available:true,ip:'8.8.8.8'}).allowed,false);
+  assert.equal(validation.expectedIp,'1.1.1.1','a later mismatch cannot overwrite the first valid baseline');
+  assert.equal(validation.validate({available:true,ip:'1.1.1.1'}).allowed,true);
+});
+
+test('a configured fixed exit takes precedence and ordinary dynamic devices keep their previous validation',()=>{
+  const fixed=createExitValidation({host:'gateway.example.com',mapIp:'1.1.1.1',webType:2,relayPool:{id:'pool'}});
+  assert.equal(fixed.validate({available:true,ip:'8.8.8.8'}).allowed,false);assert.equal(fixed.expectedIp,'1.1.1.1');
+  const dynamic=createExitValidation({host:'gateway.example.com',webType:1});
+  assert.equal(dynamic.validate({available:true,ip:'1.1.1.1'}).allowed,true);
+  assert.equal(dynamic.validate({available:true,ip:'8.8.8.8'}).allowed,true);assert.equal(dynamic.expectedIp,'');
+});
 
 const geo = (ip = '1.1.1.1') => ({ ip, country_code: 'AU', country_name: 'Australia' });
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -138,6 +158,68 @@ test('a timed out provider can fall back without cancelling the whole probe', { 
   assert.equal(calls, 2);
   assert.equal(cancelled, 1);
   assert.equal(maximum, 1);
+});
+
+test('two bounded providers return the matching exit without waiting for a hung first site', { timeout: 3000 }, async () => {
+  const providers = ['https://hung.invalid/', 'https://ready.invalid/', 'https://unused.invalid/'];
+  const calls = [];
+  let active = 0, maximum = 0, cancelled = 0;
+  const result = await bounded(collectGeo({
+    proxyUrl: 'http://user:private-value@127.0.0.1:1', providers, providerConcurrency: 99,
+    expectedIp: '1.1.1.1', firstValid: true, timeout: 2000, requestTimeout: 2000,
+    request: async (url, _agent, signal) => {
+      calls.push(url); maximum = Math.max(maximum, ++active);
+      try { return await delayed(geo(), url === providers[0] ? 2500 : 25, signal); }
+      catch (error) { if (signal.aborted) cancelled++; throw error; }
+      finally { active--; }
+    },
+  }));
+  assert.equal(maximum, 2, 'even a larger requested concurrency must be capped at two');
+  assert.deepEqual(calls, providers.slice(0, 2));
+  assert.equal(cancelled, 1);
+  assert.equal(active, 0, 'all started request cleanup must complete before return');
+  assert.equal(result.ip, '1.1.1.1');
+  assert.deepEqual(result.diagnostics.map(item => item.result), ['cancelled', 'success']);
+  assert.equal(JSON.stringify(result.diagnostics).includes('private-value'), false);
+});
+
+test('an earlier wrong exit cannot win a parallel probe over a later matching exit', { timeout: 3000 }, async () => {
+  const providers = ['https://wrong.invalid/', 'https://matching.invalid/', 'https://hung.invalid/'];
+  let active = 0, maximum = 0, cancelled = 0;
+  const result = await bounded(collectGeo({
+    proxyUrl: 'http://127.0.0.1:1', providers, providerConcurrency: 2,
+    expectedIp: '1.1.1.1', firstValid: true, timeout: 2000, requestTimeout: 2000,
+    request: async (url, _agent, signal) => {
+      const index = providers.indexOf(url); maximum = Math.max(maximum, ++active);
+      try { return await delayed(geo(index === 0 ? '8.8.8.8' : '1.1.1.1'), [15, 60, 2500][index], signal); }
+      catch (error) { if (signal.aborted) cancelled++; throw error; }
+      finally { active--; }
+    },
+  }));
+  assert.equal(result.ip, '1.1.1.1');
+  assert.equal(validateExit({ webType: 2, host: '1.1.1.1' }, result).allowed, true);
+  assert.equal(result.diagnostics[0].matchesExpected, false);
+  assert.equal(result.diagnostics[1].matchesExpected, true);
+  assert.equal(result.multipleExits, true);
+  assert.equal(maximum, 2);
+  assert.equal(cancelled, 1);
+  assert.equal(active, 0);
+});
+
+test('external cancellation closes both concurrent real proxy CONNECTs without starting another provider', { timeout: 4000 }, async t => {
+  const proxy = await silentProxy(t), controller = new AbortController();
+  t.after(() => controller.abort());
+  const operation = collectGeo({
+    proxyUrl: proxy.url, providerConcurrency: 2,
+    providers: ['https://first.invalid/', 'https://second.invalid/', 'https://unused.invalid/'],
+    signal: controller.signal, timeout: 2000, requestTimeout: 2000, firstValid: true,
+  });
+  const rejected = assert.rejects(bounded(operation), { name: 'AbortError' });
+  await until(() => proxy.connections.length === 2);
+  controller.abort(new DOMException('Synthetic shop close', 'AbortError'));
+  await rejected;
+  await until(() => proxy.sockets.size === 0);
+  assert.deepEqual(proxy.connections.sort(), ['first.invalid:443', 'second.invalid:443']);
 });
 
 test('a valid proxy response after five seconds remains within the default request budget', { timeout: 10000 }, async () => {

@@ -1,7 +1,7 @@
 const http=require('node:http');
 const https=require('node:https');
 const {ProxyRuntime,proxyError,safeProxyMessage}=require('./ProxyRuntime');
-const {collectGeo,validateExit,expectedExit}=require('../pluginManage/NetworkInfo');
+const {collectGeo,createExitValidation}=require('../pluginManage/NetworkInfo');
 const {loadOperations}=require('./OperationsConfig');
 const {check,waitFor}=require('../runtime/Cancellation');
 
@@ -67,9 +67,25 @@ class ProxyChecks {
     check(signal);
     const start=performance.now();let runtime,result;
     try{
-      check(signal);runtime=new this.Runtime(proxy,{resources:this.resources,signal});await runtime.listen();
-      const exit=await waitFor(this.collect({proxyUrl:runtime.url,providers:operations?.networkChecks.enabled?operations.networkChecks.proxyProviders:undefined,expectedIp:expectedExit(proxy),signal}),signal),validation=validateExit(proxy,exit);
-      result={connected:validation.allowed,ip:exit.ip||'',countryName:exit.country_name||'',latencyMs:Math.round(performance.now()-start),message:validation.allowed?`代理连接成功，检测 IP：${exit.ip}${exit.country_name?'（'+exit.country_name+'）':''}${exit.multipleExits?'；不同检测地址返回不同出口，请检查代理分流规则':''}`:validation.message};
+      check(signal);runtime=new this.Runtime(proxy,{resources:this.resources,signal});
+      const candidates=proxy.relayPool?runtime.candidates:[proxy],exitValidation=createExitValidation(proxy);
+      if(!Array.isArray(candidates)||!candidates.length)throw proxyError('中继池没有可用线路');
+      for(let index=0;index<candidates.length;index++){
+        check(signal);
+        if(index>0)runtime=new this.Runtime(candidates[index],{resources:this.resources,signal});
+        try{
+          await runtime.listen();
+          // Use the same managed-route allowance as shop initialization. A
+          // stalled first provider must not hide a slower but reachable exit.
+          const budget=proxy.relayPool?{timeout:20000,requestTimeout:20000,providerConcurrency:2,firstValid:true}:{};
+          const exit=await waitFor(this.collect({proxyUrl:runtime.url,providers:operations?.networkChecks.enabled?operations.networkChecks.proxyProviders:undefined,...budget,expectedIp:exitValidation.expectedIp,signal}),signal),validation=exitValidation.validate(exit);
+          const route=proxy.relayPool?`；线路：${proxy.relayPool.candidates?.[index]?.name||'中继 '+(index+1)}`:'';
+          result={connected:validation.allowed,ip:exit.ip||'',countryName:exit.country_name||'',latencyMs:Math.round(performance.now()-start),message:validation.allowed?`代理连接成功，检测 IP：${exit.ip}${exit.country_name?'（'+exit.country_name+'）':''}${route}${exit.multipleExits?'；不同检测地址返回不同出口，请检查代理分流规则':''}`:validation.message};
+        }catch(error){check(signal);result={connected:false,ip:'',countryName:'',latencyMs:Math.round(performance.now()-start),message:safeProxyMessage(error)};}
+        finally{const closing=runtime;runtime=null;await closing?.close();}
+        if(result.connected)return result;
+      }
+      if(proxy.relayPool)result.message='中继池线路均未通过检测；'+result.message;
     }catch(error){check(signal);result={connected:false,ip:'',countryName:'',latencyMs:Math.round(performance.now()-start),message:safeProxyMessage(error)};}
     finally{await runtime?.close();}
     return result;

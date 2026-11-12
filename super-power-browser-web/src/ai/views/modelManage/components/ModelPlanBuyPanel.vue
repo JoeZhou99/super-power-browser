@@ -188,7 +188,7 @@
       <el-button
         type="primary"
         :loading="submitLoading"
-        :disabled="!selectedPlan || (!aliShow && !wxShow && payableYuan > 0)"
+        :disabled="!hasPerm('ai.purchase') || !selectedPlan || (!aliShow && !wxShow && payableYuan > 0)"
         @click="submitOrder"
       >
         {{ t("wxwProxy.submitOrder") }}
@@ -301,6 +301,7 @@ import {
 } from "@/ai/api/modelManage";
 import { useModelPlanAccess } from "@/ai/views/modelManage/composables/useModelPlanAccess";
 import { useAppStore } from "@/ai/store/modules/app.store";
+import { hasPerm } from "@/ai/utils/permission";
 
 const props = defineProps<{
   /**
@@ -740,6 +741,7 @@ function startPoll(orderNo: string) {
 }
 
 async function createOrder() {
+  if (!hasPerm('ai.purchase')) return;
   if (!selectedPlan.value) return;
   const payType = getApiPayType();
   if (!payType) {

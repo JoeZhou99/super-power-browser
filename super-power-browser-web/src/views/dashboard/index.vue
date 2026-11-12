@@ -18,13 +18,13 @@ function toggleGuide(){guide.value=!guide.value;localStorage.setItem(`spb-guide-
 async function open(row:any){if(!window.api)throw new Error('请在桌面客户端中打开店铺');await window.api.openBrowser(row.id);await loadRecent();}
 const steps=computed(()=>[
   {title:'创建店铺',text:'选择店铺所属平台，填写登录信息，配置独立浏览器环境。',path:'/mall/mallManage?create=1',permission:'shop.create',done:shops.value.all>0,button:'去创建'},
-  {title:'配置网络',text:'添加已有代理，或购买平台设备，再为店铺选择网络连接。',path:permissions.can('device.edit')?'/proxy/list?create=1':'/agentIp/aggregateBuy3',permission:permissions.can('device.edit')?'device.edit':'device.buy',done:(account.deviceCount||0)+(account.proxyCount||0)>0,button:permissions.can('device.edit')?'添加代理':'购买设备'},
+  {title:'配置网络',text:'添加已有代理，或购买平台设备，再为店铺选择网络连接。',path:permissions.can('proxy.edit')?'/proxy/list?create=1':'/agentIp/aggregateBuy3',permission:permissions.can('proxy.edit')?'proxy.edit':'device.buy',done:(account.deviceCount||0)+(account.proxyCount||0)>0,button:permissions.can('proxy.edit')?'添加代理':'购买设备'},
 
 ]);
 const shortcuts=computed(()=>[
   {title:'创建店铺',icon:Shop,path:'/mall/mallManage?create=1',permission:'shop.create'},
   {title:'购买设备',icon:Monitor,path:'/agentIp/aggregateBuy3',permission:'device.buy'},
-  {title:'代理管理',icon:Connection,path:'/proxy/list',permission:'device.view'},
+  {title:'代理管理',icon:Connection,path:'/proxy/list',permission:'proxy.view'},
   {title:'账户充值',icon:Wallet,path:'/money/recharge',permission:'wallet.recharge'},
   {title:'添加成员',icon:User,path:'/companyManage/membersMamanger?create=1',permission:'member.manage'}
 ].filter(s=>permissions.can(s.permission)));

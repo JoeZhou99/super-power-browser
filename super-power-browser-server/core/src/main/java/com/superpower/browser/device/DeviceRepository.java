@@ -31,7 +31,7 @@ class DeviceRepository {
         return result;
     }
     private void decryptOptions(Map<String,Object> result) {
-        String stored=text(result,"proxyOptions");result.put("proxyOptions",stored.isEmpty()?Map.of():object(secrets.decrypt(stored)));
+        String stored=text(result,"proxyOptions");result.put("proxyOptions",stored.isEmpty()?Map.of():ProxyOptions.protocolOnly(object(secrets.decrypt(stored))));
     }
     Map<String,Object> proxies(Actor a,int webType,String protocol,String query,int page,int size,boolean recycled) {
         String where=SCOPE+" AND d.ip_type=2 AND d.recycled=?";var args=scopeArgs(a);args.add(recycled);

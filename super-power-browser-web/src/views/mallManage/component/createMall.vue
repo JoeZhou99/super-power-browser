@@ -58,6 +58,6 @@ function newUa(){const os=props.form.fingerprint.os==='Mac'?'Macintosh; Intel Ma
       <ShopInfoFields :form="form" :members="members" :active="modelValue"/>
       <BrowserEnvironmentFields :form="form" :kernels="kernels" :kernel-error="kernelError" :config="browserConfig" :config-loading="configLoading" @new-ua="newUa" @reset-defaults="refreshConfig(true)"/>
     </div>
-    <template #footer><el-button v-if="permissions.can('device.view')&&permissions.can('shop.edit')" type="primary" :loading="saving" :disabled="configLoading||(!form.id&&!browserConfig)" @click="emit('save',true)">保存并配置网络</el-button><el-button @click="emit('update:modelValue',false)">取消</el-button><el-button :loading="saving" :disabled="configLoading||(!form.id&&!browserConfig)" @click="emit('save',false)">保存</el-button></template>
+    <template #footer><el-button v-if="(permissions.can('device.view')||permissions.can('proxy.view'))&&permissions.can('shop.edit')" type="primary" :loading="saving" :disabled="configLoading||(!form.id&&!browserConfig)" @click="emit('save',true)">保存并配置网络</el-button><el-button @click="emit('update:modelValue',false)">取消</el-button><el-button :loading="saving" :disabled="configLoading||(!form.id&&!browserConfig)" @click="emit('save',false)">保存</el-button></template>
   </el-dialog>
 </template>

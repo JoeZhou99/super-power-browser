@@ -48,7 +48,7 @@ async function openGrants(row:any){selectedShop.value=row;members.value=await re
 const availableMembers=computed(()=>members.value.filter(m=>m.enabled&&!granted.value.some(g=>g.userId===m.id)));
 async function grant(){await mallApi.grant(selectedShop.value.id,selectedMembers.value);await openGrants(selectedShop.value);await load();}
 async function revoke(member:string){await mallApi.revoke(selectedShop.value.id,member);await openGrants(selectedShop.value);await load();}
-async function exportAll(onlySelected=false){const all:any[]=[];if(onlySelected)all.push(...selected.value);else for(let p=1;;p++){const r=await mallApi.list({category:category.value,query:query.value,page:p,size:200,recycled:props.recycled});all.push(...r.items);if(all.length>=r.total)break;}await downloadWorkbook('店铺列表.xlsx',all,exportColumns);}
+async function exportAll(onlySelected=false){const all:any[]=[];if(!permissions.can('shop.export'))return;if(onlySelected)all.push(...await mallApi.exportSelected(selected.value.map(row=>row.id)));else for(let p=1;;p++){const r=await mallApi.export({category:category.value,query:query.value,page:p,recycled:props.recycled});all.push(...r.items);if(all.length>=r.total)break;}await downloadWorkbook('店铺列表.xlsx',all,exportColumns);}
 async function importRows(rows:any[]){
   try{
     const config=await loadBrowserConfig();
@@ -69,8 +69,8 @@ async function batch(action:string){
     <el-input v-model="query" class="search" placeholder="店铺名称 / 平台 / 账号 / 备注" clearable @clear="page=1;load()" @keyup.enter="page=1;load()"/><el-button :icon="Search" @click="page=1;load()">查询</el-button><el-button :icon="Refresh" aria-label="刷新店铺" @click="load"/><el-button :icon="Setting" aria-label="设置表格字段" @click="columnsDialog=true"/>
   </div>
   <el-table v-loading="loading" :data="items" row-key="id" @selection-change="selected=$event"><el-table-column type="selection" width="42"/><el-table-column label="店铺信息" min-width="200"><template #default="{row}"><div class="table-name"><el-button v-if="permissions.can('shop.edit')" link :icon="row.favorite?StarFilled:Star" :type="row.favorite?'warning':'info'" aria-label="设置常用店铺" @click="favorite(row)"/><button class="table-link" @click="detail=row">{{row.name}}</button></div><div class="table-sub">{{row.accountName||'未设置账号'}}</div></template></el-table-column>
-    <el-table-column v-if="visibleColumns.includes('platform')" label="所属平台" min-width="140"><template #default="{row}">{{row.platform||'其他平台'}}<div class="table-sub" :title="row.startUrl">{{row.startUrl}}</div></template></el-table-column>
-    <el-table-column v-if="visibleColumns.includes('device')" label="网络信息" min-width="185"><template #default="{row}"><button v-if="permissions.can('shop.edit')&&permissions.can('device.view')" class="table-link" @click="openBinding(row)">{{row.deviceName||'网络配置'}}</button><span v-else>{{row.deviceName||'待配置网络'}}</span><div class="table-sub">{{row.deviceHost||'—'}}</div><div class="table-sub">{{row.deviceRegion}}</div></template></el-table-column>
+    <el-table-column v-if="visibleColumns.includes('platform')" label="所属平台" min-width="140"><template #default="{row}">{{row.platform||'其他平台'}}<div class="table-sub">{{row.platformSiteName||(row.platformSiteId?'未匹配站点':'自定义网站')}}</div></template></el-table-column>
+    <el-table-column v-if="visibleColumns.includes('device')" label="网络信息" min-width="185"><template #default="{row}"><button v-if="permissions.can('shop.edit')&&(permissions.can('device.view')||permissions.can('proxy.view'))" class="table-link" @click="openBinding(row)">{{row.deviceName||'网络配置'}}</button><span v-else>{{row.deviceName||'待配置网络'}}</span><div class="table-sub">{{row.deviceHost||'—'}}</div><div class="table-sub">{{row.deviceRegion}}</div></template></el-table-column>
     <el-table-column v-if="visibleColumns.includes('grants')" label="授权人员" min-width="150"><template #default="{row}"><button v-if="permissions.can('shop.grant')" class="table-link" @click="openGrants(row)">{{row.grantedNames||'去授权'}}</button><span v-else>{{row.grantedNames||'—'}}</span></template></el-table-column>
     <el-table-column v-if="visibleColumns.includes('remark')" prop="remark" label="备注" min-width="130" show-overflow-tooltip/>
     <el-table-column v-if="visibleColumns.includes('updated')" label="更新时间" min-width="175"><template #default="{row}"><div class="table-sub">创建人：{{row.creatorName}}</div>{{date(row.updatedAt||row.createdAt)}}</template></el-table-column>
@@ -84,7 +84,7 @@ async function batch(action:string){
               <template #dropdown><el-dropdown-menu>
                 <el-dropdown-item v-if="states[row.id]==='running'&&permissions.can('shop.open')" @click="open(row)">显示浏览器窗口</el-dropdown-item>
                 <el-dropdown-item v-if="permissions.can('shop.edit')" @click="edit(row)">编辑店铺</el-dropdown-item>
-                <el-dropdown-item v-if="permissions.can('shop.edit')&&permissions.can('device.view')" @click="openBinding(row)">配置 / 解绑网络</el-dropdown-item>
+                <el-dropdown-item v-if="permissions.can('shop.edit')&&(permissions.can('device.view')||permissions.can('proxy.view'))" @click="openBinding(row)">配置 / 解绑网络</el-dropdown-item>
                 <el-dropdown-item v-if="permissions.can('shop.grant')" @click="openGrants(row)">授权成员</el-dropdown-item>
                 <el-dropdown-item v-if="permissions.can('shop.create')" @click="copy(row)">复制店铺</el-dropdown-item>
                 <el-dropdown-item v-if="permissions.can('shop.edit')" @click="favorite(row)">{{row.favorite?'取消常用':'设为常用'}}</el-dropdown-item>

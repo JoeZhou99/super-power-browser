@@ -5,7 +5,7 @@
     </header>
     <div class="toolbar">
       <div class="toolbar-left" v-if="activeTab === 'official'">
-        <el-button class="recharge-btn" type="primary" @click="goBuy">
+        <el-button v-if="hasPerm('ai.purchase')" class="recharge-btn" type="primary" @click="goBuy">
           {{ buyActionText }}
         </el-button>
         <span class="model-total">
@@ -13,7 +13,7 @@
         </span>
       </div>
       <div v-show="activeTab === 'mine'" flex>
-        <el-button class="recharge-btn" type="primary" @click="goBuy">
+        <el-button v-if="hasPerm('ai.purchase')" class="recharge-btn" type="primary" @click="goBuy">
           {{ buyActionText }}
         </el-button>
         <el-button
@@ -437,6 +437,7 @@ async function loadActiveSubscription() {
 
 /** 订购和续费都打开套餐弹窗；有生效套餐时只展示当前套餐 */
 const goBuy = async () => {
+  if (!hasPerm('ai.purchase')) return;
   await loadActiveSubscription();
   renewVisible.value = true;
 };

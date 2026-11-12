@@ -28,7 +28,7 @@ router.beforeEach(async to=>{
     const {type,...query}=to.query;
     return {path:path.endsWith('/recycle')?'/proxy/recycle':'/proxy/list',query,replace:true};
   }
-  const required=path==='/zhifuAgent'?['ai.use']:path.startsWith('/mall/')?['shop.view']:path==='/agentIp/aggregateBuy3'?['device.buy']:path==='/agentIp/renew3'||path==='/agentIp/buySpeed'?['device.renew']:path.startsWith('/agentIp/')||path.startsWith('/proxy/')?['device.view']:path==='/money/recharge'?['wallet.view','wallet.recharge']:path==='/money/order'?['order.view']:path.startsWith('/companyManage/')?['member.manage','role.manage']:[];
+  const required=path==='/zhifuAgent'?['ai.use']:path.startsWith('/mall/')?['shop.view']:path==='/agentIp/aggregateBuy3'?['device.buy']:path==='/agentIp/renew3'||path==='/agentIp/buySpeed'?['device.renew']:path.startsWith('/agentIp/')?['device.view']:path.startsWith('/proxy/')?['proxy.view']:path==='/money/recharge'?['wallet.view','wallet.recharge']:path==='/money/order'?['order.view']:path.startsWith('/companyManage/')?['member.manage','role.manage']:[];
   return required.length&&!required.some(p=>permissions.can(p))?'/set-center':true;
 });
 export default router;

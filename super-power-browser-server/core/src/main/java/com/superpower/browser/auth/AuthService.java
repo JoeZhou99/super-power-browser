@@ -16,7 +16,7 @@ import static com.superpower.browser.shared.BusinessException.require;
 
 @Service
 public class AuthService implements MemberDirectory {
-    public static final Set<String> PERMISSIONS = Set.of("ai.use","ai.purchase","shop.view","shop.create","shop.edit","shop.open","shop.delete","shop.export","shop.grant","device.view","device.edit","device.buy","device.renew","device.export","wallet.view","wallet.recharge","order.view","order.export","member.manage","role.manage");
+    public static final Set<String> PERMISSIONS = PermissionCatalog.codes();
     private static final Pattern USERNAME = Pattern.compile("^[A-Za-z0-9_]{3,80}$");
     private static final Pattern PASSWORD_UPPER = Pattern.compile("[A-Z]"), PASSWORD_LOWER = Pattern.compile("[a-z]"), PASSWORD_DIGIT = Pattern.compile("[0-9]");
     private final AuthRepository repository;
@@ -27,8 +27,8 @@ public class AuthService implements MemberDirectory {
 
     static Set<String> defaultPermissions(int type) {
         if(type==3) return PERMISSIONS;
-        if(type==2) return Set.of("shop.view","shop.open","shop.create","shop.edit","shop.delete","shop.grant","device.view","device.edit","member.manage","role.manage");
-        return Set.of("shop.view","shop.open","device.view");
+        if(type==2) return Set.of("shop.view","shop.open","shop.create","shop.edit","shop.delete","shop.grant","device.view","device.edit","proxy.view","proxy.edit","member.manage","role.manage");
+        return Set.of("shop.view","shop.open","device.view","proxy.view");
     }
 
     @Transactional
@@ -137,7 +137,11 @@ public class AuthService implements MemberDirectory {
         var member=repository.member(actor.tenantId(),memberId);
         require(!flag(member,"owner"),403,"不能修改企业所有者");
         require(!actor.id().equals(memberId),403,"不能修改自己的成员权限、状态或删除自己");
-        scopedDepartment(actor,text(member,"departmentId")); lowerType(actor,(int)number(member,"memberType")); return member;
+        scopedDepartment(actor,text(member,"departmentId"));
+        var authority=repository.assignedAuthority(actor.tenantId(),memberId);
+        lowerType(actor,authority.stream().mapToInt(role->(int)number(role,"memberType")).max().orElse(1));
+        require(authority.stream().map(role->text(role,"permission")).filter(permission->!permission.isEmpty()).allMatch(actor.permissions()::contains),403,"不能管理自身权限范围外的成员");
+        return member;
     }
     private void assignableRoles(Actor actor,String departmentId,List<String> roles) {
         require(!roles.isEmpty(),400,"请至少选择一个角色");
@@ -201,28 +205,42 @@ public class AuthService implements MemberDirectory {
         require(actor.permissions().contains("role.manage")||actor.permissions().contains("member.manage"),403,"没有角色查询权限");
         return repository.roles(actor.tenantId()).stream().filter(r->visibleDepartment(actor,text(r,"departmentId"))).toList();
     }
+    public List<PermissionCatalog.Group> permissionNodes(Actor actor) {
+        actor.allow("role.manage");
+        require(actor.owner()||actor.memberType()>=2,403,"仅管理员可管理角色权限");
+        return PermissionCatalog.assignableGroups(actor.permissions());
+    }
     private Map<String,Object> managedRole(Actor actor,String roleId) {
-        var role=repository.role(actor.tenantId(),roleId); scopedDepartment(actor,text(role,"departmentId")); lowerType(actor,(int)number(role,"memberType")); return role;
+        var role=repository.role(actor.tenantId(),roleId); scopedDepartment(actor,text(role,"departmentId")); lowerType(actor,(int)number(role,"memberType"));
+        require(actor.permissions().containsAll(repository.rolePermissions(roleId)),403,"不能管理自身权限范围外的角色");
+        return role;
     }
     @Transactional
     public String saveRole(Actor actor,String roleId,Map<String,Object> request) {
         actor=manager(actor,"role.manage");
-        var permissions=strings(request,"permissions");
-        require(PERMISSIONS.containsAll(permissions),400,"包含不支持的功能权限");
-        require(actor.permissions().containsAll(permissions),403,"不能授予自身范围外的权限");
         boolean create=roleId==null; var current=create?Map.<String,Object>of():managedRole(actor,roleId);
         String departmentId=request.containsKey("departmentId")?required(request,"departmentId",36):(create?actor.departmentId():text(current,"departmentId"));
         if(departmentId.isEmpty()) departmentId=repository.defaultDepartment(actor.tenantId());
         scopedDepartment(actor,departmentId);
         int type=request.containsKey("memberType")?(int)number(request,"memberType"):(create?1:(int)number(current,"memberType")); lowerType(actor,type);
+        String name=required(request,"name",100);
         String description=text(request,"description"); require(description.length()<=200,400,"角色描述最多 200 字");
+        var requestedPermissions=strings(request,"permissions");
+        var previousPermissions=create?List.<String>of():repository.rolePermissions(roleId);
+        // Revoking a legacy role must remain possible even if its old type or empty permission
+        // set no longer passes the rules for granting access. Only the enabled flag may change.
+        boolean unchangedDisable=!create&&Boolean.FALSE.equals(request.get("enabled"))
+            &&type==(int)number(current,"memberType")&&departmentId.equals(text(current,"departmentId"))
+            &&name.equals(text(current,"name"))&&description.equals(text(current,"description"))
+            &&new HashSet<>(requestedPermissions).equals(new HashSet<>(previousPermissions));
+        var permissions=unchangedDisable?previousPermissions:PermissionCatalog.normalize(requestedPermissions,type,actor.permissions());
         if(!create) {
             require(departmentId.equals(text(current,"departmentId")),400,"角色不能跨部门移动，请在目标部门新建角色");
             require(!flag(current,"builtin")||type==(int)number(current,"memberType"),400,"预置角色的成员类型不可修改");
             for(String userId:repository.roleMembers(roleId)) managedMember(actor,userId);
         } else roleId=id();
         boolean enabled=request.containsKey("enabled")?flag(request,"enabled"):(create||flag(current,"enabled"));
-        repository.saveRole(roleId,actor.tenantId(),required(request,"name",100),enabled,create);
+        repository.saveRole(roleId,actor.tenantId(),name,enabled,create);
         repository.roleDetails(roleId,description,type); repository.roleDepartment(roleId,departmentId,!create&&flag(current,"builtin"));
         repository.replacePermissions(roleId,permissions);
         audit.record(actor,"role.save",roleId,Map.of("permissions",permissions,"enabled",enabled,"departmentId",departmentId,"memberType",type)); return roleId;

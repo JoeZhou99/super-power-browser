@@ -3,12 +3,9 @@ export interface ProxyTransportUser {
 }
 export interface VmessUser extends ProxyTransportUser { alterId: number; security: string; securityTls: string }
 export interface VlessUser extends ProxyTransportUser { encryption: string; flow: string; security: string; fingerprint: string; publicKey: string; shortId: string; spiderX: string }
-export interface ProxyConnection { protocol: string; host: string; port: number; username?: string; password?: string; proxyOptions?: ProxyOptions }
 export interface ProxyOptions {
   encryption?: string; transportProtocol?: string; protocolParameter?: string; obfs?: string; obfsParameter?: string;
   tls?: {serverName: string; allowInsecure: boolean}; vmessUser?: VmessUser; vlessUser?: VlessUser;
-  transit?: ProxyConnection; alternatives?: ProxyConnection[];
-  resourceProxy?: ProxyConnection; routing?: {resourceDomains?: string[]; directDomains?: string[]; cdnDomains?: string[]};
 }
 export const SS_METHODS: string[];
 export const SSR_METHODS: string[];

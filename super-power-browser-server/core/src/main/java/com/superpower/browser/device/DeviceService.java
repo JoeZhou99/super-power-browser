@@ -11,13 +11,26 @@ import static com.superpower.browser.shared.BusinessException.require;
 @Service
 public class DeviceService implements DeviceAccess {
     private final DeviceRepository repository;
-    public DeviceService(DeviceRepository repository) { this.repository=repository; }
-    public Map<String,Object> get(Actor a,String id) { a.allow("device.view"); return repository.get(a,id,false); }
+    private final RelayPoolService relays;
+    public DeviceService(DeviceRepository repository,RelayPoolService relays) { this.repository=repository;this.relays=relays; }
+    public Map<String,Object> get(Actor a,String id) { return relays.describe(a,managed(a,id,"view",false)); }
+    public Map<String,Object> describe(Actor a,Map<String,Object> device) { return relays.describe(a,device); }
+    public Map<String,Object> describePage(Actor a,Map<String,Object> page) { return relays.describePage(a,page); }
     public Map<String,Object> list(Actor a,int type,String category,String query,int page,int size,boolean recycled) {
-        a.allow("device.view");
         require(Set.of(1,2,20).contains(type),400,"设备类型不支持");
+        a.allow(permission(type,"view"));
         require(page>0 && size>0 && size<=200,400,"分页参数不合法");
-        return repository.list(a,type,category,query,page,size,recycled);
+        return relays.describePage(a,repository.list(a,type,category,query,page,size,recycled));
+    }
+    public Map<String,Object> export(Actor a,int type,String category,String query,int page,boolean recycled) {
+        a.allow(permission(type,"export"));
+        return list(a,type,category,query,page,200,recycled);
+    }
+    private static String permission(long type,String action) { return (type==2?"proxy.":"device.")+action; }
+    private Map<String,Object> managed(Actor a,String id,String action,boolean credentials) {
+        var device=repository.get(a,id,false);
+        a.allow(permission(number(device,"ipType"),action));
+        return credentials?repository.get(a,id,true):device;
     }
     public Map<String,Long> statistics(Actor a,int type,boolean recycled) {
         Map<String,Long> counts=new LinkedHashMap<>();
@@ -26,16 +39,17 @@ public class DeviceService implements DeviceAccess {
     }
     @Transactional
     public String save(Actor a,String deviceId,Map<String,Object> request) {
-        a.allow("device.edit");
+        if(deviceId==null)a.allow("proxy.edit");
+        require(request!=null&&!request.containsKey("relayPoolId"),400,"加速线路由企业授权自动分配，不支持指定线路组");
         var input=new HashMap<>(request);
         Map<String,Object> previous=Map.of();
         input.put("name",required(input,"name",120));
         if(deviceId!=null) {
-            previous=repository.get(a,deviceId,true);
+            previous=managed(a,deviceId,"edit",true);
             require(!flag(previous,"recycled"),409,"请先恢复设备");
             if(number(previous,"ipType")!=2) { repository.describe(deviceId,text(input,"name"),text(input,"remark")); return deviceId; }
             if(!input.containsKey("password")) input.put("password",text(previous,"password"));
-            for(String key:List.of("webType","protocolFamily","mapIp","mapPort","proxyOptions"))input.putIfAbsent(key,previous.get(key));
+            for(String key:List.of("webType","protocolFamily","mapIp","mapPort","proxyOptions"))if(!input.containsKey(key))input.put(key,previous.get(key));
         }
         String host=ProxySettings.host(required(input,"host",255)),protocol=required(input,"protocol",10).toLowerCase(Locale.ROOT);
         long port=number(input,"port");
@@ -65,14 +79,14 @@ public class DeviceService implements DeviceAccess {
     }
     @Transactional
     public void recycle(Actor a,String deviceId,boolean recycled,boolean permanent) {
-        a.allow("device.edit"); var device=repository.get(a,deviceId,false);
+        var device=managed(a,deviceId,"edit",false);
         require(!repository.bound(deviceId),409,"设备仍被店铺绑定，请先解绑");
         if(permanent) { require(flag(device,"recycled"),409,"只有回收站设备可永久删除"); repository.delete(deviceId); }
         else repository.recycle(deviceId,recycled);
     }
     public Map<String,Object> connection(Actor a,String deviceId) {
-        a.allow("device.edit"); var device=repository.get(a,deviceId,true); requireUsable(device);
-        return proxy(device);
+        var device=managed(a,deviceId,"edit",true); requireUsable(device);
+        return relays.decorate(a,device,proxy(device));
     }
     public void autoRenew(Actor a,String deviceId,boolean enabled) {
         a.allow("device.renew"); var device=repository.get(a,deviceId,false);
@@ -80,11 +94,11 @@ public class DeviceService implements DeviceAccess {
         repository.autoRenew(deviceId,enabled,a.id());
     }
     @Override public void requireBindable(Actor a,String deviceId) {
-        a.allow("device.view"); requireUsable(repository.get(a,deviceId,false));
+        requireUsable(managed(a,deviceId,"view",false));
     }
     @Override public Map<String,Object> launchProxy(Actor a,String deviceId) {
         // 启动由店铺域检查 shop.open 和资源授权，无需额外授予设备管理权限。
-        var device=repository.get(a,deviceId,true); requireUsable(device); return proxy(device);
+        var device=repository.get(a,deviceId,true); requireUsable(device); return relays.decorate(a,device,proxy(device));
     }
     private static Map<String,Object> proxy(Map<String,Object> device) {
         var proxy=new LinkedHashMap<String,Object>();
@@ -98,7 +112,7 @@ public class DeviceService implements DeviceAccess {
     }
     @Transactional public List<String> importDevices(Actor a,List<Map<String,Object>> input) {
         require(input.size()<=200,400,"单次最多导入 200 台设备");
-        a.allow("device.edit");
+        a.allow("proxy.edit");
         var result=new ArrayList<String>();
         for(var item:input) {
             String deviceId=text(item,"id");
@@ -108,7 +122,7 @@ public class DeviceService implements DeviceAccess {
         return result;
     }
     @Transactional public String importOwnRow(Actor a,Map<String,Object> item) {
-        a.allow("device.edit");var input=new HashMap<>(item);
+        a.allow("proxy.edit");var input=new HashMap<>(item);
         String host=required(input,"host",255),deviceId=text(input,"id");long port=number(input,"port");
         input.put("region",required(input,"region",120));input.put("protocol",required(input,"protocol",10).toLowerCase(Locale.ROOT));
         if(deviceId.isBlank()){

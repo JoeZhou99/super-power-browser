@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
+import vm from 'node:vm';
 import {boot} from '../runtime/guard.mjs';
 import {encodeBootstrap} from '../../super-power-browser-desktop/src/main/pluginManage/bootstrap.mjs';
 
@@ -21,14 +22,14 @@ function configuration(localProxy={host:'127.0.0.1',port:29001,username:'fixture
     pluginIdMap:{RXMallHelper:'a'.repeat(32),RXAccountManage:'b'.repeat(32)},proxyInfo:{proxyAuthUrl:`http://127.0.0.1:${localProxy.port}@`},staticProxy:{exchange:`http://127.0.0.1:${localProxy.port}@`},
     localProxy,apiBase:build.apiBase,authOrigin:build.authOrigin};
 }
-function fixture({proxy=true,failSet=false,backend}={}) {
-  const events=[],bootstrap=configuration(),bundle=encodeBootstrap(bootstrap);
+function fixture({proxy=true,failSet=false,backend,overrides={}}={}) {
+  const events=[],bootstrap={...configuration(),...overrides},bundle=encodeBootstrap(bootstrap);
   const files={'runtime/build.json':JSON.stringify(build),'config.dat':bundle.configDat,'init.json':bundle.initJson};
   const chromeApi={runtime:{getURL:file=>'chrome-extension://fixture/'+file},storage:{session:{}},cookies:{}};
   if(proxy)chromeApi.proxy={settings:{set(value,callback){events.push({type:'pac',value});if(failSet)chromeApi.runtime.lastError={message:'fixture denial'};callback();delete chromeApi.runtime.lastError;}}};
   const fetcher=async url=>{
     if(url.startsWith('chrome-extension://fixture/'))return new Response(files[url.slice('chrome-extension://fixture/'.length)]);
-    events.push({type:'backend'});return backend?backend():new Response(JSON.stringify(capabilities));
+    events.push({type:'backend'});return backend?backend(url,events):new Response(JSON.stringify(capabilities));
   };
   return {events,chromeApi,fetcher};
 }
@@ -38,6 +39,27 @@ test('verified startup installs mandatory current PAC before a remote backend re
   assert.deepEqual(f.events.map(event=>event.type),['pac','backend']);
   assert.equal(f.events[0].value.value.pacScript.mandatory,true);
   assert.match(f.events[0].value.value.pacScript.data,/127\.0\.0\.1:29001/);
+});
+
+test('remote backend bootstrap succeeds while the shop proxy gate is closed, including compiled defaults',async()=>{
+  for(const overrides of [{},{apiBase:undefined,authOrigin:undefined}]){
+    const f=fixture({overrides,backend:(url,events)=>{
+      const pac=events.find(event=>event.type==='pac').value.value.pacScript.data;
+      const select=vm.runInNewContext(pac+'\nFindProxyForURL;');
+      if(select(url,new URL(url).hostname)!=='DIRECT')throw new TypeError('closed shop gate');
+      for(const host of ['merchant.test','api.ipify.org','sub.backend.test'])assert.equal(select('https://'+host+'/',host),'PROXY 127.0.0.1:29001');
+      return new Response(JSON.stringify(capabilities));
+    }});
+    const result=await boot(f.chromeApi,f.fetcher);
+    assert.equal(result.bootstrap.apiBase,build.apiBase);assert.equal(result.bootstrap.authOrigin,build.authOrigin);
+    assert.deepEqual(f.events.map(event=>event.type),['pac','backend']);
+  }
+});
+
+test('bootstrap rejects a mismatched authentication origin before touching browser routing or the backend',async()=>{
+  const f=fixture({overrides:{authOrigin:'https://another.test'}});
+  await assert.rejects(boot(f.chromeApi,f.fetcher),/匹配认证源/);
+  assert.deepEqual(f.events,[]);
 });
 
 test('PAC installation failure blocks startup without contacting the backend',async()=>{
@@ -97,6 +119,7 @@ test('reopening the same Chromium profile replaces a replayed expired PAC before
     backendRequests++;response.setHeader('Content-Type','application/json');response.end(JSON.stringify(capabilities));
   });
   await listen(backend);
+  const backendOrigin=`https://backend.test:${backend.address().port}`;
   async function proxy(label){
     const credentials={host:'127.0.0.1',port:0,username:label+'-user',password:label+'-secret'};
     const server=http.createServer();const close=await listen(server);credentials.port=server.address().port;
@@ -133,12 +156,13 @@ globalThis.__BOOT_DONE__=(async()=>{
 })();
 `);
   async function start(entry){
-    const bundle=encodeBootstrap(configuration(entry.credentials));
+    const bundle=encodeBootstrap({...configuration(entry.credentials),apiBase:backendOrigin+'/extension',authOrigin:backendOrigin});
     await fs.writeFile(path.join(extension,'config.dat'),bundle.configDat);await fs.writeFile(path.join(extension,'init.json'),bundle.initJson);
     const browser=await chromium.launchPersistentContext(path.join(temporary,'profile'),{
       executablePath:await chromiumExecutable(),headless:true,
       ignoreDefaultArgs:['--disable-extensions','--disable-component-extensions-with-background-pages'],
       args:[`--disable-extensions-except=${extension}`,`--load-extension=${extension}`,`--proxy-server=http://127.0.0.1:${entry.credentials.port}`,
+        '--host-resolver-rules=MAP backend.test 127.0.0.1',
         '--ignore-certificate-errors','--disable-background-networking','--disable-quic','--no-first-run','--no-default-browser-check'],
     });
     disposers.push(()=>browser.close());
@@ -149,7 +173,7 @@ globalThis.__BOOT_DONE__=(async()=>{
     return {browser,result};
   }
   const first=await proxy('first');const one=await start(first);
-  assert.equal(one.result.port,first.credentials.port);assert.ok(first.connections()>0);
+  assert.equal(one.result.port,first.credentials.port);assert.equal(first.connections(),0,'control-plane startup must not depend on the shop proxy gate');
   const second=await proxy('second');assert.notEqual(first.credentials.port,second.credentials.port);
   await one.browser.close();await first.close();
   // Command-line unpacked extensions do not retain their setting consistently
@@ -159,5 +183,5 @@ globalThis.__BOOT_DONE__=(async()=>{
   const two=await start(second);
   assert.equal(two.result.previous.mode,'pac_script',JSON.stringify(two.result.previous));
   assert.ok(two.result.previous.pacScript.data.includes('127.0.0.1:'+first.credentials.port),'the test must actually reopen a profile containing the expired PAC');
-  assert.equal(two.result.port,second.credentials.port);assert.ok(second.connections()>0);assert.equal(backendRequests,2);
+  assert.equal(two.result.port,second.credentials.port);assert.equal(second.connections(),0);assert.equal(backendRequests,2);
 });

@@ -27,5 +27,5 @@ public class DeviceController {
     @GetMapping("/devices/{id}/connection") Object connection(@AuthenticationPrincipal Actor a,@PathVariable String id) { return devices.connection(a,id); }
     @PostMapping("/devices/import") Object importDevices(@AuthenticationPrincipal Actor a,@RequestBody List<Map<String,Object>> b) { return devices.importDevices(a,b); }
     @PostMapping("/devices/import-own") Object importOwn(@AuthenticationPrincipal Actor a,@RequestBody List<Map<String,Object>> b) { return imports.importBatch(a,b); }
-    @GetMapping("/devices/export") Object exportDevices(@AuthenticationPrincipal Actor a,@RequestParam int type,@RequestParam(defaultValue="1") int page) { a.allow("device.export");return devices.list(a,type,"allIp","",page,200,false); }
+    @GetMapping("/devices/export") Object exportDevices(@AuthenticationPrincipal Actor a,@RequestParam int type,@RequestParam(defaultValue="allIp") String category,@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="false") boolean recycled) { return devices.export(a,type,category,query,page,recycled); }
 }

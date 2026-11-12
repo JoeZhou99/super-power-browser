@@ -28,18 +28,11 @@ class ProxyOptionsTest {
             assertEquals(method,normalize("ss",Map.of("encryption",method)).get("encryption"));
         }
     }
-    @Test void routingIsExplicitBoundedAndCannotHideNestedResourcesOrBackups() {
-        var resource=connection(Map.of("transit",connection(Map.of())));
-        var result=normalize("http",Map.of("resourceProxy",resource,"routing",Map.of("resourceDomains",List.of("STATIC.Example.com","static.example.com"),"cdnDomains",List.of("*.cdn.example.com"),"directDomains",List.of("direct.example.com"))));
-        assertEquals(List.of("static.example.com"),((Map<?,?>)result.get("routing")).get("resourceDomains"));
-        assertTrue(((Map<?,?>)((Map<?,?>)result.get("resourceProxy")).get("proxyOptions")).containsKey("transit"));
-        assertThrows(BusinessException.class,()->normalize("http",Map.of("routing",Map.of("resourceDomains",List.of("example.com")))));
-        for(String domain:List.of("","*","*.localhost","localhost","192.168.1.1","127.0.0.1","[::1]","printer.local","host.internal","localhost.localdomain","http://example.com","example.com:443","foo*bar.example.com","example.com/path")) {
-            assertThrows(BusinessException.class,()->normalize("http",Map.of("routing",Map.of("directDomains",List.of(domain)))));
-        }
-        assertThrows(BusinessException.class,()->normalize("http",Map.of("routing",Map.of("directDomains",Collections.nCopies(101,"example.com")))));
-        for(var forbidden:List.of(Map.<String,Object>of("resourceProxy",connection(Map.of())),Map.<String,Object>of("routing",Map.of()),Map.<String,Object>of("alternatives",List.of(connection(Map.of())))))assertThrows(BusinessException.class,()->normalize("http",Map.of("resourceProxy",connection(forbidden))));
-        assertThrows(BusinessException.class,()->normalize("http",Map.of("alternatives",Collections.nCopies(9,connection(Map.of())))));
-        assertThrows(BusinessException.class,()->normalize("http",Map.of("transit",connection(Map.of("transit",connection(Map.of("transit",connection(Map.of()))))))));
+    @Test void userRoutingFieldsAreRetiredRatherThanHidden() {
+        for(String key:List.of("transit","alternatives","resourceProxy","routing"))
+            assertThrows(BusinessException.class,()->normalize("http",Map.of(key,Map.of())));
+        var old=new LinkedHashMap<String,Object>(Map.of("tls",Map.of("serverName","proxy.example.com"),"transit",connection(Map.of()),"alternatives",List.of(connection(Map.of())),"resourceProxy",connection(Map.of()),"routing",Map.of()));
+        assertEquals(Map.of("tls",Map.of("serverName","proxy.example.com")),ProxyOptions.protocolOnly(old));
+        assertTrue(old.containsKey("transit"));
     }
 }

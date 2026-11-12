@@ -10,7 +10,7 @@ export const useAccount=defineStore('account',{
         request('/me/profile'),permissions.can('wallet.view')?request('/wallet'):null,
         permissions.can('shop.view')?request('/environments/statistics'):null,
         permissions.can('device.view')?Promise.all([1,20].map(type=>request(`/devices?type=${type}&size=1`))):null,
-        permissions.can('device.view')?request('/proxies?size=1'):null
+        permissions.can('proxy.view')?request('/proxies?size=1'):null
       ]);
       this.profile=profile;this.balance=wallet?.balanceCents??null;this.shopCount=shops?.all??null;
       this.deviceCount=devices?devices.reduce((n,d)=>n+d.total,0):null;

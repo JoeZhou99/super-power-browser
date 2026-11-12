@@ -26,7 +26,7 @@ class EnvironmentNetworkFingerprintTest {
     private JdbcTemplate jdbc;
     private EnvironmentService shops;
     private ProxyService proxies;
-    private final Actor owner=new Actor("owner","tenant","owner",true,Set.of("shop.view","shop.create","shop.edit","shop.open","device.view","device.edit"));
+    private final Actor owner=new Actor("owner","tenant","owner",true,Set.of("shop.view","shop.create","shop.edit","shop.open","device.view","device.edit","proxy.view","proxy.edit"));
 
     @BeforeEach void setup() throws Exception {
         source=new HikariDataSource();source.setJdbcUrl("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
@@ -39,7 +39,7 @@ class EnvironmentNetworkFingerprintTest {
         context=new AnnotationConfigApplicationContext();context.register(Transactions.class);
         context.registerBean(Db.class,()->db);context.registerBean(SecretCipher.class,()->cipher);
         context.registerBean(DataSourceTransactionManager.class,()->transaction);
-        context.register(Class.forName("com.superpower.browser.device.DeviceRepository"),DeviceService.class,ProxyService.class,
+        context.register(Class.forName("com.superpower.browser.device.DeviceRepository"),DeviceService.class,RelayPoolService.class,ProxyService.class,
             EnvironmentRepository.class,AuditRepository.class,PlatformCatalog.class,BrowserConfiguration.class,ConfigOperatorAuth.class);
         context.registerBean(KernelCatalog.class,()->new KernelCatalog(new KernelRepository(db),null,new KernelSettings(),context.getBean(AuditRepository.class),transaction));
         // Membership/grant operations and kernel downloads are outside this test; no network resources are used.

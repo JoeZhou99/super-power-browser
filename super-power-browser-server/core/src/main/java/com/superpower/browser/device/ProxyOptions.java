@@ -8,7 +8,7 @@ import static com.superpower.browser.shared.BusinessException.require;
 /** A bounded connection contract, never a client-supplied Xray configuration. */
 final class ProxyOptions {
     static final Set<String> PROTOCOLS=Set.of("http","https","socks5","socks4","socks4a","ssh","ss","ssr","vmess","vless");
-    private static final Set<String> KEYS=Set.of("encryption","transportProtocol","protocolParameter","obfs","obfsParameter","vmessUser","vlessUser","tls","transit","alternatives","resourceProxy","routing");
+    private static final Set<String> KEYS=Set.of("encryption","transportProtocol","protocolParameter","obfs","obfsParameter","vmessUser","vlessUser","tls");
     private static final Set<String> LEGACY=Set.of("encryption","transportProtocol","protocolParameter","obfs","obfsParameter");
     private static final Set<String> CIPHERS=Set.of("none","plain","rc4-md5","aes-128-ctr","aes-192-ctr","aes-256-ctr","aes-128-cfb","aes-192-cfb","aes-256-cfb","aes-128-gcm","aes-192-gcm","aes-256-gcm","chacha20","chacha20-ietf","chacha20-poly1305","chacha20-ietf-poly1305","xchacha20-poly1305","xchacha20-ietf-poly1305","2022-blake3-aes-128-gcm","2022-blake3-aes-256-gcm","2022-blake3-chacha20-poly1305");
     private static final Set<String> SS_CIPHERS=Set.of("none","plain","aes-128-gcm","aes-256-gcm","chacha20-poly1305","chacha20-ietf-poly1305","xchacha20-poly1305","xchacha20-ietf-poly1305","2022-blake3-aes-128-gcm","2022-blake3-aes-256-gcm","2022-blake3-chacha20-poly1305");
@@ -19,21 +19,26 @@ final class ProxyOptions {
     private static final Set<String> NETWORKS=Set.of("","tcp","ws","grpc","http","h2","httpupgrade","splithttp");
     private ProxyOptions() {}
 
+    /** Retire encrypted legacy routes without discarding protocol-specific credentials. */
+    static Map<String,Object> protocolOnly(Map<String,Object> stored) {
+        var result=new LinkedHashMap<String,Object>(stored);
+        for(String key:List.of("transit","alternatives","resourceProxy","routing"))result.remove(key);
+        return result;
+    }
+
     static Map<String,Object> normalize(Map<String,Object> connection) {
         var raw=new LinkedHashMap<>(map(connection.get("proxyOptions"),"proxyOptions"));
         for(String key:LEGACY)if(connection.containsKey(key)&&!text(connection,key).isBlank())raw.put(key,connection.get(key));
         // Serialization is bounded before walking optional connection branches.
         require(json(raw).getBytes(StandardCharsets.UTF_8).length<=65536,400,"代理扩展配置不能超过 64 KiB");
-        return options(raw,text(connection,"protocol"),text(connection,"username"),text(connection,"password"),0,new int[]{0});
+        return options(raw,text(connection,"protocol"),text(connection,"username"),text(connection,"password"));
     }
 
-    private static Map<String,Object> options(Map<String,Object> raw,String protocol,String username,String password,int depth,int[] nodes) {
+    private static Map<String,Object> options(Map<String,Object> raw,String protocol,String username,String password) {
         require(PROTOCOLS.contains(protocol),400,"代理协议不支持");
-        require(depth<=2&&++nodes[0]<=12,400,"代理链路层级或数量超出限制");
         if(protocol.equals("socks5"))require(username.getBytes(StandardCharsets.UTF_8).length<=255&&password.getBytes(StandardCharsets.UTF_8).length<=255,400,"SOCKS5 账号和密码不能超过 255 字节");
         if(protocol.equals("socks4")||protocol.equals("socks4a"))require(password.isEmpty(),400,"SOCKS4 不支持密码认证");
         allowed(raw,KEYS,"proxyOptions");
-        require(depth==0||(!raw.containsKey("resourceProxy")&&!raw.containsKey("routing")),400,"网站分流只能配置在主代理下");
         var out=new LinkedHashMap<String,Object>();
         for(String key:LEGACY)putString(raw,out,key,key.endsWith("Parameter")?2048:100);
         if(protocol.equals("ssr")&&out.containsKey("encryption"))out.put("encryption",SSR_CIPHER_ALIASES.getOrDefault(text(out,"encryption"),text(out,"encryption")));
@@ -85,55 +90,9 @@ final class ProxyOptions {
             var user=map(out.get(protocol+"User"),protocol+"User");
             require(text(user,"id").matches("(?i)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"),400,protocol.toUpperCase(Locale.ROOT)+" 需要填写合法 UUID");
         }
-        if(raw.containsKey("transit")) {
-            require(!Set.of("ssh","ssr","socks4","socks4a").contains(protocol),400,"SSH/SSR/SOCKS4 辅助代理暂不支持中转配置");
-            var transit=connection(raw.get("transit"),depth+1,nodes);
-            require(!Set.of("ssh","ssr","socks4","socks4a").contains(text(transit,"protocol")),400,"中转节点暂不支持 SSH/SSR/SOCKS4 辅助代理");
-            var transitOptions=map(transit.get("proxyOptions"),"proxyOptions");
-            require(!transitOptions.containsKey("alternatives")||((List<?>)transitOptions.get("alternatives")).isEmpty(),400,"中转代理暂不支持嵌套备用线路");
-            out.put("transit",transit);
-        }
-        if(raw.containsKey("alternatives")) {
-            require(raw.get("alternatives") instanceof List<?>,400,"备用代理必须为列表");
-            var list=(List<?>)raw.get("alternatives");require(list.size()<=8,400,"最多配置 8 个备用代理");
-            require(depth==0||list.isEmpty(),400,"备用线路只能配置在主代理下");
-            var values=new ArrayList<Map<String,Object>>();for(Object value:list)values.add(connection(value,depth+1,nodes));out.put("alternatives",values);
-        }
-        if(raw.containsKey("resourceProxy"))out.put("resourceProxy",connection(raw.get("resourceProxy"),depth+1,nodes));
-        if(raw.containsKey("routing")) {
-            var routing=map(raw.get("routing"),"网站分流");allowed(routing,Set.of("resourceDomains","directDomains","cdnDomains"),"网站分流");
-            var value=new LinkedHashMap<String,Object>();
-            for(String key:List.of("resourceDomains","directDomains","cdnDomains")) {
-                Object input=routing.getOrDefault(key,List.of());require(input instanceof List<?>,400,"网站分流域名必须为列表");
-                var list=(List<?>)input;require(list.size()<=100,400,"每类分流域名最多 100 条");
-                var domains=new LinkedHashSet<String>();
-                for(Object item:list) {
-                    require(item instanceof String,400,"分流域名必须为文本");String domain=(String)item;
-                    require(!domain.isBlank()&&domain.length()<=255&&domain.equals(domain.trim()),400,"分流域名长度或格式不合法");
-                    boolean wildcard=domain.startsWith("*.");String host=wildcard?domain.substring(2):domain;
-                    require(!host.contains("*")&&!host.contains(":"),400,"分流域名不支持 URL、端口或任意通配符");
-                    host=ProxySettings.host(host);
-                    require(host.contains(".")&&!host.matches("[0-9.]+")&&!host.equals("localhost")&&!host.matches(".*\\.(localhost|local|localdomain|lan|internal)")&&!host.equals("home.arpa")&&!host.endsWith(".home.arpa"),400,"分流规则不能指向 IP 或本机域名");
-                    domains.add((wildcard?"*.":"")+host);
-                }
-                value.put(key,new ArrayList<>(domains));
-            }
-            require(out.containsKey("resourceProxy")||((List<?>)value.get("resourceDomains")).isEmpty()&&((List<?>)value.get("cdnDomains")).isEmpty(),400,"资源或 CDN 域名分流需要配置专用代理");
-            out.put("routing",value);
-        }
         return out;
     }
 
-    private static Map<String,Object> connection(Object input,int depth,int[] nodes) {
-        var source=map(input,"代理节点");allowed(source,Set.of("protocol","host","port","username","password","proxyOptions"),"代理节点");
-        var value=new LinkedHashMap<String,Object>();
-        for(String key:List.of("protocol","host","username","password"))putString(source,value,key,key.equals("password")?600:255);
-        String protocol=text(value,"protocol").toLowerCase(Locale.ROOT);require(PROTOCOLS.contains(protocol),400,"代理节点协议不支持");
-        value.put("protocol",protocol);value.put("host",ProxySettings.host(required(value,"host",255)));value.put("port",integer(source,"port",1,65535));
-        value.putIfAbsent("username","");value.putIfAbsent("password","");
-        value.put("proxyOptions",options(map(source.get("proxyOptions"),"proxyOptions"),protocol,text(value,"username"),text(value,"password"),depth,nodes));
-        return value;
-    }
     private static Map<String,Object> user(Map<String,Object> input,Set<String> fields) {
         var value=new LinkedHashMap<String,Object>();
         for(String key:fields)putString(input,value,key,key.equals("path")||key.equals("spiderX")?2048:255);

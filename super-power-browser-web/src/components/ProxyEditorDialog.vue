@@ -4,15 +4,12 @@ import { ElMessage } from 'element-plus';
 import { proxyApi, type ProxyInput, type ProxyRecord } from '@/api/proxy/proxy.api';
 import { parseProxyImport, PROXY_PROTOCOLS, validateChangeIpUrl, validateProxyAddress, type ProxyProtocol } from '@/utils/proxyImport';
 import ProxyAdvancedFields from './ProxyAdvancedFields.vue';
-import ProxyRoutesFields from './ProxyRoutesFields.vue';
 import { prepareProxyOptions, validateProxyOptions, type ProxyOptions } from '@/utils/proxyOptions.mjs';
-import { validateProxyRoutes } from '@/utils/proxyRoutes.mjs';
 
 const props = defineProps<{modelValue: boolean; proxy?: ProxyRecord; defaultWebType?: number}>();
 const emit = defineEmits<{ 'update:modelValue': [value: boolean]; done: [] }>();
 const mode = ref('single'), busy = ref(false), text = ref(''), error = ref(''), uncertain = ref(false);
 const clearCredentials = ref(false), clearChangeIp = ref(false);
-const routeLoads = ref(0);
 const credentialsLoading = ref(false), credentialsError = ref(''), credentialsReady = ref(false), editorSession = ref(0);
 const credentialsBlocked = computed(() => Boolean(props.proxy) && !credentialsReady.value);
 const usesAccount = computed(() => ['http','https','socks5','socks4','socks4a','ssh'].includes(form.protocol));
@@ -82,7 +79,7 @@ function singlePayload(): ProxyInput {
   const address = validateProxyAddress(form.host, form.port);
   if (usesAccount.value && !clearCredentials.value && (form.password || savedPasswordExists) && !form.username) throw new Error('使用密码时必须填写代理账号；不再使用认证请勾选清除账号和密码');
   if (form.protocol === 'ssh' && (!form.username || clearCredentials.value)) throw new Error('SSH 代理需要填写账号');
-  const options = validateProxyRoutes(form.protocol, validateProxyOptions(form.protocol, form.proxyOptions, clearCredentials.value ? '' : form.password || (savedPasswordExists ? 'saved' : '')));
+  const options = validateProxyOptions(form.protocol, form.proxyOptions, clearCredentials.value ? '' : form.password || (savedPasswordExists ? 'saved' : ''));
   const payload: ProxyInput = {name: form.name.trim() || `${address.host}:${address.port}`, ...address, protocol: form.protocol,
     username: clearCredentials.value ? '' : form.username, webType: form.webType, region: form.region.trim(), remark: form.remark.trim(),
     provider: form.provider.trim(), mapIp: form.mapIp.trim(), expiresAt: form.expiresAt ? form.expiresAt.toISOString() : null, proxyOptions: options};
@@ -94,7 +91,7 @@ function singlePayload(): ProxyInput {
   return payload;
 }
 async function save() {
-  if (busy.value || uncertain.value || credentialsBlocked.value || routeLoads.value > 0) return;
+  if (busy.value || uncertain.value || credentialsBlocked.value) return;
   error.value = '';
   let payload: ProxyInput | ProxyInput[];
   try {
@@ -140,8 +137,7 @@ async function save() {
         <el-form-item v-if="usesPassword" label="代理密码" :required="['ss','ssr'].includes(form.protocol)" :class="{'wide': !usesAccount}"><el-input :key="editorSession" v-model="form.password" :disabled="clearCredentials" type="password" show-password autocomplete="new-password" :placeholder="proxy ? '留空保留原密码' : ['ss','ssr'].includes(form.protocol) ? '供应商提供的代理密码' : '无认证时留空'"/><div v-if="proxy && credentialsReady" class="field-tip">已读取保存的账号密码，点击眼睛可查看密码。留空保留原密码。</div></el-form-item>
         <div v-if="proxy && usesAccount" class="wide"><el-checkbox v-model="clearCredentials">清除已保存的代理账号和密码</el-checkbox></div>
         <ProxyAdvancedFields v-model="form.proxyOptions" :protocol="form.protocol"/>
-        <ProxyRoutesFields v-model="form.proxyOptions" :protocol="form.protocol" :exclude-id="proxy?.id" @loading="routeLoads = Math.max(0, routeLoads + $event)"/>
-        <div v-if="proxy" class="wide field-tip">连接参数和线路配置的修改将在店铺下次打开时生效；已打开店铺继续使用当前连接。</div>
+        <div v-if="proxy" class="wide field-tip">连接参数的修改将在店铺下次打开时生效。</div>
         <el-form-item label="到期时间（可选）"><el-date-picker v-model="form.expiresAt" type="datetime" placeholder="按供应商提供的时间填写" clearable/></el-form-item>
         <el-form-item label="预期出口 IP（可选）"><el-input v-model="form.mapIp" placeholder="用于记录供应商提供的出口 IP"/></el-form-item>
         <el-form-item label="换 IP 链接（可选）" class="wide">
@@ -174,7 +170,7 @@ async function save() {
     </template>
     <el-alert v-if="form.webType === 1" class="editor-notice" title="动态代理的实际出口 IP 和保持时长由供应商决定。请填写供应商提供的网关与会话账号，再检测实际出口。" type="info" :closable="false"/>
     <el-alert v-if="error" class="editor-notice" :title="error" type="error" :closable="false"/>
-    <template #footer><el-button :disabled="busy" @click="close">取消</el-button><el-button type="primary" :loading="busy" :disabled="uncertain || credentialsBlocked || routeLoads > 0 || (mode === 'batch' && !canImport)" @click="save">{{proxy ? '保存' : mode === 'batch' ? `添加${canImport ? ` ${preview.total} 条代理` : ''}` : '添加代理'}}</el-button></template>
+    <template #footer><el-button :disabled="busy" @click="close">取消</el-button><el-button type="primary" :loading="busy" :disabled="uncertain || credentialsBlocked || (mode === 'batch' && !canImport)" @click="save">{{proxy ? '保存' : mode === 'batch' ? `添加${canImport ? ` ${preview.total} 条代理` : ''}` : '添加代理'}}</el-button></template>
   </el-dialog>
 </template>
 

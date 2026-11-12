@@ -5,6 +5,68 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const { ProxyChecks, requestRotation } = require('../src/main/services/ProxyChecks');
+const {collectGeo}=require('../src/main/pluginManage/NetworkInfo');
+
+test('managed proxy checks tolerate a slow reachable provider while another provider stalls',async()=>{
+  const collect=options=>collectGeo({...options,proxyUrl:'http://127.0.0.1:1',
+    // Scale the production budgets to milliseconds: one provider never answers,
+    // while the other answers after the equivalent of sixteen seconds.
+    timeout:(options.timeout??12000)/100,requestTimeout:(options.requestTimeout??8000)/100,
+    providers:['https://stalled.test/json','https://slow.test/json'],
+    request:(url,agent,signal)=>url.includes('stalled')?new Promise(()=>{}):new Promise((resolve,reject)=>{
+      const timer=setTimeout(()=>resolve({ip:'1.1.1.1',country_code:'JP'}),160);
+      signal.addEventListener('abort',()=>{clearTimeout(timer);reject(signal.reason);},{once:true});
+    })});
+  const f=poolFixture(collect),result=await f.checks.probe(f.proxy,undefined,null);
+  assert.equal(result.connected,true,'A valid managed exit must use the same provider allowance as shop startup');
+  assert.deepEqual(f.opened,['relay-a.test']);assert.deepEqual(f.closed,f.opened);
+});
+
+function poolFixture(collect){
+  const exit={protocol:'http',host:'1.1.1.1',mapIp:'1.1.1.1',webType:2,port:8080};
+  const proxy={...exit,proxyOptions:{transit:{protocol:'socks5',host:'relay-a.test',port:1080},alternatives:[
+    {...exit,proxyOptions:{transit:{protocol:'socks5',host:'relay-b.test',port:1080}}}
+  ]},relayPool:{id:'pool',candidates:[{name:'A'},{name:'B'}]}};
+  const opened=[],closed=[];
+  class Runtime{
+    constructor(connection){
+      this.connection=connection;this.candidates=[connection,...connection.proxyOptions.alternatives||[]];
+      assert.equal(connection.host,'1.1.1.1');assert.equal(connection.port,8080);
+      assert.ok(connection.proxyOptions.transit,'every attempt must traverse an authorized relay');
+      this.name=connection.proxyOptions.transit.host;
+    }
+    async listen(){opened.push(this.name);}
+    get url(){return this.name;}
+    async close(){closed.push(this.name);}
+  }
+  return {proxy,opened,closed,checks:new ProxyChecks({}, {Runtime,collect,operations:async()=>null})};
+}
+
+for(const failure of ['unreachable','wrong-exit'])test(`pool check tries the next relay after ${failure} and releases each temporary session`,async()=>{
+  const f=poolFixture(async({proxyUrl,expectedIp})=>{
+    assert.equal(expectedIp,'1.1.1.1');
+    if(proxyUrl==='relay-a.test')return failure==='wrong-exit'?{available:true,ip:'8.8.8.8'}:{available:false};
+    return {available:true,ip:'1.1.1.1'};
+  });
+  const result=await f.checks.probe(f.proxy,undefined,null);
+  assert.equal(result.connected,true);assert.equal(result.ip,'1.1.1.1');assert.match(result.message,/线路：B/);
+  assert.deepEqual(f.opened,['relay-a.test','relay-b.test']);assert.deepEqual(f.closed,f.opened);
+});
+
+test('all failed pool candidates return failure without testing the exit directly',async()=>{
+  const f=poolFixture(async()=>({available:false}));
+  const result=await f.checks.probe(f.proxy,undefined,null);
+  assert.equal(result.connected,false);assert.match(result.message,/中继池线路均未通过检测/);
+  assert.deepEqual(f.opened,['relay-a.test','relay-b.test']);assert.deepEqual(f.closed,f.opened);
+});
+
+test('cancelling a pool check releases the current candidate and never starts the next',async()=>{
+  let entered;const started=new Promise(resolve=>{entered=resolve;});
+  const f=poolFixture(()=>{entered();return new Promise(()=>{});}),controller=new AbortController();
+  const pending=f.checks.probe(f.proxy,controller.signal,null),rejected=assert.rejects(pending,{name:'AbortError'});
+  await started;controller.abort();await rejected;
+  assert.deepEqual(f.opened,['relay-a.test']);assert.deepEqual(f.closed,f.opened);
+});
 
 test('bulk checks bound concurrency and logout cancels queued probes without saving stale results', async () => {
   let opened = 0, closed = 0, maximum = 0;

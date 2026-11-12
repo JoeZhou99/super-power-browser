@@ -29,6 +29,16 @@ const canRotate = computed(() => typeof desktop()?.rotateProxy === 'function');
 const errorText = (failure: unknown) => failure instanceof Error ? failure.message : '请求失败，请稍后重试';
 const date = (value?: string | null) => value ? new Date(value).toLocaleString('zh-CN', {hour12: false}) : '—';
 const endpoint = (row: ProxyRecord) => `${row.host.includes(':') && !row.host.startsWith('[') ? `[${row.host}]` : row.host}:${row.port}`;
+function acceleration(row: ProxyRecord) {
+  switch (row.acceleration?.status) {
+    case 'auto': return {label: '自动加速', type: 'primary' as const, tip: `已分配 ${row.acceleration.candidateCount} 条候选线路。打开店铺后自动选路，也可在店铺的“加速线路”中手动切换。`};
+    case 'unavailable': return {label: '加速暂不可用', type: 'warning' as const, tip: '已开通的中继分组暂无可用节点，请联系管理员。'};
+    case 'unsupported': return {label: '直接连接代理', type: 'info' as const, tip: '此代理的网络类型或协议暂不支持共享加速，继续使用原出口代理。'};
+    case 'inactive': return {label: '暂不可使用', type: 'info' as const, tip: '代理已回收或已到填写的到期时间。'};
+    case 'direct': return {label: '直接连接代理', type: 'info' as const, tip: '当前企业没有有效的加速授权，连接仍经过绑定的出口代理。'};
+    default: return {label: '状态待更新', type: 'info' as const, tip: '刷新列表以获取加速配置状态。'};
+  }
+}
 function snapshotQuery(): ProxyQuery { return {webType: dynamic.value ? 1 : webType.value, protocol: protocol.value, query: query.value.trim(), recycled: recycled.value}; }
 async function load() {
   const version = ++loadVersion;
@@ -49,8 +59,8 @@ watch([recycled, dynamic], () => {
   editing.value = false; binding.value = false; void load();
 }, {immediate: true});
 onBeforeUnmount(() => { disposed = true; loadVersion++; contextVersion++; });
-function edit(row?: ProxyRecord) { if (!permissions.can('device.edit') || recycled.value || busy.value) return; editRow.value = row; editing.value = true; }
-watch([() => route.query.create, () => permissions.can('device.edit'), recycled], ([create, canEdit, isRecycled]) => {
+function edit(row?: ProxyRecord) { if (!permissions.can('proxy.edit') || recycled.value || busy.value) return; editRow.value = row; editing.value = true; }
+watch([() => route.query.create, () => permissions.can('proxy.edit'), recycled], ([create, canEdit, isRecycled]) => {
   if (create !== '1' || !canEdit || isRecycled) return;
   edit();
 }, {immediate: true});
@@ -62,7 +72,7 @@ watch(editing, (open, wasOpen) => {
 function showBindings(row: ProxyRecord) { if (!permissions.can('shop.view')) return; bindingRow.value = row; binding.value = true; }
 
 async function runBatch(action: BatchAction, rows: ProxyRecord[], confirm = true) {
-  if (busy.value || !rows.length || !permissions.can('device.edit')) return;
+  if (busy.value || !rows.length || !permissions.can('proxy.edit')) return;
   if (action === 'check' && !canCheck.value) return;
   const targets = [...rows], permanent = recycled.value, scope = contextVersion;
   if (confirm && action !== 'check') {
@@ -99,7 +109,7 @@ async function runBatch(action: BatchAction, rows: ProxyRecord[], confirm = true
 }
 async function rotate(row: ProxyRecord) {
   const api = desktop();
-  if (!api?.rotateProxy || !permissions.can('device.edit') || busy.value) return;
+  if (!api?.rotateProxy || !permissions.can('proxy.edit') || busy.value) return;
   try { await ElMessageBox.confirm(`确认向供应商请求更换“${row.name}”的出口 IP？此操作会影响绑定该代理的全部 ${row.boundCount || 0} 个店铺，可能中断登录或正在进行的操作。供应商可能延迟生效，请以重新检测结果为准。`, '更换出口 IP', {type: 'warning', confirmButtonText: '请求换 IP', cancelButtonText: '取消'}); }
   catch { return; }
   busy.value = true; activeId.value = row.id; progress.value = '正在请求换 IP 并检测出口';
@@ -111,13 +121,13 @@ async function rotate(row: ProxyRecord) {
   finally { busy.value = false; activeId.value = ''; progress.value = ''; }
 }
 async function exportAll() {
-  if (exporting.value || !permissions.can('device.export')) return;
+  if (exporting.value || !permissions.can('proxy.export')) return;
   exporting.value = true;
   const params = snapshotQuery(), exportName = title.value;
   try {
     const rows: ProxyRecord[] = [], seen = new Set<string>();
     for (let current = 1; ; current++) {
-      const result = await proxyApi.list({...params, page: current, size: 200});
+      const result = await proxyApi.export({...params, page: current});
       for (const row of result.items) if (!seen.has(row.id)) { rows.push(row); seen.add(row.id); }
       if (!result.items.length || current * 200 >= result.total) break;
     }
@@ -137,8 +147,8 @@ async function exportAll() {
     <p class="proxy-description">{{recycled ? '静态和动态代理共用回收站，恢复后可重新绑定店铺。' : dynamic ? '管理供应商提供的动态网关和会话账号，检测实际出口 IP，并按需请求换 IP。' : '集中管理自行购买的代理服务，检测连接并为店铺配置网络。'}}</p>
     <el-alert v-if="!recycled && !canCheck" title="请在桌面客户端检测代理和请求换 IP，以确认当前电脑能连接到代理服务。" type="info" :closable="false"/>
     <div class="toolbar proxy-toolbar">
-      <el-button v-if="!recycled && permissions.can('device.edit')" type="primary" :icon="Plus" :disabled="busy" @click="edit()">{{dynamic ? '添加动态代理' : '添加代理'}}</el-button>
-      <el-tooltip content="导出当前筛选结果，不包含认证密码和换 IP 链接" placement="top"><el-button v-if="permissions.can('device.export')" :icon="Download" :loading="exporting" @click="exportAll">导出代理</el-button></el-tooltip>
+      <el-button v-if="!recycled && permissions.can('proxy.edit')" type="primary" :icon="Plus" :disabled="busy" @click="edit()">{{dynamic ? '添加动态代理' : '添加代理'}}</el-button>
+      <el-tooltip content="导出当前筛选结果，不包含认证密码和换 IP 链接" placement="top"><el-button v-if="permissions.can('proxy.export')" :icon="Download" :loading="exporting" @click="exportAll">导出代理</el-button></el-tooltip>
       <el-input v-model="query" class="search" clearable placeholder="名称 / 地址 / 供应商 / 地区 / 备注" :disabled="busy" @keyup.enter="search" @clear="search"/>
       <el-button :icon="Search" :disabled="busy" @click="search">查询</el-button><el-button :icon="Refresh" :disabled="busy" :loading="loading" aria-label="刷新代理列表" @click="load"/>
     </div>
@@ -153,25 +163,26 @@ async function exportAll() {
       <ul><li v-for="failure in failures" :key="failure.proxy.id">{{failure.proxy.name}}：{{failure.message}}</li></ul>
     </div>
     <el-table :data="items" v-loading="loading" row-key="id" @selection-change="selected=$event">
-      <el-table-column v-if="permissions.can('device.edit')" type="selection" width="42" :selectable="() => !busy"/>
-      <el-table-column label="代理名称" min-width="170"><template #default="{row}"><button v-if="!recycled && permissions.can('device.edit')" class="table-link table-name" :disabled="busy" @click="edit(row)">{{row.name}}</button><span v-else class="table-name">{{row.name}}</span><div class="table-sub">{{row.webType === 1 ? '动态代理' : '静态代理'}} · {{row.id.slice(0, 8)}}</div><div v-if="row.remark" class="table-sub remark" :title="row.remark">{{row.remark}}</div></template></el-table-column>
+      <el-table-column v-if="permissions.can('proxy.edit')" type="selection" width="42" :selectable="() => !busy"/>
+      <el-table-column label="代理名称" min-width="170"><template #default="{row}"><button v-if="!recycled && permissions.can('proxy.edit')" class="table-link table-name" :disabled="busy" @click="edit(row)">{{row.name}}</button><span v-else class="table-name">{{row.name}}</span><div class="table-sub">{{row.webType === 1 ? '动态代理' : '静态代理'}} · {{row.id.slice(0, 8)}}</div><div v-if="row.remark" class="table-sub remark" :title="row.remark">{{row.remark}}</div></template></el-table-column>
       <el-table-column label="代理地址" min-width="200"><template #default="{row}"><span class="endpoint">{{endpoint(row)}}</span><div class="table-sub">{{row.protocol.toUpperCase()}}<span v-if="row.username"> · {{row.username}}</span></div></template></el-table-column>
       <el-table-column label="供应商 / 地区" min-width="145"><template #default="{row}">{{row.provider || '未填写'}}<div class="table-sub">{{row.region || '未填写地区'}}</div></template></el-table-column>
+      <el-table-column label="网络加速" min-width="145"><template #default="{row}"><el-tooltip :content="acceleration(row).tip" placement="top"><el-tag :type="acceleration(row).type">{{acceleration(row).label}}</el-tag></el-tooltip><div v-if="row.acceleration?.status === 'auto'" class="table-sub">{{row.acceleration.candidateCount}} 条候选 · 开店时自动选择</div></template></el-table-column>
       <el-table-column label="最近检测" min-width="150"><template #default="{row}"><el-tooltip :content="row.checkMessage || '尚未检测此代理'" placement="top"><el-tag :type="!row.checkedAt ? 'info' : row.checkConnected ? 'success' : 'danger'">{{!row.checkedAt ? '未检测' : row.checkConnected ? '连接成功' : '连接失败'}}</el-tag></el-tooltip><div class="table-sub">{{row.checkConnected && row.checkLatencyMs != null ? `检测耗时 ${row.checkLatencyMs} ms` : ''}}</div><div class="table-sub">{{date(row.checkedAt)}}</div></template></el-table-column>
       <el-table-column label="最近出口 IP" min-width="165"><template #default="{row}">{{row.checkIp || '—'}}<div class="table-sub">{{row.checkCountryName || '—'}}</div><div v-if="row.webType === 1" class="table-sub">以检测时的出口为准</div></template></el-table-column>
       <el-table-column label="绑定店铺" width="95"><template #default="{row}"><button v-if="!recycled && permissions.can('shop.view')" class="table-link" :disabled="busy" @click="showBindings(row)">{{row.boundCount || 0}} 个店铺</button><span v-else>{{row.boundCount || 0}} 个</span></template></el-table-column>
       <el-table-column label="到期时间" min-width="160"><template #default="{row}">{{date(row.expiresAt)}}<div v-if="row.expiresAt && new Date(row.expiresAt).getTime() < Date.now()" class="expired">已到填写的到期时间</div></template></el-table-column>
       <el-table-column label="操作" :width="recycled ? 160 : 205" fixed="right"><template #default="{row}">
-        <template v-if="recycled"><el-button v-if="permissions.can('device.edit')" link type="primary" :disabled="busy" @click="runBatch('restore',[row])">恢复</el-button><el-button v-if="permissions.can('device.edit')" link type="danger" :disabled="busy" @click="runBatch('delete',[row])">永久删除</el-button></template>
+        <template v-if="recycled"><el-button v-if="permissions.can('proxy.edit')" link type="primary" :disabled="busy" @click="runBatch('restore',[row])">恢复</el-button><el-button v-if="permissions.can('proxy.edit')" link type="danger" :disabled="busy" @click="runBatch('delete',[row])">永久删除</el-button></template>
         <template v-else>
-          <div class="row-actions"><el-button v-if="permissions.can('device.edit')" link type="primary" :disabled="busy" @click="edit(row)">编辑</el-button><el-tooltip content="检测当前电脑到代理的连接和出口 IP" placement="top"><span><el-button v-if="permissions.can('device.edit')" link type="primary" :loading="busy && activeId === row.id && lastAction === 'check'" :disabled="busy || !canCheck" @click="runBatch('check',[row])">检测</el-button></span></el-tooltip><el-button v-if="permissions.can('shop.view')" link type="primary" :disabled="busy" @click="showBindings(row)">绑定店铺</el-button></div>
-          <div class="row-actions"><el-button v-if="row.hasChangeIpUrl && permissions.can('device.edit')" link type="primary" :disabled="busy || !canRotate" @click="rotate(row)">换 IP</el-button><el-button v-if="permissions.can('device.edit')" link type="danger" :disabled="busy" @click="runBatch('delete',[row])">删除</el-button></div>
+          <div class="row-actions"><el-button v-if="permissions.can('proxy.edit')" link type="primary" :disabled="busy" @click="edit(row)">编辑</el-button><el-tooltip content="检测当前电脑到代理的连接和出口 IP" placement="top"><span><el-button v-if="permissions.can('proxy.edit')" link type="primary" :loading="busy && activeId === row.id && lastAction === 'check'" :disabled="busy || !canCheck" @click="runBatch('check',[row])">检测</el-button></span></el-tooltip><el-button v-if="permissions.can('shop.view')" link type="primary" :disabled="busy" @click="showBindings(row)">绑定店铺</el-button></div>
+          <div class="row-actions"><el-button v-if="row.hasChangeIpUrl && permissions.can('proxy.edit')" link type="primary" :disabled="busy || !canRotate" @click="rotate(row)">换 IP</el-button><el-button v-if="permissions.can('proxy.edit')" link type="danger" :disabled="busy" @click="runBatch('delete',[row])">删除</el-button></div>
         </template>
       </template></el-table-column>
       <template #empty><el-empty :description="loadError ? '代理列表加载失败，请重试' : recycled ? '代理回收站为空' : dynamic ? '暂无动态代理，可添加供应商提供的动态网关' : '暂无代理，可添加单个代理或批量导入'" :image-size="90"/></template>
     </el-table>
     <div class="table-pagination">
-      <div v-if="permissions.can('device.edit')" class="batch-actions"><span class="muted">已选 {{selected.length}} 条</span><el-button v-if="!recycled" size="small" :disabled="!selected.length || busy || !canCheck" @click="runBatch('check', selected)">批量检测</el-button><el-button v-if="recycled" size="small" :disabled="!selected.length || busy" @click="runBatch('restore', selected)">批量恢复</el-button><el-button size="small" :disabled="!selected.length || busy" @click="runBatch('delete', selected)">{{recycled ? '永久删除' : '批量删除'}}</el-button></div>
+      <div v-if="permissions.can('proxy.edit')" class="batch-actions"><span class="muted">已选 {{selected.length}} 条</span><el-button v-if="!recycled" size="small" :disabled="!selected.length || busy || !canCheck" @click="runBatch('check', selected)">批量检测</el-button><el-button v-if="recycled" size="small" :disabled="!selected.length || busy" @click="runBatch('restore', selected)">批量恢复</el-button><el-button size="small" :disabled="!selected.length || busy" @click="runBatch('delete', selected)">{{recycled ? '永久删除' : '批量删除'}}</el-button></div>
       <el-pagination v-model:current-page="page" v-model:page-size="size" :page-sizes="[20,50,100]" :total="total" :disabled="busy" layout="total,sizes,prev,pager,next,jumper" @current-change="load" @size-change="search"/>
     </div>
   </section>

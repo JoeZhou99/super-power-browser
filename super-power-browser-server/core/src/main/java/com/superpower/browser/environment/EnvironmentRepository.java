@@ -13,15 +13,24 @@ class EnvironmentRepository {
     private final Db db;
     private final SecretCipher secrets;
     EnvironmentRepository(Db db,SecretCipher secrets) { this.db=db;this.secrets=secrets; }
-    private static final String PUBLIC="e.id,e.name,e.platform,e.platform_site_id,e.start_url,e.account_name,e.remark,e.device_id,e.kernel_version,e.fingerprint_seed,e.fingerprint,e.config_version,e.favorite,e.recycled,e.last_opened_at,e.created_at,e.updated_at,(SELECT d.name FROM device d WHERE d.id=e.device_id) AS device_name,(SELECT d.host FROM device d WHERE d.id=e.device_id) AS device_host,(SELECT d.region FROM device d WHERE d.id=e.device_id) AS device_region,(SELECT u.display_name FROM app_user u WHERE u.id=e.owner_id) AS creator_name,(SELECT GROUP_CONCAT(u.display_name SEPARATOR ', ') FROM environment_grant g JOIN app_user u ON u.id=g.user_id WHERE g.environment_id=e.id) AS granted_names";
+    private static final String SITE_NAME="CASE WHEN NULLIF(e.platform_site_id,'') IS NOT NULL THEN (SELECT s.site_name FROM platform_site s WHERE s.id=e.platform_site_id) ELSE (SELECT CASE WHEN COUNT(*)=1 THEN MIN(s.site_name) END FROM platform_site s WHERE s.platform_name=e.platform AND s.url=e.start_url) END AS platform_site_name";
+    private static final String PUBLIC="e.id,e.name,e.platform,e.platform_site_id,"+SITE_NAME+",e.start_url,e.account_name,e.remark,e.device_id,e.kernel_version,e.fingerprint_seed,e.fingerprint,e.config_version,e.favorite,e.recycled,e.last_opened_at,e.created_at,e.updated_at,(SELECT d.name FROM device d WHERE d.id=e.device_id) AS device_name,(SELECT d.host FROM device d WHERE d.id=e.device_id) AS device_host,(SELECT d.region FROM device d WHERE d.id=e.device_id) AS device_region,(SELECT u.display_name FROM app_user u WHERE u.id=e.owner_id) AS creator_name,(SELECT GROUP_CONCAT(u.display_name SEPARATOR ', ') FROM environment_grant g JOIN app_user u ON u.id=g.user_id WHERE g.environment_id=e.id) AS granted_names";
     private static final String SCOPE="e.tenant_id=? AND (?=TRUE OR e.owner_id=? OR EXISTS(SELECT 1 FROM environment_grant g WHERE g.environment_id=e.id AND g.user_id=?) OR (?=TRUE AND EXISTS(SELECT 1 FROM app_user creator WHERE creator.id=e.owner_id AND creator.tenant_id=e.tenant_id AND creator.department_id=?)))";
     private List<Object> scopeArgs(Actor a) {
         return new ArrayList<>(List.of(a.tenantId(),a.owner() || a.memberType()==3,a.id(),a.id(),a.memberType()==2,a.departmentId()));
     }
     Map<String,Object> get(Actor a,String id) {
         var args=scopeArgs(a); args.add(id);
-        var result=one(db.select("SELECT e.* FROM environment e WHERE "+SCOPE+" AND e.id=?",args.toArray()));
+        var result=one(db.select("SELECT e.*,"+SITE_NAME+" FROM environment e WHERE "+SCOPE+" AND e.id=?",args.toArray()));
         result.put("accountPassword",secrets.decrypt(text(result,"accountPassword")));return result;
+    }
+    List<Map<String,Object>> selected(Actor a,List<String> ids) {
+        var args=scopeArgs(a);args.addAll(ids);
+        var selected=rows(db.select("SELECT "+PUBLIC+" FROM environment e WHERE "+SCOPE+" AND e.id IN ("+String.join(",",Collections.nCopies(ids.size(),"?"))+")",args.toArray()));
+        BusinessException.require(selected.size()==ids.size(),404,"店铺不存在或无权访问");
+        var byId=new HashMap<String,Map<String,Object>>();
+        for(var row:selected)byId.put(text(row,"id"),row);
+        return ids.stream().map(byId::get).toList();
     }
     Map<String,Object> list(Actor a,String category,String query,int page,int size,boolean recycled) {
         var args=scopeArgs(a); args.add(recycled); args.add("%"+query+"%");

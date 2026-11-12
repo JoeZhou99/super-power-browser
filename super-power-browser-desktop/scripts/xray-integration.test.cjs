@@ -5,6 +5,8 @@ const http = require('node:http');
 const net = require('node:net');
 const { once } = require('node:events');
 const { ProxyRuntime, ProxyPool } = require('../src/main/services/ProxyRuntime');
+const {ProxyRoutes}=require('../src/main/services/ProxyRoutes');
+const {RelayController}=require('../src/main/services/RelayController');
 const { resolveProxyBinary, reservePorts, launchChild, waitListening, stopChild } = require('../src/main/services/ProxyProcess');
 
 // Every upstream and destination binds loopback. Fixture Xray routing rejects
@@ -144,6 +146,15 @@ test('VMess transport survives a real authenticated SOCKS5 transit chain', { tim
   assert.equal(destination.requests.length, 1);
 });
 
+test('SOCKS5 exit survives a real encrypted Shadowsocks transit chain', { timeout: 20000 }, async t => {
+  const add = scope(t), destination = await target(add), remote = await upstream(add, 'socks5', destination.port);
+  const relay = await upstream(add, 'ss', remote.connection.port);
+  const client = runtime(add, { ...remote.connection, proxyOptions: { ...remote.connection.proxyOptions, transit: relay.connection } });
+  await client.listen();
+  assert.deepEqual(await request(client, destination.port, '/ss-chain'), { status: 200, body: 'local-target:/ss-chain' });
+  assert.equal(destination.requests.length, 1);
+});
+
 test('concurrent identical leases share one child and release it only after the final owner', { timeout: 20000 }, async t => {
   const add = scope(t), destination = await target(add), remote = await upstream(add, 'http', destination.port);
   const pool = new ProxyPool(resources);add(() => pool.close());
@@ -203,6 +214,34 @@ test('a refused upstream never falls back to connecting directly to the destinat
   await client.listen();
   const result = await request(client, destination.port, '/must-not-arrive').catch(() => ({ status: 0 }));
   assert.notEqual(result.status, 200);assert.equal(destination.requests.length, 0);
+});
+
+test('managed relay pool probes isolated real chains and recovers a failed relay through the same exit', {timeout:45000},async t=>{
+  const add=scope(t),destination=await target(add),exit=await upstream(add,'http',destination.port);
+  const relays=[await upstream(add,'socks5',exit.connection.port),await upstream(add,'http',exit.connection.port)];
+  const connection={...exit.connection,proxyOptions:{...exit.connection.proxyOptions,transit:relays[0].connection,
+    alternatives:[{...exit.connection,proxyOptions:{...exit.connection.proxyOptions,transit:relays[1].connection}}]},
+    relayPool:{id:'synthetic-pool',name:'Local fixture',automatic:true,candidates:[{id:'a',name:'A'},{id:'b',name:'B'}]}};
+  const client=runtime(add,connection);await client.listen();
+  const validate=async probe=>{
+    assert.equal(probe.config.host,exit.connection.host);assert.equal(probe.config.port,exit.connection.port);
+    assert.equal((await request(probe,destination.port,'/fixed-exit')).status,200);
+  };
+  const routes=new ProxyRoutes(connection,client,{resources,target:`http://127.0.0.1:${destination.port}/measure`,validate});
+  const controller=new RelayController(routes,index=>client.switchCandidate(index,{validate:async candidate=>{
+    const probe=new ProxyRuntime(candidate,{resources});
+    try{await probe.listen();await validate(probe);}finally{await probe.close();}
+  }}),{policy:connection.relayPool});add(()=>controller.close());
+  await controller.initialize();const selected=client.candidateIndex,oldPid=client.child.pid,port=client.port,url=client.url;
+  await routes.latency({candidateIndex:1-selected,snapshotId:routes.snapshotId});
+  assert.equal(client.child.pid,oldPid);assert.equal(client.candidateIndex,selected);
+  await stopChild(relays[selected].child);
+  await controller.tick();await controller.tick();assert.equal(client.candidateIndex,selected);
+  await controller.tick();assert.equal(client.candidateIndex,1-selected);
+  assert.equal(client.port,port);assert.equal(client.url,url);
+  assert.equal((await request(client,destination.port,'/after-failover')).status,200);
+  assert.equal(client.entry.config.host,exit.connection.host);assert.equal(client.entry.config.port,exit.connection.port);
+  assert.equal(controller.state().relayStatus,'healthy');
 });
 
 test('authorized route switching keeps ports and credentials, isolates shops, and rejects injected candidates', { timeout: 30000 }, async t => {

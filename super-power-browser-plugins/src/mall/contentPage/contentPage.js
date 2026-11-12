@@ -1,4 +1,4 @@
-import {requestProxySwitch, requestProxyRoutes, requestTransferSpeed} from "../runtime/proxy-switch.mjs";
+import {requestProxySwitch, requestProxyRoutes, requestTransferSpeed, requestTransferDetails, requestProxyAutomatic} from "../runtime/proxy-switch.mjs";
 import {
   d as te,
   _ as le,
@@ -578,6 +578,10 @@ const ae = 3,
         spTriedCandidateIndexes: [],
         spProxySwitchAttempt: 0,
         spProxySnapshotId: "",
+        spRelayPool: null,
+        spRelayAutomatic: false,
+        spRelayStatus: "",
+        spRelayRefreshPending: false,
         lastReportedTransferProxyKey: "",
         hasPendingTransferReport: !1,
         transitLatencyMap: {},
@@ -636,6 +640,7 @@ const ae = 3,
         return X.compareVersion(e, "5.2.12") > 0;
       },
       hasTransferProxyPool() {
+        if(this.spRelayPool)return true;
         const e = this.mall?.has_one_agent_ip_v2?.transfer_proxies;
         return Array.isArray(e) && e.length > 0;
       },
@@ -741,11 +746,48 @@ const ae = 3,
         this.getMallInfo(),
         this.initADS(),
         this.getCurrency());
+      this._relayTimer=setInterval(()=>{void this.refreshRelayState();},5000);
     },
     beforeUnmount() {
+      this._relayTimer&&clearInterval(this._relayTimer);
       (this._tzTimer && clearInterval(this._tzTimer), (this._tzTimer = null));
     },
     methods: {
+      applyRelaySnapshot(snapshot) {
+        if(!snapshot?.relayPool)return;
+        this.spRelayPool=snapshot.relayPool;
+        this.spRelayAutomatic=snapshot.automatic;
+        this.spRelayStatus=snapshot.relayStatus;
+        this.syncTransitCandidateIndex(snapshot.candidateIndex);
+        for(const line of snapshot.candidates){
+          const index=this.transferProxies.findIndex(item=>item.candidateIndex===line.candidateIndex);
+          if(index<0||!line.health||this.testingTransitIndex===index)continue;
+          this.updateTransitLatencyState(index,{status:line.health.available?'success':'fail',
+            localToTransitMs:line.health.entryLatencyMs,transitToWebAvgMs:line.health.delay,
+            transferLineTotalMs:line.health.delay,sampledAt:line.health.sampledAt});
+        }
+      },
+      async refreshRelayState() {
+        if(!this.spRelayPool||this.spRelayRefreshPending||this.isTransitLatencyTesting||this.switchingIndex!==-1)return;
+        this.spRelayRefreshPending=true;
+        try{
+          const snapshot=await requestProxyRoutes();
+          if(snapshot.snapshotId===this.spProxySnapshotId)this.applyRelaySnapshot(snapshot);
+        }catch{}finally{this.spRelayRefreshPending=false;}
+      },
+      async setRelayAutomatic(automatic) {
+        if(this.isTransitLatencyTesting||this.switchingIndex!==-1)return;
+        try{this.applyRelaySnapshot(await requestProxyAutomatic(automatic,this.spProxySnapshotId));}
+        catch{y.warning('线路正在检测或切换，请稍后重试');}
+      },
+      relayStateText() {
+        const status={initializing:'正在选择线路',healthy:'线路正常',degraded:'正在确认线路状态',unavailable:'当前没有可用备用线路',monitoring:'运行期间持续检测',locked:'已锁定当前线路'};
+        return `${this.spRelayPool?.name||'平台中继池'} · ${this.spRelayAutomatic?'自动故障切换':'手动锁定'} · ${status[this.spRelayStatus]||''}`;
+      },
+      relaySampleText(index) {
+        const sample=this.getTransitLatencyState(index),time=sample.sampledAt?new Date(sample.sampledAt).toLocaleTimeString():'尚未检测';
+        return `入口 TCP ${this.formatLatency(sample.localToTransitMs)} · 网站响应 ${this.formatLatency(sample.transitToWebAvgMs)} · ${time}`;
+      },
       canUseTransitPoolFlow() {
         return this.hasTransferProxyPool;
       },
@@ -918,6 +960,7 @@ const ae = 3,
         return { testing: t === "testing", success: t === "success", fail: t === "fail" };
       },
       getTransitLineDisplayName(e, t) {
+        if(this.initJson?.desktopProtocol&&e?.name)return [e.poolName,e.name,e.region].filter(Boolean).join(' · ');
         if (e?.is_direct === 1) return this.$t("check.transit.direct_line");
         const s = String(e?.ip || "")
             .trim()
@@ -1166,6 +1209,7 @@ const ae = 3,
         };
       },
       async restoreTransitSelectionAfterTest(e) {
+        if(this.initJson?.desktopProtocol)return;
         if (!this.initJson?.desktopProtocol) this.currentTransferProxyIndex = e.currentTransferProxyIndex;
         this.nextTransferProxyIndex = e.nextTransferProxyIndex;
         try {
@@ -1199,6 +1243,13 @@ const ae = 3,
             transitToWebAvgMs: null,
           }));
         try {
+          if(this.initJson?.desktopProtocol){
+            const sample=await requestTransferDetails(e.candidateIndex,this.spProxySnapshotId);
+            this.updateTransitLatencyState(t,{status:'success',localToTransitMs:sample.entryLatencyMs,
+              transitToWebSamples:[sample.delay],transitToWebAvgMs:sample.delay,transferLineTotalMs:sample.delay,sampledAt:sample.sampledAt,error:''});
+            this.lineTestingStatus='success';this.lineTestingMessage='';
+            return true;
+          }
           const s = await this.measureLocalToTransit(e);
           (this.updateTransitLatencyState(t, { localToTransitMs: s }),
             await this.switchTransitAndWaitReady(e));
@@ -1299,7 +1350,7 @@ const ae = 3,
             (this.isTransitLatencyTesting = !1),
             (this.isBatchTransitTesting = !1));
         }
-        t > 0 && (await this.switchBestTransitAfterTestAllIfEnabled());
+        if(!this.initJson?.desktopProtocol&&t>0)await this.switchBestTransitAfterTestAllIfEnabled();
       },
       async handleManualSwitchTransit(e, t) {
         if (this.switchingIndex !== -1 || this.isTransitLatencyTesting) return false;
@@ -1373,6 +1424,9 @@ const ae = 3,
         }
       },
       trySwitchTransferProxy() {
+        // Managed pool selection belongs to the desktop controller. A page
+        // watcher must not race it or silently turn an automatic route into a lock.
+        if(this.spRelayPool){this.loadIp=false;this.switchingIndex=-1;return true;}
         if (!this.canUseTransitPoolFlow()) return !1;
         if (this.isTransitLatencyTesting) return !0;
         if (this.initJson?.desktopProtocol) {
@@ -1721,6 +1775,7 @@ const ae = 3,
           }
           return requestProxySwitch(e.candidateIndex, this.spProxySnapshotId).then(() => {
             if (attempt === this.spProxySwitchAttempt) this.syncTransitCandidateIndex(e.candidateIndex);
+            if(this.spRelayPool){this.spRelayAutomatic=false;this.spRelayStatus='locked';}
             return true;
           }, (error) => {
             if (attempt !== this.spProxySwitchAttempt) return false;
@@ -2022,6 +2077,7 @@ const ae = 3,
             const index = this.transferProxies.findIndex(line => line.candidateIndex === preferred);
             this.currentTransferProxyIndex = index < 0 ? 0 : index;
             this.nextTransferProxyIndex = this.currentTransferProxyIndex + 1;
+            if(liveSnapshot.relayPool)this.applyRelaySnapshot(liveSnapshot);
           }
           setupStage = "prepare";
           try {
@@ -2902,7 +2958,10 @@ function bn(e, t, s, i, a, d) {
                           ]),
                         ]),
                         n("div", ws, [
-                          p(
+                          e.spRelayPool ? n("div",{style:{display:'flex',gap:'8px'}},[
+                            p(l,{size:'small',loading:e.isTransitLatencyTesting,disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1,onClick:e.testAllTransitLines},{default:h(()=>[P('全部测速')]),_:1},8,['disabled','loading']),
+                            p(l,{size:'small',type:e.spRelayAutomatic?'default':'primary',disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1,onClick:()=>e.setRelayAutomatic(!e.spRelayAutomatic)},{default:h(()=>[P(e.spRelayAutomatic?'锁定当前线路':'恢复自动')]),_:1},8,['disabled','type']),
+                          ]) : p(
                             O,
                             {
                               placement: "bottom",
@@ -3001,6 +3060,10 @@ function bn(e, t, s, i, a, d) {
                           ),
                         ]),
                       ]),
+                      e.spRelayPool?n("div",{style:{padding:'8px 0',fontSize:'12px',color:'#606266'}},[
+                        n("div",null,o(e.relayStateText()),1),
+                        n("div",null,'手动选择会暂停自动切换。测速不会切换当前线路；实际切线可能短暂中断现有连接。'),
+                      ]):v('',true),
                       n(
                         "div",
                         {
@@ -3157,6 +3220,7 @@ function bn(e, t, s, i, a, d) {
                                           1024,
                                         ),
                                       ]),
+                                      e.spRelayPool?n("div",{style:{fontSize:'12px',color:'#606266',marginTop:'6px'}},o(e.relaySampleText(f)),1):v('',true),
                                     ]),
                                   ]),
                                   n("div", Xs, [

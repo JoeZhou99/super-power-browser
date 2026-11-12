@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import vm from 'node:vm';
-import {candidateIndex, requestProxySwitch, switchAuthorizedProxy, requestProxyRoutes, queryAuthorizedProxyRoutes, requestTransferSpeed, measureAuthorizedTransfer} from '../runtime/proxy-switch.mjs';
+import {candidateIndex, requestProxySwitch, switchAuthorizedProxy, requestProxyRoutes, queryAuthorizedProxyRoutes, requestTransferSpeed, measureAuthorizedTransfer,requestTransferDetails,requestProxyAutomatic,setAuthorizedProxyAutomatic} from '../runtime/proxy-switch.mjs';
 
 const sender = {id:'fixture-extension',url:'chrome-extension://fixture-extension/contentPage/index.html'};
 const snapshotId = 'a'.repeat(64);
@@ -55,6 +55,29 @@ test('a closed page does not change a successful desktop switch into a failure',
   assert.deepEqual(result,{isSuccess:true,candidateIndex:1,snapshotId});
 });
 
+test('automatic mode uses an authorized snapshot and never accepts a page supplied connection',async()=>{
+  const state={snapshotId,candidateIndex:0,candidates:[{candidateIndex:0,ip:'relay.test',port:1080,proxy_type:'socks5',password:'must-not-leak',name:'香港 A',
+    poolId:'hk-pool',poolName:'香港分组',health:{available:true,delay:300,entryLatencyMs:25,sampledAt:'2026-11-11T00:00:00Z'}}],
+    relayPool:{id:'pool',name:'平台加速',password:'must-not-leak'},automatic:true,relayStatus:'monitoring'};
+  const options=context({rpc:async(action,args)=>{
+    assert.equal(action,'SetProxyAutomatic');assert.deepEqual(args,{automatic:true,snapshotId});return {ret:200,returnObj:state};
+  }});
+  const result=await requestProxyAutomatic(true,snapshotId,message=>setAuthorizedProxyAutomatic({...message,host:'injected.test'},sender,options));
+  assert.equal(result.automatic,true);assert.equal(result.candidates[0].health.entryLatencyMs,25);
+  assert.equal(result.candidates[0].name,'香港 A');assert.ok(!JSON.stringify(result).includes('must-not-leak'));
+  assert.equal(result.candidates[0].poolId,'hk-pool');assert.equal(result.candidates[0].poolName,'香港分组');
+  await assert.rejects(setAuthorizedProxyAutomatic({automatic:true,snapshotId},{id:sender.id,url:'https://merchant.test/'},options),/未授权/);
+  await assert.rejects(requestProxyAutomatic('true',snapshotId),/参数不合法/);
+});
+
+test('isolated measurement returns real millisecond samples and sample time without route mutation',async()=>{
+  const result=await requestTransferDetails(0,snapshotId,async message=>{
+    assert.deepEqual(message,{type:'sp:transfer-speed',candidateIndex:0,snapshotId});
+    return {available:true,delay:0,entryLatencyMs:12,sampledAt:'2026-11-11T00:00:00Z',candidateIndex:0,snapshotId};
+  });
+  assert.deepEqual(result,{delay:0,entryLatencyMs:12,sampledAt:'2026-11-11T00:00:00Z'});
+});
+
 test('readiness broadcast needs no response from the content page', async () => {
   let completed=false;
   switchAuthorizedProxy({candidateIndex:0,snapshotId},sender,context({rpc:async()=>({ret:200,returnObj:{isSuccess:true,candidateIndex:0,snapshotId}}),notify:()=>new Promise(()=>{})})).then(()=>completed=true);
@@ -92,13 +115,14 @@ test('fallback from a saved last line still tries primary and every remaining ca
   assert.equal(state.transferProxySwitchCount,2);
 });
 
-function switchingPage(rpc,{count=3,current=2}={}) {
-  const requests=[],checks=[],listeners=[];
+function switchingPage(rpc,{count=3,current=2,measure=async()=>({delay:3,entryLatencyMs:1,sampledAt:new Date().toISOString()})}={}) {
+  const requests=[],checks=[],listeners=[],measurements=[];
   const globals={
     _:{info(){},warn(){},error(){}},console:{log(){}},
     S:{event_type:{init_proxy_complete:'init_proxy_complete'}},
     chrome:{runtime:{onMessage:{addListener:listener=>listeners.push(listener)}}},
     requestProxyRoutes:async()=>({snapshotId,candidateIndex:state.currentTransferProxyIndex,candidates:state.transferProxies}),
+    requestTransferDetails:async index=>{measurements.push(index);return measure(index);},
     requestProxySwitch:(index,snapshot)=>requestProxySwitch(index,snapshot,async message=>{
       try {
         return await switchAuthorizedProxy(message,sender,context({
@@ -135,7 +159,7 @@ function switchingPage(rpc,{count=3,current=2}={}) {
     ['testAllTransitLines','handleManualSwitchTransit'],
   ]) state[name]=pageMethod(name,next,globals);
   state.initMessageWithServiceWorker();
-  return {state,requests,checks};
+  return {state,requests,checks,measurements};
 }
 const switchReply=index=>({ret:200,returnObj:{isSuccess:true,candidateIndex:index,snapshotId}});
 const failedSwitch=index=>({ret:400,returnObj:{isSuccess:false,candidateIndex:index}});
@@ -196,8 +220,10 @@ test('manual transport failure without a confirmed index retains the previous li
   assert.equal(state.checkIpEnd,false);
 });
 
-test('batch latency testing owns progression and restores its original line after one rejection',async()=>{
-  const {state,requests,checks}=switchingPage(index=>index===0?failedSwitch(2):switchReply(index));
+test('desktop batch latency tests isolated candidates without switching or restoring the active line',async()=>{
+  const {state,requests,checks,measurements}=switchingPage(index=>switchReply(index),{measure:async index=>{
+    if(index===0)throw new Error('unavailable');return {delay:3,entryLatencyMs:1,sampledAt:new Date().toISOString()};
+  }});
   const latency=new Map();
   Object.assign(state,{
     updateTransitLatencyState(index,value){latency.set(index,{...latency.get(index),...value});},
@@ -209,7 +235,8 @@ test('batch latency testing owns progression and restores its original line afte
     switchBestTransitAfterTestAllIfEnabled:async()=>{},
   });
   await state.testAllTransitLines();
-  assert.deepEqual(requests,[0,1,2,2],'each line is tested once, followed by the explicit restoration');
+  assert.deepEqual(requests,[],'testing must never restart the shop forwarder');
+  assert.deepEqual(measurements,[0,1,2]);
   assert.deepEqual(checks,[],'latency testing suppresses normal environment checks');
   assert.equal(latency.get(0).status,'fail');
   assert.equal(latency.get(1).status,'success');
@@ -220,11 +247,11 @@ test('batch latency testing owns progression and restores its original line afte
   assert.deepEqual(state.spTriedCandidateIndexes,[2],'latency testing does not consume fallback candidates');
 });
 
-test('a failed latency restoration keeps the desktop actual line selected',async()=>{
+test('desktop latency completion does not restore an old selection over a concurrent actual route',async()=>{
   const {state,requests}=switchingPage(()=>failedSwitch(1),{current:1});
   state.isTransitLatencyTesting=true;
   await state.restoreTransitSelectionAfterTest({currentTransferProxyIndex:2,nextTransferProxyIndex:3});
-  assert.deepEqual(requests,[2]);
+  assert.deepEqual(requests,[]);
   assert.equal(state.currentTransferProxyIndex,1);
   assert.equal(state.nextTransferProxyIndex,2);
 });

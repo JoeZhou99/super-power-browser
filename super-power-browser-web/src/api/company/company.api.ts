@@ -39,6 +39,20 @@ export interface CompanyRole {
   builtin: boolean;
 }
 
+export interface PermissionNode {
+  code: string;
+  label: string;
+  minMemberType: number;
+  dependencies: string[];
+}
+
+export interface PermissionGroup {
+  code: string;
+  label: string;
+  menuPath: string;
+  children: PermissionNode[];
+}
+
 export interface MemberInvitation {
   id: string;
   departmentId: string;
@@ -76,7 +90,7 @@ export const companyApi = {
     body: JSON.stringify(transferTo ? { transferTo } : {}),
   }),
   roles: () => request<CompanyRole[]>('/roles'),
-  permissionNodes: () => request<string[]>('/permission-nodes'),
+  permissionNodes: () => request<PermissionGroup[]>('/permission-nodes'),
   saveRole: (id: string, body: unknown) => id ? patch(`/roles/${id}`, body) : post('/roles', body),
   deleteRole: (id: string) => remove(`/roles/${id}`),
   invitations: () => request<MemberInvitation[]>('/member-invitations'),

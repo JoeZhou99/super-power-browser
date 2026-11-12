@@ -30,5 +30,8 @@ public class EnvironmentController {
     @GetMapping("/environments/{id}/launch-config") Object launch(@AuthenticationPrincipal Actor a,@PathVariable String id) { return shops.launch(a,id); }
     @GetMapping("/environments/{id}/access") Object access(@AuthenticationPrincipal Actor a,@PathVariable String id) { shops.checkAccess(a,id);return Map.of("allowed",true); }
     @PostMapping("/environments/import") Object importShops(@AuthenticationPrincipal Actor a,@RequestBody List<Map<String,Object>> b) { return shops.importEnvironments(a,b); }
-    @GetMapping("/environments/export") Object exportShops(@AuthenticationPrincipal Actor a,@RequestParam(defaultValue="1") int page) { a.allow("shop.export"); return shops.list(a,"all","",page,200,false); }
+    @GetMapping("/environments/export") Object exportShops(@AuthenticationPrincipal Actor a,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="all") String category,@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="false") boolean recycled) { a.allow("shop.export"); return shops.list(a,category,query,page,200,recycled); }
+    @PostMapping("/environments/export") Object exportSelectedShops(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object> body) {
+        return shops.exportSelected(a,strings(body,"ids"));
+    }
 }
