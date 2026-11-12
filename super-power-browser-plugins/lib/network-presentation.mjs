@@ -47,12 +47,13 @@ export function networkPresentation(source){
           if(!current()||!info)return;
           if(info.allowed===true&&info.exit?.available===true&&typeof info.exit.ip==="string"&&info.exit.ip){
             const confirmed=await chrome.runtime.sendMessage({type:'sp:network-complete',attemptId:info.attemptId});
-            if(confirmed?.allowed!==true)info={allowed:false,message:confirmed?.message||"检测确认失败，请重新检测"};
+            if(confirmed?.allowed!==true)info={...info,allowed:false,message:confirmed?.message||"检测确认失败，请重新检测"};
           }else info={...info,allowed:false};
         }catch{info={allowed:false,message:"线路检测未完成，请重新检测"};}
         if(!current())return;
         this.spNetwork.pending=false;
         this.spNetwork.completed=true;
+        this.spNetwork.attemptId=info?.attemptId;
         this.spIpChecked=true;
         this.spNetwork.ip=info?.exit?.available?info.exit.ip:"暂未获取";
         this.spNetwork.message=info?.message||"代理出口检测失败，请检查代理后重试";

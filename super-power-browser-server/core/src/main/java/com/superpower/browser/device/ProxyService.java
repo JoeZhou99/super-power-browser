@@ -25,9 +25,10 @@ public class ProxyService {
     }
     @Transactional public String save(Actor actor,String id,Map<String,Object> request){
         actor.allow("proxy.edit");require(request!=null,400,"代理配置不能为空");
-        require(!request.containsKey("relayPoolId"),400,"加速线路由企业授权自动分配，不支持指定线路组");
+        require(Collections.disjoint(request.keySet(),Set.of("relayPoolId","relayNodeIds","nodeIds")),400,"中继绑定由运营后台管理，不支持提交线路配置");
         Map<String,Object> previous=id==null?Map.of():repository.proxy(actor,id,true);
         var input=new HashMap<>(previous);input.putAll(request);
+        input.remove("relayBindingRevision");
         require(!request.containsKey("ipType")||number(request,"ipType")==2,400,"代理管理仅支持用户自有代理");
         input.put("ipType",2);
         input.put("host",ProxySettings.host(required(input,"host",255)));

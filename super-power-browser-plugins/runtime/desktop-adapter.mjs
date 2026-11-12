@@ -34,7 +34,7 @@ export function installDesktopAdapter(){
     const response=new Promise((resolve,reject)=>{
       // Route selection validates a candidate and restarts a local helper; SSH
       // can legitimately exceed the ordinary short RPC deadline.
-      const timeout=['StartProxy','TransferSpeed'].includes(request.action)?75000:15000;
+      const timeout=['StartProxy','TransferSpeed','TestProxyWebsite'].includes(request.action)?75000:15000;
       const timer=setTimeout(()=>{pending.delete(request.requestId);reject(new Error('桌面通信超时'));},timeout);
       pending.set(request.requestId,{resolve,reject,timer});
     });
@@ -67,7 +67,11 @@ export function installDesktopAdapter(){
         const info=result.returnObj;
         if(!local){
           if(generation!==checkGeneration)throw new Error('stale_check');
-          if((info?.pending||info?.allowed!==true)&&globalThis.__SP_NETWORK_VERIFIED__)await globalThis.__SP_BEGIN_NETWORK_CHECK__();
+          // A backend binding refresh can finish its new attempt before the
+          // page sees a pending response. Its acknowledgement must not reuse
+          // the resolved completion promise from the previous route.
+          const changedAttempt=validAttempt(successfulAttempt)&&info?.attemptId!==successfulAttempt;
+          if(changedAttempt||(info?.pending||info?.allowed!==true)&&globalThis.__SP_NETWORK_VERIFIED__)await globalThis.__SP_BEGIN_NETWORK_CHECK__();
           successfulAttempt=info?.pending!==true&&info?.allowed===true&&validAttempt(info.attemptId)?info.attemptId:null;
         }
         return info;

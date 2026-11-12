@@ -129,6 +129,13 @@ public class EnvironmentService {
         for(String userId:userIds) repository.grant(id,userId,a.id(),revoke);
         audit.record(a,revoke?"shop.revoke":"shop.grant",id,Map.of("members",userIds));
     }
+    @Transactional(readOnly=true,isolation=org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public Map<String,Object> connection(Actor a,String id) {
+        var env=get(a,id,"shop.open");require(!flag(env,"recycled"),409,"店铺已回收");
+        require(!text(env,"deviceId").isBlank(),409,"店铺设备已解绑");
+        var proxy=devices.launchProxy(a,text(env,"deviceId"));
+        return Map.of("proxy",proxy,"snapshotId",com.superpower.browser.device.RelayPoolService.snapshot(proxy));
+    }
     @Transactional public Map<String,Object> launch(Actor a,String id) {
         var env=get(a,id,"shop.open"); require(!flag(env,"recycled"),409,"店铺已回收");
         require(env.get("deviceId")!=null,409,"请先绑定设备");

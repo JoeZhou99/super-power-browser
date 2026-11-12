@@ -28,6 +28,9 @@ public class EnvironmentController {
     @PostMapping("/environments/{id}/grants") void grant(@AuthenticationPrincipal Actor a,@PathVariable String id,@RequestBody Map<String,Object> b) { shops.grant(a,id,strings(b,"members"),false); }
     @DeleteMapping("/environments/{id}/grants/{member}") void revoke(@AuthenticationPrincipal Actor a,@PathVariable String id,@PathVariable String member) { shops.grant(a,id,List.of(member),true); }
     @GetMapping("/environments/{id}/launch-config") Object launch(@AuthenticationPrincipal Actor a,@PathVariable String id) { return shops.launch(a,id); }
+    @GetMapping("/environments/{id}/connection") org.springframework.http.ResponseEntity<?> connection(@AuthenticationPrincipal Actor a,@PathVariable String id) {
+        return org.springframework.http.ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore()).body(shops.connection(a,id));
+    }
     @GetMapping("/environments/{id}/access") Object access(@AuthenticationPrincipal Actor a,@PathVariable String id) { shops.checkAccess(a,id);return Map.of("allowed",true); }
     @PostMapping("/environments/import") Object importShops(@AuthenticationPrincipal Actor a,@RequestBody List<Map<String,Object>> b) { return shops.importEnvironments(a,b); }
     @GetMapping("/environments/export") Object exportShops(@AuthenticationPrincipal Actor a,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="all") String category,@RequestParam(defaultValue="") String query,@RequestParam(defaultValue="false") boolean recycled) { a.allow("shop.export"); return shops.list(a,category,query,page,200,recycled); }

@@ -54,7 +54,7 @@ class RelayController {
         }
       };
       const current = this.routes.runtime.candidateIndex;
-      const indexes = [current, ...this.routes.runtime.candidates.map((_,index) => index).filter(index => index !== current)];
+      const indexes = this.routes.startupIndexes?.() || [current, ...this.routes.runtime.candidates.map((_,index) => index).filter(index => index !== current)];
       let lastError;
       try {
         for (const index of indexes) {
@@ -92,7 +92,7 @@ class RelayController {
     this.timer?.unref?.();
   }
   async tick() {
-    if (this.busy || this.routes.measuring || this.signal.aborted) return;
+    if (this.busy || this.routes.measuring || this.routes.optimizing || this.routes.refreshing || this.signal.aborted) return;
     return this.exclusive(async () => {
       try {
         await this.routes.ready({signal:this.signal}); this.failures = 0; this.status = this.automatic ? 'healthy' : 'locked'; return;

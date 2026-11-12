@@ -18,7 +18,7 @@ public class DeviceImportService {
         for(var row:rows){
             index++;
             try{
-                require(row!=null&&!row.containsKey("relayPoolId"),400,"加速线路由企业授权自动分配，不支持指定线路组");
+                require(row!=null&&Collections.disjoint(row.keySet(),Set.of("relayPoolId","relayNodeIds","nodeIds")),400,"中继绑定由运营后台管理，不支持提交线路配置");
                 ids.add(devices.importOwnRow(actor,row));
             }
             catch(BusinessException error){errors.add(Map.of("index",index,"message",error.getMessage()));}

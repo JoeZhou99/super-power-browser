@@ -1,4 +1,4 @@
-import {requestProxySwitch, requestProxyRoutes, requestTransferSpeed, requestTransferDetails, requestProxyAutomatic} from "../runtime/proxy-switch.mjs";
+import {requestProxySwitch, requestProxyRoutes, requestTransferSpeed, requestTransferDetails, requestProxyAutomatic, requestProxyRefresh, requestRouteMeasurement, requestWebsiteDetails} from "../runtime/proxy-switch.mjs";
 import {
   d as te,
   _ as le,
@@ -582,6 +582,13 @@ const ae = 3,
         spRelayAutomatic: false,
         spRelayStatus: "",
         spRelayRefreshPending: false,
+         spRelayAutomaticSupported: false,
+         spRouteMessage: "",
+         spRouteMeasurement: null,
+         spRelayLastRefreshAt: 0,
+         spRouteHealth: {},
+        spObservedMeasurementId: null,
+        spFinishedMeasurementId: null,
         lastReportedTransferProxyKey: "",
         hasPendingTransferReport: !1,
         transitLatencyMap: {},
@@ -746,7 +753,15 @@ const ae = 3,
         this.getMallInfo(),
         this.initADS(),
         this.getCurrency());
-      this._relayTimer=setInterval(()=>{void this.refreshRelayState();},5000);
+      // Keep measurement progress responsive, but do not turn the whole card into
+      // a one-second loading spinner when nothing is running. Binding snapshots
+      // are stable for normal page sessions and are refreshed on demand or every
+      // 30 seconds; an active measurement is still polled once per second.
+      // Bindings are allowed to change outside the shop tab, but polling every
+      // second made the action bar enter/leave its loading state continuously.
+      // Keep the snapshot reasonably fresh without repainting the route cards
+      // while the user is reading or selecting a route.
+      this._relayTimer=setInterval(()=>{void this.refreshRelayState();},1000);
     },
     beforeUnmount() {
       this._relayTimer&&clearInterval(this._relayTimer);
@@ -755,25 +770,58 @@ const ae = 3,
     methods: {
       applyRelaySnapshot(snapshot) {
         if(!snapshot?.relayPool)return;
+        if(snapshot.snapshotId!==this.spProxySnapshotId){this.spProxySnapshotId=snapshot.snapshotId;this.resetTransitLatencyStates();}
+        this.transferProxies=snapshot.candidates.map(line=>({...line,is_direct:line.kind==='direct'?1:0}));
         this.spRelayPool=snapshot.relayPool;
         this.spRelayAutomatic=snapshot.automatic;
+        this.spRelayAutomaticSupported=snapshot.automaticSupported;
         this.spRelayStatus=snapshot.relayStatus;
-        this.syncTransitCandidateIndex(snapshot.candidateIndex);
+        this.spRouteMessage=snapshot.refreshMessage;
+        this.spRouteHealth=Object.fromEntries(snapshot.candidates.map(line=>[line.candidateIndex,line.health||{}]));
+        if(snapshot.currentRevoked)this.currentTransferProxyIndex=-1;
+        else this.syncTransitCandidateIndex(snapshot.candidateIndex);
         for(const line of snapshot.candidates){
           const index=this.transferProxies.findIndex(item=>item.candidateIndex===line.candidateIndex);
-          if(index<0||!line.health||this.testingTransitIndex===index)continue;
-          this.updateTransitLatencyState(index,{status:line.health.available?'success':'fail',
+          if(index<0||!line.health)continue;
+          this.updateTransitLatencyState(index,{status:line.health.status==='testing'?'testing':line.health.available?'success':line.health.pathMeasuredAt?'fail':'idle',
             localToTransitMs:line.health.entryLatencyMs,transitToWebAvgMs:line.health.delay,
-            transferLineTotalMs:line.health.delay,sampledAt:line.health.sampledAt});
+            transferLineTotalMs:line.health.delay,sampledAt:line.health.pathMeasuredAt});
+        }
+        this.spRouteMeasurement=snapshot.measurement;
+        if(snapshot.measurement?.pending){this.spObservedMeasurementId=snapshot.measurement.id;this.isTransitLatencyTesting=true;this.isBatchTransitTesting=true;}
+        else if(this.isBatchTransitTesting){
+          this.isTransitLatencyTesting=false;this.isBatchTransitTesting=false;
+          const job=snapshot.measurement;
+          if(job?.optimize&&this.spObservedMeasurementId===job.id&&this.spFinishedMeasurementId!==job.id){this.spFinishedMeasurementId=job.id;void this.confirmRouteNetwork();}
+        }
+        if(snapshot.needsAcknowledgement&&this.spNetwork?.completed&&snapshot.networkAttempt!==this.spNetwork.attemptId&&!this.spNetwork.pending&&!this.spCheckSetupPending&&!snapshot.measurement?.pending){
+          void this.confirmRouteNetwork();
         }
       },
-      async refreshRelayState() {
-        if(!this.spRelayPool||this.spRelayRefreshPending||this.isTransitLatencyTesting||this.switchingIndex!==-1)return;
-        this.spRelayRefreshPending=true;
-        try{
-          const snapshot=await requestProxyRoutes();
-          if(snapshot.snapshotId===this.spProxySnapshotId)this.applyRelaySnapshot(snapshot);
-        }catch{}finally{this.spRelayRefreshPending=false;}
+      async refreshRelayState(force=false) {
+         if(!this.initJson?.desktopProtocol||this.spRelayRefreshPending)return;
+         const now=Date.now(),measurementPending=Boolean(this.spRouteMeasurement?.pending||this.isBatchTransitTesting);
+         if(!force&&!measurementPending&&now-this.spRelayLastRefreshAt<30000)return;
+         this.spRelayRefreshPending=true;
+         this.spRelayLastRefreshAt=now;
+         try{
+          this.applyRelaySnapshot(await (force?requestProxyRefresh():requestProxyRoutes()));
+        }catch{if(force)y.warning('暂时无法刷新线路，请稍后重试');}finally{this.spRelayRefreshPending=false;}
+      },
+      async confirmRouteNetwork(){
+        if(!this.spNetwork||this.spNetwork.pending||this.spCheckSetupPending)return;
+        this.spNetwork.completed=false;this.spNetwork.sequence++;this.loadIp=false;
+        await this.checkIpHandle();
+      },
+      async startRouteMeasurement(optimize=false){
+        if(this.isTransitLatencyTesting||this.switchingIndex!==-1||this.spNetwork?.pending||this.spCheckSetupPending)return;
+        try{this.applyRelaySnapshot(await requestRouteMeasurement(optimize,this.spProxySnapshotId));}
+        catch{y.warning('线路正在检测、切换或刷新，请稍后重试');}
+      },
+      routeMetric(index,key,label){
+        const value=this.spRouteHealth[index]||{},at=value[{pathLatencyMs:'pathMeasuredAt',entryLatencyMs:'entryMeasuredAt',siteLatencyMs:'siteMeasuredAt'}[key]];
+        const stamp=at?new Date(at).toLocaleTimeString():'未检测';
+        return `${label} ${this.formatLatency(value[key])} · ${value.cached?'上次 ':''}${stamp}`;
       },
       async setRelayAutomatic(automatic) {
         if(this.isTransitLatencyTesting||this.switchingIndex!==-1)return;
@@ -781,8 +829,9 @@ const ae = 3,
         catch{y.warning('线路正在检测或切换，请稍后重试');}
       },
       relayStateText() {
+        if(!this.spRelayAutomaticSupported)return '代理线路 · 直连代理';
         const status={initializing:'正在选择线路',healthy:'线路正常',degraded:'正在确认线路状态',unavailable:'当前没有可用备用线路',monitoring:'运行期间持续检测',locked:'已锁定当前线路'};
-        return `${this.spRelayPool?.name||'平台中继池'} · ${this.spRelayAutomatic?'自动故障切换':'手动锁定'} · ${status[this.spRelayStatus]||''}`;
+        return `${this.spRelayPool?.name||'代理线路'} · ${this.spRelayAutomaticSupported?(this.spRelayAutomatic?'自动故障切换':'手动锁定'):'直连代理'} · ${status[this.spRelayStatus]||''}`;
       },
       relaySampleText(index) {
         const sample=this.getTransitLatencyState(index),time=sample.sampledAt?new Date(sample.sampledAt).toLocaleTimeString():'尚未检测';
@@ -1325,6 +1374,7 @@ const ae = 3,
         }
       },
       async testAllTransitLines() {
+        if(this.initJson?.desktopProtocol)return this.startRouteMeasurement(false);
         if (this.isTransitLatencyTesting || this.switchingIndex !== -1) return;
         if (!this.transferProxies.length) {
           y.warning(this.$t("check.transit.no_line"));
@@ -2072,7 +2122,7 @@ const ae = 3,
             (this.lastReportedTransferProxyKey = ""),
             (this.hasPendingTransferReport = !1),
             this.resetTransitLatencyStates());
-          if (liveSnapshot && this.transferProxies.length) {
+          if (liveSnapshot) {
             const preferred = liveSnapshot.candidateIndex;
             const index = this.transferProxies.findIndex(line => line.candidateIndex === preferred);
             this.currentTransferProxyIndex = index < 0 ? 0 : index;
@@ -2390,8 +2440,19 @@ const tt = "/assets/imageLogoHelp-DBeOKbnV.png",
       -1,
     ),
   ),
-  Lt = { class: "rightBox" },
-  bt = { class: "rightMainInfo" },
+  Lt = {
+    class: "rightBox",
+    style: {
+      flexWrap: "wrap",
+      alignItems: "flex-start",
+      alignContent: "flex-start",
+      height: "auto",
+    },
+  },
+  bt = {
+    class: "rightMainInfo",
+    style: { flex: "1 1 100%", minWidth: "0", alignSelf: "flex-start" },
+  },
   It = { class: "detectionsStyle" },
   Bt = { class: "imgStyle" },
   Rt = ce(
@@ -2930,7 +2991,51 @@ function bn(e, t, s, i, a, d) {
                   ),
                 ]),
               ]),
-              e.hasTransferProxyPool
+              e.initJson?.desktopProtocol
+                ? (c(true),m('section',{key:'desktop-routes',class:'transitSelector',style:{margin:'16px 0 0',padding:'14px',border:'1px solid #dfe7f2',borderRadius:'12px',background:'#f7faff',flex:'1 1 100%',minWidth:'0',maxWidth:'100%',width:'100%',alignSelf:'flex-start',overflow:'hidden',boxSizing:'border-box'}},[
+                    n('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'12px',flexWrap:'wrap'}},[
+                      n('div',{style:{flex:'1 1 220px',minWidth:'0'}},[
+                        n('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},[
+                          n('span',{style:{width:'9px',height:'9px',borderRadius:'50%',background:e.spRelayAutomatic?'#3478f6':'#f59e0b',boxShadow:e.spRelayAutomatic?'0 0 0 4px #e4efff':'0 0 0 4px #fff1d6',flex:'0 0 auto'}},''),
+                          n('strong',{style:{fontSize:'15px',color:'#1f2d3d'}},'代理线路'),
+                          n('span',{style:{fontSize:'11px',lineHeight:'20px',padding:'0 8px',borderRadius:'10px',background:e.spRelayAutomatic?'#eaf3ff':'#fff4df',color:e.spRelayAutomatic?'#2563c7':'#aa6a00',whiteSpace:'nowrap'}},e.spRelayAutomatic?'自动选择':'已锁定'),
+                        ]),
+                        n('div',{style:{fontSize:'12px',marginTop:'6px',color:'#7b8794',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},e.relayStateText()),
+                      ]),
+                      n('div',{style:{display:'flex',gap:'7px',flex:'0 1 auto',justifyContent:'flex-end',flexWrap:'wrap'}},[
+                        p(l,{size:'small',type:'primary',loading:e.isTransitLatencyTesting&&e.isBatchTransitTesting,disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1||e.spNetwork?.pending,onClick:()=>e.startRouteMeasurement(true)},{default:h(()=>[P('一键优化')]),_:1}),
+                        p(l,{size:'small',loading:e.isTransitLatencyTesting&&!e.isBatchTransitTesting,disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1||e.spNetwork?.pending,onClick:()=>e.startRouteMeasurement(false)},{default:h(()=>[P('重新测速')]),_:1}),
+                        e.spRelayAutomaticSupported?p(l,{size:'small',text:true,disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1,onClick:()=>e.setRelayAutomatic(!e.spRelayAutomatic)},{default:h(()=>[P(e.spRelayAutomatic?'锁定线路':'恢复自动')]),_:1}):v('',true),
+                      ]),
+                    ]),
+                    n('div',{style:{fontSize:'12px',color:'#7b8794',margin:'10px 2px 5px',lineHeight:'18px'}},e.spRouteMessage|| (e.spRelayAutomatic?'系统会优先保持当前稳定线路，仅在更优时自动切换':'已锁定当前线路，可手动切换其他线路')),
+                    e.spRouteMeasurement?n('div',{style:{display:'inline-flex',alignItems:'center',fontSize:'12px',color:'#2563c7',background:'#eaf3ff',borderRadius:'6px',padding:'4px 8px',marginBottom:'5px'}},e.spRouteMeasurement.message+' '+e.spRouteMeasurement.completed+'/'+e.spRouteMeasurement.total):v('',true),
+                    ...e.transferProxies.map((line,index)=>{const current=index===e.currentTransferProxyIndex,health=e.spRouteHealth[line.candidateIndex]||{},testing=['queued','testing','testing-site'].includes(health.status),failed=Boolean(health.failure||health.siteFailure||health.available===false),stateText=testing?'检测中':failed?'连接异常':health.pathLatencyMs!=null?'线路正常':'未测速',stateColor=testing?'#3478f6':failed?'#d64545':current?'#16a36a':'#8b98a7';return n('div',{key:line.id||index,style:{padding:'12px 13px',marginTop:'8px',border:'1px solid '+(current?'#9bc4ff':'#e3eaf3'),borderRadius:'9px',background:current?'#eef6ff':'#fff',boxShadow:current?'0 2px 7px rgba(52,120,246,.08)':'none',minWidth:'0',width:'100%',boxSizing:'border-box'}},[
+                      n('div',{style:{display:'flex',alignItems:'center',gap:'10px',minWidth:'0'}},[
+                        n('span',{style:{width:'8px',height:'8px',borderRadius:'50%',background:stateColor,boxShadow:current?'0 0 0 4px #dcecff':'none',flex:'0 0 auto'}},''),
+                        n('div',{style:{flex:'1 1 180px',minWidth:'0',overflow:'hidden'}},[
+                          n('div',{style:{display:'flex',alignItems:'center',gap:'7px',minWidth:'0'}},[
+                            n('strong',{style:{display:'block',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:'14px',color:'#27364b'}},e.getTransitLineDisplayName(line,index)),
+                            current?n('span',{style:{fontSize:'11px',lineHeight:'19px',padding:'0 7px',borderRadius:'10px',background:'#dff7ea',color:'#14844a',whiteSpace:'nowrap',flex:'0 0 auto'}},'当前使用'):v('',true),
+                          ]),
+                          n('div',{style:{fontSize:'12px',color:'#8995a5',marginTop:'4px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},line.kind==='direct'?'本机 → 出口代理':'本机 → 中继 → 出口代理'),
+                        ]),
+                        n('div',{style:{textAlign:'right',minWidth:'62px',flex:'0 0 auto'}},[
+                          n('div',{style:{fontSize:'19px',lineHeight:'22px',fontWeight:'700',color:current?'#1469d7':'#344054'}},e.formatLatency(health.pathLatencyMs)),
+                          n('div',{style:{fontSize:'11px',color:'#8a97a8',marginTop:'2px'}},'完整链路'),
+                        ]),
+                        current?n('span',{style:{fontSize:'12px',color:'#14844a',whiteSpace:'nowrap',flex:'0 0 auto'}},stateText):p(l,{size:'small',type:'primary',plain:true,disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1||e.spNetwork?.pending,loading:e.switchingIndex===index,onClick:()=>e.handleManualSwitchTransit(line,index)},{default:h(()=>[P('切换')]),_:1}),
+                      ]),
+                      n('div',{style:{display:'flex',gap:'6px',flexWrap:'wrap',marginTop:'10px',paddingLeft:'18px'}},[
+                        n('span',{style:{fontSize:'11px',lineHeight:'20px',padding:'0 7px',borderRadius:'4px',background:'#f3f6fa',color:'#667085'}},(line.kind==='direct'?'本机到出口':'本机到中继')+' '+e.formatLatency(health.entryLatencyMs)),
+                        n('span',{style:{fontSize:'11px',lineHeight:'20px',padding:'0 7px',borderRadius:'4px',background:'#f3f6fa',color:'#667085'}},'网站响应 '+e.formatLatency(health.siteLatencyMs)),
+                        n('span',{style:{fontSize:'11px',lineHeight:'20px',padding:'0 7px',borderRadius:'4px',background:failed?'#fff1f0':testing?'#eaf3ff':'#f0f9f4',color:failed?'#d64545':testing?'#2563c7':'#14844a'}},stateText),
+                      ]),
+                      health.failure?n('div',{style:{fontSize:'12px',color:'#d64545',marginTop:'8px',padding:'6px 8px',background:'#fff1f0',borderRadius:'5px'}},'连接失败：'+health.failure):v('',true),
+                      health.siteFailure?n('div',{style:{fontSize:'12px',color:'#aa6a00',marginTop:'8px',padding:'6px 8px',background:'#fff7e6',borderRadius:'5px'}},'网站响应异常：'+health.siteFailure):v('',true),
+                    ]);}),
+                  ],-2))
+                : e.hasTransferProxyPool
                 ? (c(),
                   m("div", gs, [
                     n("div", ms, [

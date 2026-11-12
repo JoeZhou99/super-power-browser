@@ -40,7 +40,7 @@ public class DeviceService implements DeviceAccess {
     @Transactional
     public String save(Actor a,String deviceId,Map<String,Object> request) {
         if(deviceId==null)a.allow("proxy.edit");
-        require(request!=null&&!request.containsKey("relayPoolId"),400,"加速线路由企业授权自动分配，不支持指定线路组");
+        require(request!=null&&Collections.disjoint(request.keySet(),Set.of("relayPoolId","relayNodeIds","nodeIds")),400,"中继绑定由运营后台管理，不支持提交线路配置");
         var input=new HashMap<>(request);
         Map<String,Object> previous=Map.of();
         input.put("name",required(input,"name",120));

@@ -120,6 +120,7 @@ public class ExtensionService {
         return input;
     }
     private String candidateKey(Map<String,Object> proxy,int index) {
+        if(index==0)return com.superpower.browser.device.RelayPoolService.snapshot(proxy);
         var candidate=candidates(proxy).get(index);var connection=new LinkedHashMap<String,Object>();
         for(String key:List.of("protocol","host","port","username","password","proxyOptions"))if(candidate.containsKey(key))connection.put(key,candidate.get(key));
         return ExtensionSessions.hash(json(ordered(connection)));
@@ -139,7 +140,7 @@ public class ExtensionService {
         require(selection instanceof Number&&((Number)selection).doubleValue()==((Number)selection).intValue(),400,"线路编号不合法");
         int index=((Number)selection).intValue();
         require(index>=0&&index<candidates(proxy).size(),403,"只能选择当前店铺已配置的线路");
-        require(Objects.equals(body.get("snapshotId"),candidateKey(proxy,0)),409,"代理配置已变化，当前线路仅在本次窗口使用，请重新打开店铺后保存偏好");
+        require(Objects.equals(body.get("snapshotId"),candidateKey(proxy,0)),409,"代理配置已变化，请刷新候选线路后重新选择");
         // Store only the authorized server-side identity; never persist nodes or
         // credentials supplied by the plugin. Changed/removed routes invalidate it.
         documents.put(c.environmentId(),"settings","preferredProxyRoute",Map.of("candidateIndex",index,"candidateKey",candidateKey(proxy,index),"deviceId",text(proxy,"id")));
@@ -153,6 +154,7 @@ public class ExtensionService {
         if(proxy.get("relayPool") instanceof Map<?,?> pool&&pool.get("candidates") instanceof List<?> candidates&&index<candidates.size()&&candidates.get(index) instanceof Map<?,?> metadata) {
             result.put("relayId",metadata.get("id"));result.put("name",metadata.get("name"));result.put("area_name",metadata.get("region"));result.put("poolName",metadata.containsKey("poolName")?metadata.get("poolName"):pool.get("name"));
             if(metadata.containsKey("poolId"))result.put("poolId",metadata.get("poolId"));
+            if(metadata.containsKey("kind"))result.put("kind",metadata.get("kind"));
         }
         return result;
     }

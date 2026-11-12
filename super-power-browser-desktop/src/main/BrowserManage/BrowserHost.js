@@ -3,7 +3,8 @@ const path=require('node:path');
 const net=require('node:net');
 const {spawn}=require('node:child_process');
 const {ProxyRuntime,upstream,proxyError}=require('../services/ProxyRuntime');
-const {ProxyRoutes}=require('../services/ProxyRoutes');
+const {ProxyRoutes,proxySnapshotId}=require('../services/ProxyRoutes');
+const {ProxyRouteCache}=require('../services/ProxyRouteCache');
 const {RelayController}=require('../services/RelayController');
 const {BrowserProxyGate}=require('../services/BrowserProxyGate');
 const {safeProxyMessage}=require('../services/ProxyConfig');
@@ -29,7 +30,7 @@ function relayDiagnostics(run){
   // configurations, candidate credentials and exit response bodies stay out.
   return {...run.relay.state(),
     startupChecks:(run.relay.startupChecks||[]).slice(-8).map(({candidateIndex,stage,durationMs,result,message})=>({candidateIndex,stage,durationMs,result,message})),
-    health:[...(run.routes?.health||[])].slice(0,8).map(([candidateIndex,{available,delay,entryLatencyMs,exitLatencyMs,sampledAt,stage,failure}])=>({candidateIndex,available,delay,entryLatencyMs,exitLatencyMs,sampledAt,stage,failure})),
+    health:[...(run.routes?.health||[])].slice(0,9).map(([candidateIndex,{available,delay,entryLatencyMs,entryMeasuredAt,pathLatencyMs,pathMeasuredAt,siteLatencyMs,siteMeasuredAt,exitLatencyMs,exitCheckedAt,sampledAt,stage,failure}])=>({candidateIndex,available,delay,entryLatencyMs,entryMeasuredAt,pathLatencyMs,pathMeasuredAt,siteLatencyMs,siteMeasuredAt,exitLatencyMs,exitCheckedAt,sampledAt,stage,failure})),
   };
 }
 class BrowserHost {
@@ -87,7 +88,7 @@ class BrowserHost {
     const iconPath=path.join(profile,'superpower.ico');
     if(process.platform==='win32')await fs.copyFile(path.join(this.config.resources,'branding/app.ico'),iconPath);
     check(signal);
-    const proxy=new ProxyRuntime(environment.proxy,{signal,resources:this.config.resources});
+    const proxy=new ProxyRuntime(environment.proxy,{signal,resources:this.config.resources,isolated:true});
     const automatic=followsProxy(environment.fingerprint),localeRequired=automatic.language||automatic.timezone;
     const localeCache=new ProxyLocaleCache(profile,environment);
     const run={status:'starting',startupTimings,pluginGeneration:0,routeRevision:0,networkAttempt:0,localeVerified:!localeRequired,networkController:new AbortController(),notifications:environment.fingerprint.notifications!==false,kernelVersion:kernel.version,proxy,profile,iconPath,child:null,port:await freePort(),debuggerUrl:null};
@@ -110,7 +111,7 @@ class BrowserHost {
       const probeSignal=signal?AbortSignal.any([signal,run.networkController.signal]):run.networkController.signal;
       run.gate=new BrowserProxyGate(proxy,{signal:probeSignal});
       const blockTraffic=()=>{run.gate?.block();run.resourceGate?.block();run.trafficAllowed=false;};
-      const allowTraffic=()=>{check(probeSignal);run.gate.allow();run.resourceGate?.allow();run.trafficAllowed=true;};
+      const allowTraffic=()=>{check(probeSignal);if(run.configurationInvalid)throw proxyError(run.configurationInvalid);run.gate.allow();run.resourceGate?.allow();run.trafficAllowed=true;};
       const beginAttempt=(phase,{requiresAcknowledgement=true}={})=>{
         blockTraffic();run.checkedAttempt=null;run.checkedGeneration=null;run.networkChecked=false;
         run.networkAcknowledgementRequired=requiresAcknowledgement;
@@ -125,15 +126,25 @@ class BrowserHost {
       };
       const publishNetwork=(exit,attemptId,{message,allowAutomatic=false}={})=>{
         if(attemptId!==run.networkAttempt||probeSignal.aborted)return;
-        const verdict=message?{allowed:false,message}:exitValidation.validate(exit);
+        const verdict=run.configurationInvalid?{allowed:false,message:run.configurationInvalid}:message?{allowed:false,message}:exitValidation.validate(exit);
         run.networkState={pending:false,...verdict,exit,local,attemptId,routeRevision:run.routeRevision};
         run.networkChecked=verdict.allowed;mark('network');
         if(!verdict.allowed)blockTraffic();
         else if(allowAutomatic&&run.accessAuthorized&&run.localeVerified&&!run.networkAcknowledgementRequired)allowTraffic();
         run.startupWindow?.update({message:verdict.allowed?'代理检测通过，正在启动店铺':verdict.message,retry:!verdict.allowed});
       };
-      const routes=new ProxyRoutes(environment.proxy,proxy,{target:environment.startUrl,resources:this.config.resources,signal:probeSignal,
+      const routeCache=new ProxyRouteCache(this.config.dataPath);
+      const routes=new ProxyRoutes(environment.proxy,proxy,{target:environment.startUrl,resources:this.config.resources,signal:probeSignal,cache:routeCache,reuse:true,
+        probe:async(candidate,candidateSignal)=>{
+          // One identical lightweight HTTPS endpoint for every candidate. Its
+          // response proves the real exit and gives complete-path elapsed time.
+          // No locale lookup or merchant HEAD is a prerequisite for list speed.
+          const exit=await collectGeo({proxyUrl:candidate.url,providers:['https://api.ipify.org?format=json'],timeout:12000,requestTimeout:12000,
+            expectedIp:exitValidation.expectedIp,firstValid:true,signal:candidateSignal});
+          const verdict=exitValidation.validate(exit);if(!verdict.allowed)throw proxyError(verdict.message);return exit;
+        },
         validate:async(candidate,candidateSignal)=>{
+          if(run.configurationInvalid)throw proxyError(run.configurationInvalid);
           const revision=run.routeRevision,attemptId=run.networkAttempt;
           try{
           const exit=candidate===proxy?await probeNetwork(candidateSignal):await collectGeo({proxyUrl:candidate.url,providers:networkChecks?.proxyProviders,...proxyProbeBudget(),expectedIp:exitValidation.expectedIp,firstValid:true,signal:candidateSignal});
@@ -156,6 +167,8 @@ class BrowserHost {
           }
         }});
       run.routes=routes;
+      routes.networkStatus=()=>({networkAttempt:run.networkAttempt,networkPending:run.networkState?.pending===true,needsAcknowledgement:run.networkAcknowledgementRequired===true});
+      run.routeCacheReady=routes.restoreCache();
       if(environment.proxy.proxyOptions?.resourceProxy){
         run.resourceProxy=new ProxyRuntime(environment.proxy.proxyOptions.resourceProxy,{resources:this.config.resources,signal:probeSignal});
         run.resourceGate=new BrowserProxyGate(run.resourceProxy,{signal:probeSignal});
@@ -182,6 +195,7 @@ class BrowserHost {
         return exit;
       };
       const switchRoute=async(candidateIndex,{signal:switchSignal}={})=>{
+        if(run.configurationInvalid)throw proxyError(run.configurationInvalid);
         if(run.routeSwitch)throw proxyError('正在切换线路，请稍后重试');
         const operationSignal=switchSignal?AbortSignal.any([switchSignal,probeSignal]):probeSignal;
         check(operationSignal);
@@ -226,11 +240,13 @@ class BrowserHost {
       }
       let saved;
       const beginNetworkCheck=({initialize=run.relay?.automatic!==false}={})=>{
+        if(run.configurationInvalid)throw proxyError(run.configurationInvalid);
         if(run.networkInitialization||run.routeSwitch||run.relay?.busy||routes.measuring)return run.networkInitialization;
         const attemptId=beginAttempt(initialize?'initializing':'checking');
         run.networkStarting=initialize&&!run.accessAuthorized;
         const operation=Promise.resolve().then(async()=>{
           check(probeSignal);
+          await run.routeCacheReady;
           if(initialize&&!run.relay&&saved?.snapshotId===routes.snapshotId&&Number.isInteger(saved.preferredCandidateIndex)&&saved.preferredCandidateIndex>0){
             try{await switchRoute(saved.preferredCandidateIndex);}
             catch(error){check(probeSignal);run.routeRestoreFailure=safeProxyMessage(error);}
@@ -250,6 +266,7 @@ class BrowserHost {
             environment.runtimeLocale=locale;run.localeVerified=true;mark('locale');
           }
           publishNetwork(exit,attemptId);
+          routes.currentRevoked=false;
           return networkSnapshot();
         }).catch(error=>{
           if(!probeSignal.aborted)publishNetwork({available:false},attemptId,{message:safeProxyMessage(error)});
@@ -258,6 +275,73 @@ class BrowserHost {
         run.networkInitialization=operation;
         return operation;
       };
+      const primaryIdentity=value=>{
+        const {alternatives:unused,transit:unusedTransit,...proxyOptions}=value.proxyOptions||{};
+        return JSON.stringify([value.id||value.deviceId||'',proxySnapshotId({...value,proxyOptions,relayPool:undefined}),value.mapIp||'',value.webType]);
+      };
+      const refreshRoutes=()=>{
+        if(run.routeRefresh)return run.routeRefresh;
+        if(run.configurationInvalid)return Promise.resolve(routes.state());
+        if(run.networkInitialization||run.relay?.busy||run.routeSwitch||routes.measuring||routes.optimizing)return Promise.resolve(routes.state());
+        routes.refreshing=true;
+        let deferredRefresh=false;
+        const operation=(async()=>{
+          const update=await this.api.request(`/environments/${id}/connection`,{signal:AbortSignal.any([probeSignal,AbortSignal.timeout(10000)])});
+          check(probeSignal);
+          if(!update?.proxy)throw proxyError('后台没有返回可用的代理线路');
+          routes.authorizationCheckedAt=new Date().toISOString();
+          if(primaryIdentity(update.proxy)!==primaryIdentity(environment.proxy)){
+            blockTraffic();run.configurationInvalid='绑定代理的连接信息已改变，请关闭店铺后重新打开';
+            routes.currentRevoked=true;routes.refreshMessage=run.configurationInvalid;
+            publishNetwork({available:false},run.networkAttempt,{message:run.configurationInvalid});return routes.state();
+          }
+          if(proxySnapshotId(update.proxy)===routes.snapshotId){routes.relayPool=update.proxy.relayPool;environment.proxy.relayPool=update.proxy.relayPool;routes.refreshMessage='';return routes.state();}
+          // A probe/selection may have started while the HTTP request was in
+          // flight. Defer replacement instead of invalidating its indices.
+          if(run.networkInitialization||run.relay?.busy||run.routeSwitch||routes.measuring||routes.optimizing){deferredRefresh=true;return routes.state();}
+          const current=proxy.candidates[proxy.candidateIndex];
+          const candidateConfig=new ProxyRuntime(update.proxy,{resources:this.config.resources,signal:probeSignal,isolated:true});
+          let retained;
+          try{retained=candidateConfig.candidates.some(candidate=>proxySnapshotId(candidate)===proxySnapshotId(current||{}));}
+          finally{await candidateConfig.close();}
+          if(!retained)blockTraffic();
+          await routes.replace(update.proxy);
+          const replacement=proxy.replaceCandidates(update.proxy);
+          environment.proxy=update.proxy;
+          if(!run.relay&&update.proxy.relayPool){run.relay=new RelayController(routes,switchRoute,{policy:update.proxy.relayPool,signal:probeSignal});if(run.accessAuthorized)run.relay.start();}
+          routes.currentRevoked=!replacement.retained;
+          routes.refreshMessage=replacement.retained?'后台绑定已更新，当前线路保持连接':'当前线路已被后台移除，正在切换到仍授权的线路';
+          run.routeCacheReady=routes.restoreCache();
+          if(!replacement.retained){
+            // Revoke immediately; never keep a removed node as an invisible
+            // fallback. Replacements still pass isolated and live exit checks.
+            void beginNetworkCheck({initialize:true});
+          }
+          return routes.state();
+        })().catch(error=>{
+          if([401,403,404,409].includes(error.status)){
+            blockTraffic();routes.currentRevoked=true;run.configurationInvalid='代理线路授权已失效，请联系管理员并重新打开店铺';
+            publishNetwork({available:false},run.networkAttempt,{message:run.configurationInvalid});
+          }
+          routes.refreshMessage=run.configurationInvalid||'暂时无法刷新后台线路，仍显示上次授权配置';
+          return routes.state();
+        }).finally(()=>{if(run.routeRefresh===operation)run.routeRefresh=null;routes.refreshing=false;run.authorizationRefreshAt=Date.now()+(deferredRefresh?0:30000);});
+        run.routeRefresh=operation;return operation;
+      };
+      run.refreshRoutes=refreshRoutes;
+      run.authorizationRefreshAt=Date.now()+30000;
+      const ensureAuthorizationCurrent=async()=>{
+        if(run.configurationInvalid)throw proxyError(run.configurationInvalid);
+        if(!run.routeRefresh&&Date.now()<run.authorizationRefreshAt)return;
+        await refreshRoutes();
+        if(run.configurationInvalid)throw proxyError(run.configurationInvalid);
+        // An in-flight batch may finish, but another batch cannot repeatedly
+        // postpone an overdue authorization refresh.
+        if(Date.now()>=run.authorizationRefreshAt)throw proxyError('线路正在检测或切换，请稍后刷新授权后重试');
+      };
+      // Only the deadline check runs each second. Successful and failed HTTP
+      // refresh attempts remain spaced by 30 seconds; busy skips keep the due time.
+      run.routeRefreshTimer=setInterval(()=>{if(Date.now()>=run.authorizationRefreshAt)void refreshRoutes();},1000);run.routeRefreshTimer.unref?.();
       if(localeRequired)environment.runtimeLocale=await localeCache.load();
       check(probeSignal);
       if(localeRequired&&!environment.runtimeLocale){
@@ -287,11 +371,29 @@ class BrowserHost {
       environment.preferredCandidateIndex=proxy.candidateIndex;
       run.bridge=new DesktopBridge({id,proxy:environment.proxy,runtime:proxy,routes,onAction:async(action,args)=>{
         if(action==='GetProxyRoutes')return routes.state();
-        if(action==='TransferSpeed'){
-          if(run.networkInitialization||run.relay?.busy||run.routeSwitch)throw proxyError('线路正在检测或切换，请稍后重试');
-          return routes.latency(args);
+        if(action==='RefreshProxyRoutes')return refreshRoutes();
+        if(['TransferSpeed','TestProxyWebsite','MeasureProxyRoutes','OptimizeProxyRoutes','StartProxy','SetProxyAutomatic'].includes(action)||action==='GetNetworkInfo'&&args.retry===true&&!run.networkState?.pending)await ensureAuthorizationCurrent();
+        if(action==='TransferSpeed'||action==='TestProxyWebsite'){
+          if(run.configurationInvalid)throw proxyError(run.configurationInvalid);
+          if(run.networkInitialization||run.relay?.busy||run.routeSwitch||run.routeRefresh||routes.optimizing)throw proxyError('线路正在检测或切换，请稍后重试');
+          return routes.latency(args,{site:action==='TestProxyWebsite'});
+        }
+        if(action==='MeasureProxyRoutes'||action==='OptimizeProxyRoutes'){
+          if(run.configurationInvalid)throw proxyError(run.configurationInvalid);
+          if(!args||Object.keys(args).some(key=>key!=='snapshotId')||args.snapshotId!==routes.snapshotId)throw proxyError('线路配置已变化，请刷新检测页面');
+          if(run.networkInitialization||run.relay?.busy||run.routeSwitch||run.routeRefresh)throw proxyError('线路正在检测或切换，请稍后重试');
+          return routes.startBatch({optimize:action==='OptimizeProxyRoutes',onComplete:async index=>{
+            if(index===proxy.candidateIndex)return {changed:false,selectedIndex:index,message:'当前线路已较优，保持连接'};
+            run.manualSelection=true;
+            try{await (run.relay?run.relay.exclusive(()=>switchRoute(index)):switchRoute(index));}
+            finally{run.manualSelection=false;}
+            const result=await beginNetworkCheck({initialize:false});
+            if(!result?.allowed)throw proxyError(result?.message||'切换后的出口检测未通过');
+            return {changed:true,selectedIndex:index,message:'已选择更优线路，正在确认检测结果'};
+          }});
         }
         if(action==='SetProxyAutomatic'){
+          if(routes.optimizing||run.routeRefresh)throw proxyError('线路正在检测或刷新，请稍后重试');
           if(!run.relay||args.snapshotId!==routes.snapshotId||Object.keys(args).some(key=>!['snapshotId','automatic'].includes(key)))throw proxyError('线路配置已变化，请重新打开检测页');
           run.relay.setAutomatic(args.automatic);
           return routes.state();
@@ -301,7 +403,7 @@ class BrowserHost {
           if(args.retry===true&&!run.networkState?.pending){
             // Explicit rechecks must never report the previous success while a
             // monitor or speed test prevents starting their new attempt.
-            if(run.networkInitialization||run.routeSwitch||run.relay?.busy||routes.measuring)throw proxyError('线路正在检测或切换，请稍后重新检测');
+            if(run.networkInitialization||run.routeSwitch||run.relay?.busy||routes.measuring||routes.optimizing||run.routeRefresh)throw proxyError('线路正在检测或切换，请稍后重新检测');
             void beginNetworkCheck();
           }
           const result=networkSnapshot();
@@ -313,9 +415,11 @@ class BrowserHost {
         if(action==='CheckCompleted'){
           const attemptId=run.networkAttempt,generation=run.pluginGeneration,revision=run.routeRevision;
           if(args.attemptId!==undefined&&args.attemptId!==attemptId)throw proxyError('检测结果已过期，请重新检测');
-          const valid=()=>!run.networkState?.pending&&run.networkState?.allowed&&run.localeVerified&&run.networkState.routeRevision===revision&&run.routeRevision===revision&&run.networkAttempt===attemptId&&run.checkedAttempt===attemptId&&run.checkedGeneration===generation&&run.pluginGeneration===generation;
+          const valid=()=>!run.configurationInvalid&&!run.networkState?.pending&&run.networkState?.allowed&&run.localeVerified&&run.networkState.routeRevision===revision&&run.routeRevision===revision&&run.networkAttempt===attemptId&&run.checkedAttempt===attemptId&&run.checkedGeneration===generation&&run.pluginGeneration===generation;
           if(!valid())throw proxyError('当前线路尚未完成出口检测，请等待检测通过');
           const result=(await extensionRequest('/api/v1/bindMall/setAccessStatus',{mallId:id,status:1})).data;
+          check(probeSignal);if(!valid())throw proxyError('线路已变化，请重新检测');
+          await routes.saveCache(proxy.candidateIndex);
           check(probeSignal);if(!valid())throw proxyError('线路已变化，请重新检测');
           run.accessAuthorized=true;run.networkAcknowledgementRequired=false;allowTraffic();run.relay?.start();return result;
         }
@@ -323,7 +427,8 @@ class BrowserHost {
         if(action==='StartProxy'){
           const selection=args.proxyInfo;
           routes.select(selection);
-          if(run.networkInitialization||run.relay?.busy||run.routeSwitch||routes.measuring)throw proxyError('线路正在检测或切换，请稍后重试');
+          if(run.configurationInvalid)throw proxyError(run.configurationInvalid);
+          if(run.networkInitialization||run.relay?.busy||run.routeSwitch||routes.measuring||routes.optimizing||run.routeRefresh)throw proxyError('线路正在检测或切换，请稍后重试');
           run.manualSelection=true;
           try{
             const result=await (run.relay?run.relay.manual(selection.candidateIndex):switchRoute(selection.candidateIndex));
@@ -385,7 +490,10 @@ class BrowserHost {
     run.cleaning=(async()=>{
       run.gate?.block();run.resourceGate?.block();run.startupWindow?.close();
       run.networkController?.abort(cancelled());
+      clearInterval(run.routeRefreshTimer);
       await run.relay?.close();
+      await run.routes?.close();
+      await run.routeRefresh?.catch(()=>{});
       await run.networkInitialization?.catch(()=>{});
       const state=run.networkState;
       const networkState=state?{pending:state.pending,allowed:state.allowed,phase:state.phase,message:state.message,attemptId:state.attemptId,routeRevision:state.routeRevision}:undefined;

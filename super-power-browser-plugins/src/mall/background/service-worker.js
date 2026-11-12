@@ -4,7 +4,7 @@ import { a as w, G as ge, s as ke, b as ye } from "../js/auth.js";
 import { L as _e, a as u, W as g, P as k, R as we, i as Ie } from "../js/desktop-bridge.js";
 import { p as be, i as Pe } from "../js/cookies.js";
 import "../js/vendor-commonjs.js";
-import {switchAuthorizedProxy, queryAuthorizedProxyRoutes, measureAuthorizedTransfer, setAuthorizedProxyAutomatic} from "../runtime/proxy-switch.mjs";
+import {switchAuthorizedProxy, queryAuthorizedProxyRoutes, measureAuthorizedTransfer, setAuthorizedProxyAutomatic, measureAuthorizedRoutes} from "../runtime/proxy-switch.mjs";
 const ve = {
   adsBookmark: [],
   addAdsBookmarkList: [],
@@ -1712,9 +1712,9 @@ const x = De(d),
     initEvent() {
       (u.info("【zf-mall-helper】initEvent"),
         chrome.runtime.onMessage.addListener((e, t, o) => {
-          if (['sp:proxy-routes','sp:transfer-speed','sp:proxy-automatic'].includes(e?.type) && globalThis.__SP_BUILD__?.mode === 'superpower') {
-            const options={extensionId:chrome.runtime.id, extensionRoot:chrome.runtime.getURL(''), rpc:(action,args)=>globalThis.__SP_EVENT__(action,args)};
-            const operation=e.type==='sp:proxy-routes' ? queryAuthorizedProxyRoutes(t,options) : e.type==='sp:proxy-automatic' ? setAuthorizedProxyAutomatic(e,t,options) : measureAuthorizedTransfer(e,t,options);
+          if (['sp:proxy-routes','sp:proxy-refresh','sp:transfer-speed','sp:website-speed','sp:route-measurement','sp:proxy-automatic'].includes(e?.type) && globalThis.__SP_BUILD__?.mode === 'superpower') {
+            const options={extensionId:chrome.runtime.id, extensionRoot:chrome.runtime.getURL(''), rpc:(action,args)=>globalThis.__SP_EVENT__(action,args),prepareNetwork:()=>globalThis.__SP_BEGIN_NETWORK_CHECK__?.()};
+            const operation=['sp:proxy-routes','sp:proxy-refresh'].includes(e.type) ? queryAuthorizedProxyRoutes(t,options,e.type==='sp:proxy-refresh') : e.type==='sp:route-measurement'?measureAuthorizedRoutes(e,t,options):e.type==='sp:proxy-automatic' ? setAuthorizedProxyAutomatic(e,t,options) : measureAuthorizedTransfer(e,t,options);
             operation.then(o,()=>o({available:false,message:'无法读取线路状态，请重试'}));
             return true;
           }

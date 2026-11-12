@@ -253,7 +253,7 @@ function poolFor(resources) {
 }
 
 class ProxyRuntime extends EventEmitter {
-  constructor(proxy, { signal, resources = process.resourcesPath || path.resolve(__dirname, '../../..'), pool, Client } = {}) {
+  constructor(proxy, { signal, resources = process.resourcesPath || path.resolve(__dirname, '../../..'), pool, Client, isolated = false } = {}) {
     super();
     this.config = normalizeProxy(proxy); this.signal = signal; this.Client = Client;
     const { alternatives = [], ...primaryOptions } = this.config.proxyOptions;
@@ -262,7 +262,7 @@ class ProxyRuntime extends EventEmitter {
       return { ...candidate, proxyOptions };
     })];
     this.candidateIndex = 0;
-    this.pool = pool || (Client ? new ProxyPool(resources) : poolFor(resources)); this.closed = false;
+    this.pool = pool || (Client ? new ProxyPool(resources) : poolFor(resources)); this.closed = false; this.isolated = isolated;
   }
   get port() { return this.entry?.port; }
   get socksPort() { return this.entry?.socksPort; }
@@ -274,6 +274,20 @@ class ProxyRuntime extends EventEmitter {
   candidate(index) {
     if (!Number.isInteger(index) || index < 0 || index >= this.candidates.length) throw proxyError('只能使用当前店铺已配置的线路');
     return this.candidates[index];
+  }
+  replaceCandidates(proxy) {
+    if(this.switching)throw proxyError('正在切换线路，请稍后刷新');
+    const previous=this.candidates[this.candidateIndex]||this.entry?.config;
+    const config=normalizeProxy(proxy),{alternatives=[],...primaryOptions}=config.proxyOptions;
+    const candidates=[{...config,proxyOptions:primaryOptions},...alternatives.map(candidate=>{
+      const {alternatives:unused,...proxyOptions}=candidate.proxyOptions;return {...candidate,proxyOptions};
+    })];
+    const identity=value=>JSON.stringify(stable(value));
+    const index=previous?candidates.findIndex(candidate=>identity(candidate)===identity(previous)):-1;
+    this.config=config;this.candidates=candidates;this.candidateIndex=index;
+    // -1 means the old live connection is no longer authorized. The host must
+    // block its gate before publishing this state, then validate a replacement.
+    return {retained:index>=0,candidateIndex:index};
   }
   async switchCandidate(index, { validate } = {}) {
     const candidate = this.candidate(index);
@@ -293,7 +307,7 @@ class ProxyRuntime extends EventEmitter {
     this.starting = (async () => {
       try {
         check(this.signal);
-        this.entry = this.pool.acquire(this.candidates[0], this, { Client: this.Client, isolated: this.candidates.length > 1 });
+        this.entry = this.pool.acquire(this.candidates[0], this, { Client: this.Client, isolated: this.isolated || this.candidates.length > 1 });
         this.abort = () => { void this.close(); };
         this.signal?.addEventListener('abort', this.abort, { once: true });
         await waitFor(this.entry.recovering || this.entry.starting, this.signal);
