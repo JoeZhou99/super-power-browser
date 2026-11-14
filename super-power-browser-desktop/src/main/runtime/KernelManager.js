@@ -94,6 +94,25 @@ class KernelManager{
     const entries=normalizeCatalog(await this.api.request('/runtime/kernels',{signal}));
     return entries.filter(item=>(item.platform||'win32')===this.platform&&(item.arch||'x64')===this.arch);
   }
+  async installationState(entries){
+    const result=new Map();
+    for(const entry of entries){
+      const version=String(entry.version),installName=this.platform==='win32'?version:`${this.platform}-${this.arch}-${version}`;
+      const target=inside(this.root,installName),marker=path.join(target,'.spb-installation.json');
+      let installed=false;
+      try{
+        const saved=JSON.parse(await fs.readFile(marker,'utf8'));
+        const executable=inside(target,entry.executable);
+        installed=saved.version===version&&saved.platform===this.platform&&saved.arch===this.arch&&saved.archiveHash===(entry.sha256||entry.md5)&&await exists(executable);
+      }catch(error){if(!['ENOENT','EACCES','EINVAL'].includes(error.code))throw error;}
+      result.set(version,installed);
+    }
+    return result;
+  }
+  async catalog(signal){
+    const entries=await this.list(signal),installed=await this.installationState(entries);
+    return entries.map(entry=>({...entry,installed:installed.get(String(entry.version))===true}));
+  }
   async ensure(version,progress=()=>{},{signal}={}){
     check(signal);
     version=String(version);if(!versionPattern.test(version))throw new Error('内核版本不合法');

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import {onMounted,ref,watch} from 'vue';
+import {onMounted,onUnmounted,ref,watch} from 'vue';
+import {ElMessage} from 'element-plus';
 import {request} from '@/utils/request';
 import {loadBrowserConfig,type BrowserConfig} from '@/api/config/browser-config.api';
 import {usePermissions} from '@/store/modules/permission.store';
@@ -8,7 +9,8 @@ import BrowserEnvironmentFields from './BrowserEnvironmentFields.vue';
 const props=defineProps<{modelValue:boolean;form:any;saving:boolean}>();
 const emit=defineEmits(['update:modelValue','save']);
 const permissions=usePermissions(),members=ref<any[]>([]);
-const kernels=ref<any[]>([]),kernelError=ref('');
+const kernels=ref<any[]>([]),kernelError=ref(''),kernelDownloading=ref('');
+const kernelProgress=ref<Record<string,{stage:string;percent:number|null;message:string}>>({});
 const browserConfig=ref<BrowserConfig>(),configLoading=ref(false),configError=ref('');
 let configRequest=0;
 async function refreshConfig(reset=false){
@@ -40,7 +42,7 @@ watch([()=>props.modelValue,()=>kernels.value],()=>{
 });
 onMounted(async()=>{
   const loadKernels=async()=>{try{
-    const [result,runtime]=await Promise.all([request('/runtime/kernels'),window.api?.runtimePlatform?.()]);
+    const [result,runtime]=await Promise.all([window.api?.runtimeKernels?window.api.runtimeKernels():request('/runtime/kernels'),window.api?.runtimePlatform?.()]);
     const platform=runtime?.platform||(/Mac/.test(navigator.platform)?'darwin':/Win/.test(navigator.platform)?'win32':'');
     const available=(result.kernels||[]).filter((k:any)=>!k.disabled&&(!platform||k.platform===platform)&&(!runtime?.arch||k.arch===runtime.arch));
     kernels.value=Array.from(new Map(available.map((k:any)=>[String(k.version),{...k,version:String(k.version),recommended:available.some((v:any)=>v.version===k.version&&v.recommended)}])).values());
@@ -48,7 +50,22 @@ onMounted(async()=>{
   }catch{kernelError.value='无法获取内核清单，请检查内核资源服务';}};
   await Promise.all([loadKernels(),permissions.can('shop.grant')?request('/members').then(value=>{members.value=value.filter((m:any)=>m.enabled);}):Promise.resolve()]);
 });
-function newUa(){const os=props.form.fingerprint.os==='Mac'?'Macintosh; Intel Mac OS X 10_15_7':props.form.fingerprint.os==='Android'?'Linux; Android 13':'Windows NT 10.0; Win64; x64';props.form.fingerprint.userAgent=`Mozilla/5.0 (${os}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${props.form.kernelVersion.includes(".")?props.form.kernelVersion:props.form.kernelVersion+".0.0.0"} Safari/537.36`;}
+function onKernelProgress(state:{version:string;stage:string;percent:number|null;message:string}){kernelProgress.value={...kernelProgress.value,[String(state.version)]:state};}
+async function downloadKernel(version:string){
+  if(kernelDownloading.value)return;
+  if(!window.api?.downloadKernel){ElMessage.info('请在桌面客户端中下载并安装内核');return;}
+  kernelDownloading.value=version;
+  try{
+    await window.api.downloadKernel(version);
+    const selected=kernels.value.find(kernel=>kernel.version===version);if(selected)selected.installed=true;
+    ElMessage.success(`内核 ${version} 已安装并绑定到当前店铺`);
+  }catch(error){ElMessage.error(error instanceof Error?error.message:'内核下载失败');}
+  finally{kernelDownloading.value='';const next={...kernelProgress.value};delete next[version];kernelProgress.value=next;}
+}
+let stopKernelProgress:undefined|(()=>void);
+onMounted(()=>{stopKernelProgress=window.api?.onKernelProgress?.(onKernelProgress);});
+onUnmounted(()=>stopKernelProgress?.());
+function newUa(){const version=String(props.form.kernelVersion||'');if(!version)return;const os=props.form.fingerprint.os==='Mac'?'Macintosh; Intel Mac OS X 10_15_7':props.form.fingerprint.os==='Android'?'Linux; Android 13':'Windows NT 10.0; Win64; x64';props.form.fingerprint.userAgent=`Mozilla/5.0 (${os}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${version.includes('.')?version:`${version}.0.0.0`} Safari/537.36`;}
 </script>
 <template>
   <el-dialog class="mall-dialog" :model-value="modelValue" :title="form.id?'编辑店铺':'新建店铺'" width="980px" top="5vh" :close-on-click-modal="false" @update:model-value="emit('update:modelValue',$event)">
@@ -56,8 +73,8 @@ function newUa(){const os=props.form.fingerprint.os==='Mac'?'Macintosh; Intel Ma
     <el-alert v-else-if="configLoading" title="正在读取最新浏览器配置…" type="info" :closable="false"/>
     <div v-if="form.fingerprint" class="mall-editor-content">
       <ShopInfoFields :form="form" :members="members" :active="modelValue"/>
-      <BrowserEnvironmentFields :form="form" :kernels="kernels" :kernel-error="kernelError" :config="browserConfig" :config-loading="configLoading" @new-ua="newUa" @reset-defaults="refreshConfig(true)"/>
+      <BrowserEnvironmentFields :form="form" :kernels="kernels" :kernel-error="kernelError" :kernel-downloading="kernelDownloading" :kernel-progress="kernelProgress" :config="browserConfig" :config-loading="configLoading" @new-ua="newUa" @download-kernel="downloadKernel" @reset-defaults="refreshConfig(true)"/>
     </div>
-    <template #footer><el-button v-if="(permissions.can('device.view')||permissions.can('proxy.view'))&&permissions.can('shop.edit')" type="primary" :loading="saving" :disabled="configLoading||(!form.id&&!browserConfig)" @click="emit('save',true)">保存并配置网络</el-button><el-button @click="emit('update:modelValue',false)">取消</el-button><el-button :loading="saving" :disabled="configLoading||(!form.id&&!browserConfig)" @click="emit('save',false)">保存</el-button></template>
+    <template #footer><el-button v-if="(permissions.can('device.view')||permissions.can('proxy.view'))&&permissions.can('shop.edit')" type="primary" :loading="saving" :disabled="configLoading||(!form.id&&!browserConfig)||(!form.id&&!form.kernelVersion)" @click="emit('save',true)">保存并配置网络</el-button><el-button @click="emit('update:modelValue',false)">取消</el-button><el-button :loading="saving" :disabled="configLoading||(!form.id&&!browserConfig)||(!form.id&&!form.kernelVersion)" @click="emit('save',false)">保存</el-button></template>
   </el-dialog>
 </template>

@@ -37,6 +37,8 @@ class BrowserHost {
   constructor(config,api,{onApplicationAction,onActionError=()=>{},operations=loadOperations}={}){this.operations=operations;this.config=config;this.api=api;this.onApplicationAction=onApplicationAction;this.onActionError=onActionError;this.windows=new NativeWindow();this.running=new Map();this.pending=new Map();this.starting=new Map();this.preparing=new Map();this.journal=path.join(config.dataPath,'running-independent.json');this.kernels=new KernelManager(config,api,{inUse:version=>[...this.running.values()].some(run=>run.kernelVersion===version)});}
   states(){return {...Object.fromEntries([...this.preparing.keys()].map(id=>[id,'starting'])),...Object.fromEntries([...this.running].map(([id,run])=>[id,run.status]))};}
   progress(){return Object.fromEntries(this.preparing);}
+  async kernelCatalog(signal){return this.kernels.catalog(signal);}
+  async downloadKernel(version,progress,options={}){return this.kernels.ensure(version,progress,options);}
   async writeJournal(){await fs.mkdir(this.config.dataPath,{recursive:true});await fs.writeFile(this.journal,JSON.stringify([...this.running].filter(([,r])=>r.debuggerUrl).map(([id,r])=>({id,debuggerUrl:r.debuggerUrl,port:r.port}))),{mode:0o600});}
   async recover(){
     let previous=[];try{previous=JSON.parse(await fs.readFile(this.journal,'utf8'));}catch(e){if(e.code!=='ENOENT')throw e;}

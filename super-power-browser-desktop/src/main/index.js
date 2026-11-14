@@ -32,6 +32,8 @@ else app.whenReady().then(async()=>{
   handle('setSession',async token=>{if(typeof token!=='string'||token.length>500)throw new Error('登录凭据不合法');if(api.token!==token){await proxyChecks.suspend();try{await ai.stop();if(api.token)await browsers.closeAll();await closeAllProxyRuntimes();api.token=token;}finally{proxyChecks.resume();}}});
   handle('openBrowser',async id=>{try{const result=await browsers.open(id);window.webContents.send('spb:shopStatus',await ai.connection(id));return result;}catch(error){window.webContents.send('spb:shopStatus',{browserId:id,isopen:false,error:error.message});throw error;}});handle('closeBrowser',id=>browsers.close(id));handle('closeAll',()=>browsers.closeAll());handle('browserStates',()=>browsers.states());
   handle('runtimePlatform',()=>({platform:process.platform,arch:process.arch}));
+  handle('runtimeKernels',()=>browsers.kernelCatalog());
+  handle('downloadKernel',async version=>browsers.downloadKernel(version,state=>{if(!window.isDestroyed())window.webContents.send('spb:kernelProgress',state);}));
   handle('browserProgress',()=>browsers.progress());
   handle('settings',async()=>({version:app.getVersion(),userData:config.profiles,corePath:config.corePath,downloads:config.downloads,preventSleepWhileRunning:power.enabled,cacheBytes:(await cacheFolders(config.profiles)).reduce((n,c)=>n+c.bytes,0)}));
   handle('setPreventSleep',enabled=>power.set(enabled));

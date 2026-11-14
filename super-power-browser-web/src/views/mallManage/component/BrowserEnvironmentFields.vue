@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import {computed,ref,watch} from 'vue';
 import type {BrowserConfig,BrowserConfigOption} from '@/api/config/browser-config.api';
-const props=defineProps<{form:any;kernels:any[];kernelError:string;config?:BrowserConfig;configLoading:boolean}>();
-const emit=defineEmits(['new-ua','reset-defaults']);
+const props=defineProps<{form:any;kernels:any[];kernelError:string;config?:BrowserConfig;configLoading:boolean;kernelDownloading?:string;kernelProgress?:Record<string,{stage:string;percent:number|null;message:string}>}>();
+const emit=defineEmits(['new-ua','reset-defaults','download-kernel']);
 const advanced=ref(false);
 const timezoneSearch=ref('');
 const customLanguage=ref(''),customTimezone=ref('');
@@ -45,6 +45,8 @@ const ruleMode=computed({get:()=>props.form.fingerprint.accessRules?.mode||'blac
 const ruleDomains=computed({get:()=>(props.form.fingerprint.accessRules?.domains||[]).join('\n'),set:(value:string)=>{props.form.fingerprint.accessRules={mode:ruleMode.value,...props.form.fingerprint.accessRules,domains:value.split(/\r?\n/).map(v=>v.trim()).filter(Boolean)};}});
 function savedOption(value:unknown,options?:BrowserConfigOption[]){return typeof value==='string'&&value&&!options?.some(option=>option.value===value);}
 function syncNoise(key:string){if(['canvas','fontMetrics','webglFingerprint'].includes(key))for(const field of ['canvas','fontMetrics','webglFingerprint'])props.form.fingerprint[field]=props.form.fingerprint[key];}
+const selectedKernel=computed(()=>props.kernels.find(kernel=>kernel.version===props.form.kernelVersion));
+const selectedKernelProgress=computed(()=>props.kernelProgress?.[props.form.kernelVersion]);
 </script>
 <template>
   <section class="mall-editor-section" aria-labelledby="browser-environment-heading">
@@ -53,7 +55,7 @@ function syncNoise(key:string){if(['canvas','fontMetrics','webglFingerprint'].in
   <el-form-item label="语言"><div class="mall-field-row"><el-radio-group v-model="languageMode" :disabled="!config||configLoading" aria-label="语言设置方式"><el-radio value="ip" :disabled="!config?.languages.some(option=>option.value==='auto')">跟随 IP</el-radio><el-radio value="custom" :disabled="!languageFallback">自定义</el-radio></el-radio-group><el-select v-if="languageMode==='custom'" v-model="form.fingerprint.language" filterable :loading="configLoading" :disabled="!config" class="mall-inline-control" aria-label="浏览器语言"><el-option v-if="savedOption(form.fingerprint.language,languageOptions)" :value="form.fingerprint.language" :label="form.fingerprint.language+'（当前值）'" disabled/><el-option v-for="option in languageOptions" :key="option.value" :value="option.value" :label="option.label"/></el-select><span v-else class="muted">打开店铺时按代理出口地区设置语言</span></div></el-form-item>
   <el-form-item label="WebGL"><el-radio-group v-model="form.fingerprint.webgl"><el-radio :value="true">开启</el-radio><el-radio :value="false">关闭</el-radio></el-radio-group></el-form-item>
   <el-form-item label="默认浏览器"><el-radio-group :model-value="'Chrome'"><el-radio value="Chrome">Chrome</el-radio><el-radio value="Firefox" disabled>Firefox</el-radio></el-radio-group></el-form-item>
-  <el-form-item label="内核版本" required><el-select v-model="form.kernelVersion" filterable @change="emit('new-ua')"><el-option v-if="form.kernelVersion&&!kernels.some(k=>k.version===form.kernelVersion)" :value="form.kernelVersion" :label="form.kernelVersion+'（当前电脑不可用）'" disabled/><el-option v-for="kernel in kernels" :key="kernel.version" :value="kernel.version" :label="kernel.version+(kernel.recommended?'（推荐）':'')" :disabled="kernel.disabled"/></el-select><span v-if="kernelError" class="muted">{{kernelError}}</span></el-form-item>
+  <el-form-item label="内核版本" required><div class="kernel-picker"><el-select v-model="form.kernelVersion" filterable @change="emit('new-ua')"><el-option v-if="form.kernelVersion&&!kernels.some(k=>k.version===form.kernelVersion)" :value="form.kernelVersion" :label="form.kernelVersion+'（当前电脑不可用）'" disabled/><el-option v-for="kernel in kernels" :key="kernel.version" :value="kernel.version" :label="kernel.version+(kernel.fullVersion&&kernel.fullVersion!==kernel.version?' · '+kernel.fullVersion:'')+(kernel.recommended?'（推荐）':'')" :disabled="kernel.disabled"/></el-select><el-button v-if="selectedKernel&&!selectedKernel.installed" type="primary" plain :loading="kernelDownloading===selectedKernel.version" :disabled="Boolean(kernelDownloading&&kernelDownloading!==selectedKernel.version)" @click="emit('download-kernel',selectedKernel.version)">下载内核</el-button><el-tag v-if="selectedKernel?.installed" type="success">已安装</el-tag></div><div v-if="selectedKernelProgress" class="kernel-progress"><el-progress :percentage="selectedKernelProgress.percent??0" :indeterminate="selectedKernelProgress.percent===null" :show-text="false" :stroke-width="4"/><span class="muted">{{selectedKernelProgress.message}}</span></div><span v-if="kernelError" class="muted">{{kernelError}}</span></el-form-item>
   <el-form-item label="User Agent"><el-input v-model="form.fingerprint.userAgent" type="textarea" :rows="2"/><el-button link type="primary" @click="emit('new-ua')">按所选系统和内核生成 UA</el-button></el-form-item>
   <el-form-item label="UA 版本"><el-input :model-value="form.kernelVersion" readonly/></el-form-item>
   <el-form-item label="窗口尺寸"><el-select v-model="form.fingerprint.resolution" filterable :loading="configLoading" :disabled="!config" aria-label="窗口尺寸"><el-option v-if="savedOption(form.fingerprint.resolution,config?.resolutions)" :value="form.fingerprint.resolution" :label="form.fingerprint.resolution+'（当前值）'" disabled/><el-option v-for="option in config?.resolutions||[]" :key="option.value" :value="option.value" :label="option.label"/></el-select><el-tooltip content="设置浏览器窗口大小；网页读取的屏幕尺寸仍由当前内核和显示器决定"><span class="muted mall-field-help">窗口大小说明</span></el-tooltip></el-form-item>
@@ -65,3 +67,6 @@ function syncNoise(key:string){if(['canvas','fontMetrics','webglFingerprint'].in
     </el-form>
   </section>
 </template>
+<style scoped>
+.kernel-picker{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.kernel-picker .el-select{min-width:280px}.kernel-progress{display:flex;align-items:center;gap:10px;margin-top:8px;max-width:460px}.kernel-progress .el-progress{flex:1;min-width:180px}
+</style>

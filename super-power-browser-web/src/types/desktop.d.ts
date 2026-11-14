@@ -1,6 +1,9 @@
 interface Window {
   api?:{
     runtimePlatform?():Promise<{platform:string;arch:string}>;
+    runtimeKernels?():Promise<{schemaVersion:number;source:string;kernels:any[]}>;
+    downloadKernel?(version:string):Promise<Record<string,unknown>>;
+    onKernelProgress?(callback:(state:{version:string;stage:string;percent:number|null;message:string})=>void):()=>void;
     windowState?():Promise<{maximized:boolean;fullScreen:boolean}>;
     windowControl?(action:'minimize'|'toggleMaximize'|'close'):Promise<void>;
     onWindowState?(callback:(state:{maximized:boolean;fullScreen:boolean})=>void):()=>void;
