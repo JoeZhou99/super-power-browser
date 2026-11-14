@@ -828,10 +828,11 @@ const ae = 3,
         try{this.applyRelaySnapshot(await requestProxyAutomatic(automatic,this.spProxySnapshotId));}
         catch{y.warning('线路正在检测或切换，请稍后重试');}
       },
+      canOptimizeRoutes() {
+        return this.transferProxies.filter(line=>line?.kind==='relay').length>1;
+      },
       relayStateText() {
-        if(!this.spRelayAutomaticSupported)return '代理线路 · 直连代理';
-        const status={initializing:'正在选择线路',healthy:'线路正常',degraded:'正在确认线路状态',unavailable:'当前没有可用备用线路',monitoring:'运行期间持续检测',locked:'已锁定当前线路'};
-        return `${this.spRelayPool?.name||'代理线路'} · ${this.spRelayAutomaticSupported?(this.spRelayAutomatic?'自动故障切换':'手动锁定'):'直连代理'} · ${status[this.spRelayStatus]||''}`;
+        return `${this.spRelayPool?.name||'加速线路'} · 手动选择线路`;
       },
       relaySampleText(index) {
         const sample=this.getTransitLatencyState(index),time=sample.sampledAt?new Date(sample.sampledAt).toLocaleTimeString():'尚未检测';
@@ -1009,8 +1010,8 @@ const ae = 3,
         return { testing: t === "testing", success: t === "success", fail: t === "fail" };
       },
       getTransitLineDisplayName(e, t) {
+        if (e?.kind==='direct'||e?.is_direct===1) return '加速线路';
         if(this.initJson?.desktopProtocol&&e?.name)return [e.poolName,e.name,e.region].filter(Boolean).join(' · ');
-        if (e?.is_direct === 1) return this.$t("check.transit.direct_line");
         const s = String(e?.ip || "")
             .trim()
             .split(".")[0],
@@ -2996,19 +2997,18 @@ function bn(e, t, s, i, a, d) {
                     n('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',gap:'12px',flexWrap:'wrap'}},[
                       n('div',{style:{flex:'1 1 220px',minWidth:'0'}},[
                         n('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},[
-                          n('span',{style:{width:'9px',height:'9px',borderRadius:'50%',background:e.spRelayAutomatic?'#3478f6':'#f59e0b',boxShadow:e.spRelayAutomatic?'0 0 0 4px #e4efff':'0 0 0 4px #fff1d6',flex:'0 0 auto'}},''),
-                          n('strong',{style:{fontSize:'15px',color:'#1f2d3d'}},'代理线路'),
-                          n('span',{style:{fontSize:'11px',lineHeight:'20px',padding:'0 8px',borderRadius:'10px',background:e.spRelayAutomatic?'#eaf3ff':'#fff4df',color:e.spRelayAutomatic?'#2563c7':'#aa6a00',whiteSpace:'nowrap'}},e.spRelayAutomatic?'自动选择':'已锁定'),
+                          n('span',{style:{width:'9px',height:'9px',borderRadius:'50%',background:'#3478f6',boxShadow:'0 0 0 4px #e4efff',flex:'0 0 auto'}},''),
+                          n('strong',{style:{fontSize:'15px',color:'#1f2d3d'}},'加速线路'),
+                          n('span',{style:{fontSize:'11px',lineHeight:'20px',padding:'0 8px',borderRadius:'10px',background:'#eaf3ff',color:'#2563c7',whiteSpace:'nowrap'}},'手动选择'),
                         ]),
                         n('div',{style:{fontSize:'12px',marginTop:'6px',color:'#7b8794',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},e.relayStateText()),
                       ]),
                       n('div',{style:{display:'flex',gap:'7px',flex:'0 1 auto',justifyContent:'flex-end',flexWrap:'wrap'}},[
-                        p(l,{size:'small',type:'primary',loading:e.isTransitLatencyTesting&&e.isBatchTransitTesting,disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1||e.spNetwork?.pending,onClick:()=>e.startRouteMeasurement(true)},{default:h(()=>[P('一键优化')]),_:1}),
+                        p(l,{size:'small',type:'primary',title:e.canOptimizeRoutes()?'':'至少需要两条中继线路才能优化',loading:e.isTransitLatencyTesting&&e.isBatchTransitTesting,disabled:!e.canOptimizeRoutes()||e.isTransitLatencyTesting||e.switchingIndex!==-1||e.spNetwork?.pending,onClick:()=>e.startRouteMeasurement(true)},{default:h(()=>[P('一键优化')]),_:1}),
                         p(l,{size:'small',loading:e.isTransitLatencyTesting&&!e.isBatchTransitTesting,disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1||e.spNetwork?.pending,onClick:()=>e.startRouteMeasurement(false)},{default:h(()=>[P('重新测速')]),_:1}),
-                        e.spRelayAutomaticSupported?p(l,{size:'small',text:true,disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1,onClick:()=>e.setRelayAutomatic(!e.spRelayAutomatic)},{default:h(()=>[P(e.spRelayAutomatic?'锁定线路':'恢复自动')]),_:1}):v('',true),
                       ]),
                     ]),
-                    n('div',{style:{fontSize:'12px',color:'#7b8794',margin:'10px 2px 5px',lineHeight:'18px'}},e.spRouteMessage|| (e.spRelayAutomatic?'系统会优先保持当前稳定线路，仅在更优时自动切换':'已锁定当前线路，可手动切换其他线路')),
+                    n('div',{style:{fontSize:'12px',color:'#7b8794',margin:'10px 2px 5px',lineHeight:'18px'}},e.spRouteMessage||'可在下方线路中手动切换，当前线路会保持连接'),
                     e.spRouteMeasurement?n('div',{style:{display:'inline-flex',alignItems:'center',fontSize:'12px',color:'#2563c7',background:'#eaf3ff',borderRadius:'6px',padding:'4px 8px',marginBottom:'5px'}},e.spRouteMeasurement.message+' '+e.spRouteMeasurement.completed+'/'+e.spRouteMeasurement.total):v('',true),
                     ...e.transferProxies.map((line,index)=>{const current=index===e.currentTransferProxyIndex,health=e.spRouteHealth[line.candidateIndex]||{},testing=['queued','testing','testing-site'].includes(health.status),failed=Boolean(health.failure||health.siteFailure||health.available===false),stateText=testing?'检测中':failed?'连接异常':health.pathLatencyMs!=null?'线路正常':'未测速',stateColor=testing?'#3478f6':failed?'#d64545':current?'#16a36a':'#8b98a7';return n('div',{key:line.id||index,style:{padding:'12px 13px',marginTop:'8px',border:'1px solid '+(current?'#9bc4ff':'#e3eaf3'),borderRadius:'9px',background:current?'#eef6ff':'#fff',boxShadow:current?'0 2px 7px rgba(52,120,246,.08)':'none',minWidth:'0',width:'100%',boxSizing:'border-box'}},[
                       n('div',{style:{display:'flex',alignItems:'center',gap:'10px',minWidth:'0'}},[
@@ -3024,7 +3024,7 @@ function bn(e, t, s, i, a, d) {
                           n('div',{style:{fontSize:'19px',lineHeight:'22px',fontWeight:'700',color:current?'#1469d7':'#344054'}},e.formatLatency(health.pathLatencyMs)),
                           n('div',{style:{fontSize:'11px',color:'#8a97a8',marginTop:'2px'}},'完整链路'),
                         ]),
-                        current?n('span',{style:{fontSize:'12px',color:'#14844a',whiteSpace:'nowrap',flex:'0 0 auto'}},stateText):p(l,{size:'small',type:'primary',plain:true,disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1||e.spNetwork?.pending,loading:e.switchingIndex===index,onClick:()=>e.handleManualSwitchTransit(line,index)},{default:h(()=>[P('切换')]),_:1}),
+                        p(l,{size:'small',type:current?'default':'primary',plain:!current,disabled:current||e.isTransitLatencyTesting||e.switchingIndex!==-1||e.spNetwork?.pending,loading:e.switchingIndex===index,onClick:()=>e.handleManualSwitchTransit(line,index)},{default:h(()=>[P(current?'当前使用':'切换')]),_:1}),
                       ]),
                       n('div',{style:{display:'flex',gap:'6px',flexWrap:'wrap',marginTop:'10px',paddingLeft:'18px'}},[
                         n('span',{style:{fontSize:'11px',lineHeight:'20px',padding:'0 7px',borderRadius:'4px',background:'#f3f6fa',color:'#667085'}},(line.kind==='direct'?'本机到出口':'本机到中继')+' '+e.formatLatency(health.entryLatencyMs)),
@@ -3065,7 +3065,6 @@ function bn(e, t, s, i, a, d) {
                         n("div", ws, [
                           e.spRelayPool ? n("div",{style:{display:'flex',gap:'8px'}},[
                             p(l,{size:'small',loading:e.isTransitLatencyTesting,disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1,onClick:e.testAllTransitLines},{default:h(()=>[P('全部测速')]),_:1},8,['disabled','loading']),
-                            p(l,{size:'small',type:e.spRelayAutomatic?'default':'primary',disabled:e.isTransitLatencyTesting||e.switchingIndex!==-1,onClick:()=>e.setRelayAutomatic(!e.spRelayAutomatic)},{default:h(()=>[P(e.spRelayAutomatic?'锁定当前线路':'恢复自动')]),_:1},8,['disabled','type']),
                           ]) : p(
                             O,
                             {

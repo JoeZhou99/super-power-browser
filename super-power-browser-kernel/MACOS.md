@@ -57,7 +57,7 @@ python3 super-power-browser-kernel/scripts/release.py publish \
 # Intel 包单独准备、验证后，再以 --arch x64 发布。
 ```
 
-用户安装配置了正式 API 的桌面程序并登录后，打开店铺会自动获取适合当前电脑的版本和下载地址，无需手工去 GitHub 找内核。只把代码提交 GitHub不会使本机 `.local-preview` 包自动对外可用；需要执行上传和发布。生产资源来自自己的存储，不依赖站斧授权或下载域名。
+用户安装配置了正式 API 的桌面程序并登录后，打开店铺会自动获取适合当前电脑的版本和下载地址，无需手工去 GitHub 找内核。只把代码提交 GitHub不会使本机 `.local-preview` 包自动对外可用；需要执行上传和发布。生产资源来自自己的存储，不依赖旧版客户端授权或下载域名。
 
 已打包 Mac 客户端从 `~/Library/Application Support/super-power-browser/runtime.config.json` 读取部署配置，例如 `{"apiUrl":"https://api.example.com"}`；也可以通过 `SPB_API_URL` 环境变量提供地址。无需修改已签名的 `.app`。未配置时仍使用本地开发 API。
 

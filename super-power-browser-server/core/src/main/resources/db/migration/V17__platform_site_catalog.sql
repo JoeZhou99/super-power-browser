@@ -1,5 +1,5 @@
 -- Public platform/site snapshot: 2026-11-06.
--- Source: GET https://api.zhanfubrowser.com/api/v1/siteInfo/getSiteTreeByCategoriesV2
+-- Source: historical platform catalog response
 -- Excludes custom platforms, the duplicate All category, old TikTok global login entries,
 -- and the Line URL that requires a vendor-specific browser extension.
 CREATE TABLE platform_site (

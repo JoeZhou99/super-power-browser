@@ -11,8 +11,22 @@ const shops=ref<any>({}),devices=ref<any[]>([]),orders=ref<any>({}),recent=ref<a
 const guide=ref(true),loaded=ref(false);
 const expiring=computed(()=>devices.value.reduce((n,d)=>n+(d.willExpiredIp||0),0));
 const noRenew=computed(()=>devices.value.reduce((n,d)=>n+(d.unAutoRenew||0),0));
-async function loadRecent(){if(permissions.can('shop.view'))recent.value=(await request(`/environments?category=${category.value}&size=8`)).items;}
-onMounted(async()=>{await account.load();guide.value=localStorage.getItem(`spb-guide-${account.profile.id}`)!=='hidden';await Promise.all([permissions.can('shop.view')?request('/environments/statistics').then(r=>shops.value=r):null,permissions.can('device.view')?Promise.all([1,20].map(type=>request(`/devices/statistics?type=${type}`))).then(r=>devices.value=r):null,permissions.can('order.view')?request('/orders?status=PENDING&size=1').then(r=>orders.value=r):null,loadRecent()]);loaded.value=true;});
+async function loadRecent(){
+  if(!permissions.can('shop.view'))return;
+  try{recent.value=(await request(`/environments?category=${category.value}&size=8`)).items||[];}
+  catch{recent.value=[];}
+}
+onMounted(async()=>{
+  await account.load();
+  guide.value=localStorage.getItem(`spb-guide-${account.profile.id}`)!=='hidden';
+  const tasks: Promise<unknown>[]=[];
+  if(permissions.can('shop.view'))tasks.push(request('/environments/statistics').then(r=>{shops.value=r;}));
+  if(permissions.can('device.view'))tasks.push(Promise.all([1,20].map(type=>request(`/devices/statistics?type=${type}`))).then(r=>{devices.value=r;}));
+  if(permissions.can('order.view'))tasks.push(request('/orders?status=PENDING&size=1').then(r=>{orders.value=r;}));
+  tasks.push(loadRecent());
+  await Promise.allSettled(tasks);
+  loaded.value=true;
+});
 watch(category,loadRecent);
 function toggleGuide(){guide.value=!guide.value;localStorage.setItem(`spb-guide-${account.profile.id}`,guide.value?'visible':'hidden');}
 async function open(row:any){if(!window.api)throw new Error('请在桌面客户端中打开店铺');await window.api.openBrowser(row.id);await loadRecent();}

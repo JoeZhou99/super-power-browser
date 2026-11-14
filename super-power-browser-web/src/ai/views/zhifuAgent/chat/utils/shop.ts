@@ -49,7 +49,7 @@ interface WebDriverStatus {
 }
 
 interface ShopPageWindow {
-  ruxOpen?: (_params: { browserId: number | string }) => Promise<unknown> | unknown;
+  openShop?: (_params: { browserId: number | string }) => Promise<unknown> | unknown;
   api?: {
     getWebDriverOpenStatus?: (_callback: (_err: unknown, _data: WebDriverStatus) => void) => void;
   };
@@ -249,7 +249,7 @@ function waitForWebDriverOpen(pageWindow: ShopPageWindow, mallId: string) {
   };
 }
 
-/** 通过页面 ruxOpen 打开店铺，并等待可复用的 CDP 连接 */
+/** 通过页面桥接打开店铺，并等待可复用的 CDP 连接 */
 export async function openMallFromPage(
   mallId: number | string,
   pageWindow: ShopPageWindow = window as ShopPageWindow,
@@ -258,8 +258,8 @@ export async function openMallFromPage(
   assertCurrent?.();
   const id = String(mallId ?? "").trim();
   if (!id) throw new Error("缺少店铺 ID");
-  if (typeof pageWindow.ruxOpen !== "function") {
-    throw new Error("当前页面未提供 window.ruxOpen(mallId) 方法");
+  if (typeof pageWindow.openShop !== "function") {
+    throw new Error("当前页面未提供 window.openShop(mallId) 方法");
   }
 
   usePageWindow(pageWindow);
@@ -309,7 +309,7 @@ export async function openMallFromPage(
       await Promise.race([
         Promise.resolve().then(() => {
           assertCurrent?.();
-          return pageWindow.ruxOpen?.({ browserId: id });
+          return pageWindow.openShop?.({ browserId: id });
         }),
         new Promise<never>((_resolve, reject) => {
           launchTimer = window.setTimeout(() => reject(new Error(`店铺 ${id} 打开超时`)), OPEN_TIMEOUT_MS);

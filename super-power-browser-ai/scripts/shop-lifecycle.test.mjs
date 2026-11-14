@@ -54,7 +54,7 @@ async function fixture() {
   let options
   const host = new AiHost({
     api, browsers, config: { dataPath: 'fixture-only-never-written' }, window: { webContents: {} },
-    loadRuntime: async () => ({ startTridentHost: async input => { options = input; return { async dispose() {} } } }),
+    loadRuntime: async () => ({ startAiHost: async input => { options = input; return { async dispose() {} } } }),
   })
   await host.ready()
   const lifecycle = vm.runInNewContext(`${lifecycleInitialization}; shopLifecycle`, {

@@ -45,7 +45,7 @@ function shopBridge(open) {
       getBrowserConnection: async () => null,
       validateShopConnection: async () => ({ ok: true }),
     },
-    ruxOpen: (input) => {
+    openShop: (input) => {
       launches++;
       return open(input, (data) => listener(null, data));
     },

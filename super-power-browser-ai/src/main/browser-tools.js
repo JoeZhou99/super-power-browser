@@ -352,7 +352,7 @@ export class BrowserToolRun {
       execFile(process.execPath, [script, ...(input.args || [])], {
         cwd: outputDirectory, windowsHide: true, timeout: 90000, maxBuffer: 1024 * 1024,
         signal: this.controller.signal,
-        env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', TRIDENT_WORKSPACE: this.workspace, TRIDENT_OUTPUT_DIR: outputDirectory, TRIDENT_MALL_ID: id, TRIDENT_CDP_URL: connection.cdpUrl, TRIDENT_BROWSER_RUNTIME: pathToFileURL(runtimeFile).href },
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', SPB_WORKSPACE: this.workspace, SPB_OUTPUT_DIR: outputDirectory, SPB_MALL_ID: id, SPB_CDP_URL: connection.cdpUrl, SPB_BROWSER_RUNTIME: pathToFileURL(runtimeFile).href },
       }, (error, stdout, stderr) => resolve({ ok: !error, mallId: id, browserId: id, stdout, stderr, error: error?.message || '', exitCode: error?.code || 0 }))
     })
   }

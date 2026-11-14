@@ -1,1 +1,1 @@
-export { startTridentHost } from "./embed-host.js"
+export { startAiHost } from "./embed-host.js"

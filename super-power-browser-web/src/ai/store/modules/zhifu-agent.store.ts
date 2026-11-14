@@ -1299,7 +1299,7 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
       if (value) source[key] = value;
       else delete source[key];
     }
-    if (!String(source.agentName || "").trim() || source.agentName === "盘古") {
+    if (!String(source.agentName || "").trim()) {
       source.agentName = DEFAULT_AGENT_NAME;
     }
     source.shopConcurrency = normalizeShopConcurrency(fallback?.shopConcurrency);

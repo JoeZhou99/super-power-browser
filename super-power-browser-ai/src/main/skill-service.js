@@ -338,8 +338,8 @@ export class SkillService {
   }
 
   async installBundled({ id, scope = "workspace", workspace }) {
-    const appRoot = process.env.TRIDENT_APP_ROOT || app.getAppPath()
-    const source = app.isPackaged && !process.env.TRIDENT_APP_ROOT
+    const appRoot = process.env.SPB_APP_ROOT || app.getAppPath()
+    const source = app.isPackaged && !process.env.SPB_APP_ROOT
       ? join(process.resourcesPath, "skills", id)
       : join(appRoot, "src", "skills", id)
     if (!await pathExists(join(source, "SKILL.md"))) throw new Error(`内置技能不存在：${id}`)

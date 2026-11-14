@@ -3,13 +3,13 @@ import { captureDownloads, outputFile } from './shop-output.js'
 
 // Compatibility entry for existing Node.js skills. Connect only; never launch.
 export async function withShopPage(execute, pageUrl) {
-  const mallId = process.env.TRIDENT_MALL_ID
-  const cdpUrl = process.env.TRIDENT_CDP_URL
+  const mallId = process.env.SPB_MALL_ID
+  const cdpUrl = process.env.SPB_CDP_URL
   if (!mallId || !cdpUrl) throw new Error('必须通过 browser_run_skill_script 运行此技能')
   const browser = await chromium.connectOverCDP(cdpUrl, { timeout: 3000, noDefaults: true })
   const pending = [], files = [], cleanup = []
   try {
-    const outputDir = process.env.TRIDENT_OUTPUT_DIR
+    const outputDir = process.env.SPB_OUTPUT_DIR
     if (!outputDir) throw new Error('缺少店铺文件保存目录')
     const attach = page => {
       cleanup.push(captureDownloads(page, outputDir, pending, files))

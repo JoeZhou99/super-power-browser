@@ -54,11 +54,11 @@ const on = (channel, listener) => {
 }
 
 const invokeWhenReady = async (channel, ...args) => {
-  await ipcRenderer.invoke('trident:ready')
+  await ipcRenderer.invoke('ai:ready')
   return ipcRenderer.invoke(channel, ...args)
 }
 
-function installTridentBridge() {
+function installAiBridge() {
   try {
     contextBridge.exposeInMainWorld('localflow', {
       conversationStorageInfo: () => invokeWhenReady(CHANNELS.conversationStorageInfo),
@@ -79,7 +79,7 @@ function installTridentBridge() {
       revealResultFile: (path) => invokeWhenReady('app:reveal-result-file', path),
       previewResultImage: (path) => invokeWhenReady('app:preview-result-image', path),
       validateShopConnection: (connection) => invokeWhenReady('shops:validate-connection', connection),
-      getBrowserConnection: (browserId) => ipcRenderer.invoke('trident:browser-connection', browserId),
+      getBrowserConnection: (browserId) => ipcRenderer.invoke('ai:browser-connection', browserId),
       onOpenScheduledShops: (listener) => on(CHANNELS.openScheduledShops, listener),
       completeScheduledShops: (input) => invokeWhenReady(CHANNELS.scheduledShopsResult, input),
       selectWorkspace: () => invokeWhenReady(CHANNELS.selectWorkspace),
@@ -125,5 +125,5 @@ function installTridentBridge() {
   }
 }
 
-installTridentBridge()
+installAiBridge()
 }

@@ -6,8 +6,8 @@ const {ipcMain}=require('electron');
 class AiHost {
   constructor({api,browsers,config,window,origin,loadRuntime=()=>import('@super-power-browser/ai')}){
     Object.assign(this,{api,browsers,config,window,origin,loadRuntime});this.runtime=null;this.starting=null;this.generation=0;
-    ipcMain.handle('trident:ready',event=>{this.source(event);return this.ready().then(()=>true);});
-    ipcMain.handle('trident:browser-connection',async(event,id)=>{this.source(event);await this.actor();return this.connection(id);});
+    ipcMain.handle('ai:ready',event=>{this.source(event);return this.ready().then(()=>true);});
+    ipcMain.handle('ai:browser-connection',async(event,id)=>{this.source(event);await this.actor();return this.connection(id);});
     ipcMain.handle('spb:aiQueryModels',async(event,input)=>{this.source(event);await this.actor();return this.queryModels(input);});
   }
   source(event){if(event.sender!==this.window.webContents||event.senderFrame!==this.window.webContents.mainFrame||new URL(event.senderFrame.url).origin!==this.origin)throw new Error('AI 请求来源不合法');}
@@ -63,11 +63,11 @@ class AiHost {
         return args;
       };
       const root=path.dirname(path.dirname(path.dirname(require.resolve('@super-power-browser/ai'))));
-      process.env.TRIDENT_APP_ROOT=root;
-      const {startTridentHost}=await this.loadRuntime();
+      process.env.SPB_APP_ROOT=root;
+      const {startAiHost}=await this.loadRuntime();
       await valid();
       const prepareModelSettings=createAiDeviceSettings(this.config.dataPath);
-      const runtime=await startTridentHost({prepareModelSettings,getWindow:()=>this.window,getWebContents:()=>this.window.webContents,
+      const runtime=await startAiHost({prepareModelSettings,getWindow:()=>this.window,getWebContents:()=>this.window.webContents,
         dataDir:path.join(this.config.dataPath,'ai','accounts',actor.tenantId,actor.id),conversationDir:path.join(this.config.dataPath,'ai'),authorize,authorizeTask:valid,
         getBrowserConnection:id=>this.connection(id),isShopBrowserOpen:id=>this.isShopBrowserOpen(id),
         closeShopBrowser:async(id,expected)=>{const live=await this.connection(id);if(!live.isopen||live.browserInstanceId!==expected.browserInstanceId)return {closed:false,reason:'店铺实例已变化'};await this.browsers.close(id);return {closed:!this.browsers.running.has(id)};}

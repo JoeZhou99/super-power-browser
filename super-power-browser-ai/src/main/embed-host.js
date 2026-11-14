@@ -26,7 +26,7 @@ import { inspectTaskSkills, taskDiagnosticSummary } from './task-preflight.js'
 
 const artifactLines = state => (state.files || []).map(path => `\n\n文件已生成：\`${path}\``).join('')
 
-export async function startTridentHost({
+export async function startAiHost({
   getWebContents,
   getWindow,
   getBrowserConnection,
@@ -756,6 +756,6 @@ export async function startTridentHost({
   return { runScheduledTask, dispose, settingsStore }
 }
 
-export function tridentUserDataDir() {
+export function aiUserDataDir() {
   return app.getPath("userData")
 }

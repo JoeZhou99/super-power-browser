@@ -15,7 +15,7 @@ import './ai/styles/host.css';
 import './styles/scrollbar.css';
 router.afterEach(to=>document.body.classList.toggle('ai-page',to.path==='/zhifuAgent'));
 const app=createApp(App);
-(window as any).ruxOpen = (params: {browserId: string | number}) => window.api?.openBrowser(String(params.browserId));
+(window as any).openShop = (params: {browserId: string | number}) => window.api?.openBrowser(String(params.browserId));
 app.config.errorHandler=(error)=>ElMessage.error(error instanceof Error?error.message:'操作失败');
 app.use(store).use(i18n).use(router).use(ElementPlus,{locale:zhCn});
 window.api?.onLoggedOut?.(()=>{usePermissions().user=null;sessionStorage.removeItem('spb-token');void router.replace('/login');});
