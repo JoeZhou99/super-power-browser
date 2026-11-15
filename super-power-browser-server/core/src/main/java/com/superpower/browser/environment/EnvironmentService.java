@@ -8,6 +8,7 @@ import com.superpower.browser.runtime.KernelCatalog;
 import com.superpower.browser.shared.*;
 import java.net.URI;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import static com.superpower.browser.shared.Data.*;
@@ -22,8 +23,13 @@ public class EnvironmentService {
     private final KernelCatalog kernels;
     private final PlatformCatalog platforms;
     private final BrowserConfiguration configuration;
+    private final ShopQuotaService quotas;
     public EnvironmentService(EnvironmentRepository repository,MemberDirectory members,DeviceAccess devices,AuditRepository audit,KernelCatalog kernels,PlatformCatalog platforms,BrowserConfiguration configuration) {
-        this.repository=repository; this.members=members; this.devices=devices; this.audit=audit;this.kernels=kernels;this.platforms=platforms;this.configuration=configuration;
+        this(repository,members,devices,audit,kernels,platforms,configuration,null);
+    }
+    @Autowired
+    public EnvironmentService(EnvironmentRepository repository,MemberDirectory members,DeviceAccess devices,AuditRepository audit,KernelCatalog kernels,PlatformCatalog platforms,BrowserConfiguration configuration,ShopQuotaService quotas) {
+        this.repository=repository; this.members=members; this.devices=devices; this.audit=audit;this.kernels=kernels;this.platforms=platforms;this.configuration=configuration;this.quotas=quotas;
     }
     public Map<String,Object> get(Actor a,String id,String permission) { a.allow(permission); return repository.get(a,id); }
     public Map<String,Object> list(Actor a,String category,String query,int page,int size,boolean recycled) {
@@ -72,9 +78,18 @@ public class EnvironmentService {
         String password=input.containsKey("accountPassword")?text(input,"accountPassword"):previous==null?"":text(previous,"accountPassword");
         input.put("startUrl",url); input.put("kernelVersion",kernel); input.put("fingerprint",serialized); input.put("accountPassword",password);
         boolean create=environmentId==null;
-        if(create) { environmentId=id(); repository.create(environmentId,a,input); }
+        ShopQuotaService.Decision quota=null;
+        if(create) {
+            // The quota service locks the creator account before counting. The
+            // insert and any later validation failure share this transaction,
+            // so no separate reservation can leak on rollback.
+            if(quotas!=null) quota=quotas.check(a);
+            environmentId=id(); repository.create(environmentId,a,input);
+        }
         else repository.update(environmentId,input);
-        audit.record(a,create?"shop.create":"shop.edit",environmentId,Map.of("name",text(input,"name")));
+        var detail=new LinkedHashMap<String,Object>();detail.put("name",text(input,"name"));
+        if(quota!=null){detail.put("quotaLimit",quota.limit());detail.put("quotaUsedBefore",quota.used());}
+        audit.record(a,create?"shop.create":"shop.edit",environmentId,detail);
         return environmentId;
     }
     @Transactional public String copy(Actor a,String environmentId) {

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 @RestControllerAdvice
 public class Errors {
     private static final Logger log=LoggerFactory.getLogger(Errors.class);
-    @ExceptionHandler(BusinessException.class) ResponseEntity<?> business(BusinessException e) { return ResponseEntity.status(e.status).body(Map.of("message",e.getMessage())); }
+    @ExceptionHandler(BusinessException.class) ResponseEntity<?> business(BusinessException e) { return ResponseEntity.status(e.status).body(Map.of("code",e.code,"message",e.getMessage())); }
     @ExceptionHandler(DataIntegrityViolationException.class) ResponseEntity<?> conflict(DataIntegrityViolationException e,HttpServletRequest request) {
         // Database exception messages can contain SQL values, including credentials.
         Throwable cause=e.getMostSpecificCause();
