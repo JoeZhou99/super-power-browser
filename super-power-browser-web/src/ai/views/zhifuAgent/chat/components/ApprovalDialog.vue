@@ -28,6 +28,7 @@
           </el-button>
         </div>
         <strong class="source-title">{{ conversationTitle }}</strong>
+        <p v-if="approvalShopName" class="source-shop">店铺：{{ approvalShopName }}</p>
         <p v-if="taskText" class="source-task" :title="taskText">{{ taskText }}</p>
         <span v-if="sourceCreatedAt" class="source-date">创建于 {{ sourceCreatedAt }}</span>
       </div>
@@ -146,6 +147,7 @@ const sourceConversation = computed(() =>
   store.conversations.find((item) => item.id === store.approval?.conversationId)
 );
 const conversationTitle = computed(() => sourceConversation.value?.title || "来源会话已不可用");
+const approvalShopName = computed(() => String(store.approval?.shopName || "").trim());
 const taskText = computed(
   () =>
     [...(sourceConversation.value?.messages || [])].reverse().find((item) => item.role === "user")
@@ -242,6 +244,12 @@ h2 {
 .source-title {
   color: var(--el-text-color-primary);
   font-size: 17px;
+  line-height: 1.5;
+}
+.source-shop {
+  margin: 0;
+  color: var(--el-text-color-regular);
+  font-size: 13px;
   line-height: 1.5;
 }
 .source-task {

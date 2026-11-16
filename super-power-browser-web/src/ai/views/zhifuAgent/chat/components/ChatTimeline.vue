@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import { useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
 import { openExternal } from "@/ai/utils/index";
-import { zhifuOpenResultFile } from "@/ai/utils/electronApi";
+import { zhifuOpenResultFile, zhifuRevealResultFile } from "@/ai/utils/electronApi";
 import type { ToolItem } from "../../type";
 import { handleCodeCopyClick } from "../../utils/markdown";
 import MessageItem from "./MessageItem.vue";
@@ -130,6 +130,16 @@ async function handleContentClick(event: MouseEvent) {
     event.preventDefault();
     try {
       await zhifuOpenResultFile(file.dataset.resultFile);
+    } catch (cause: any) {
+      ElMessage.error(cause?.message || t("zhifuAgent.chat.openResultFileFailed"));
+    }
+    return;
+  }
+  const folder = target?.closest?.("[data-reveal-file]") as HTMLElement | null;
+  if (folder?.dataset.revealFile) {
+    event.preventDefault();
+    try {
+      await zhifuRevealResultFile(folder.dataset.revealFile);
     } catch (cause: any) {
       ElMessage.error(cause?.message || t("zhifuAgent.chat.openResultFileFailed"));
     }

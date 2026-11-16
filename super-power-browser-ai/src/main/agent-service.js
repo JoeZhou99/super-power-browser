@@ -225,6 +225,7 @@ export class AgentService {
       toolCallId: request.toolCallId,
       toolName: request.toolName,
       force: Boolean(request.force),
+      shopName: currentRun?.shopName || undefined,
       input: safeClone(request.input),
     })
     return new Promise((resolve) => {
@@ -510,13 +511,15 @@ export class AgentService {
     const minutes = normalizeExecutionTimeout(input.settings?.executionTimeoutMinutes)
     let reject
     const toolTimeout = new Promise((_resolve, rejectPromise) => { reject = rejectPromise })
-    const activeRun = { conversationId: input.conversationId, mode: input.mode || 'yolo', runId: input.runId, controller: new AbortController(), reject, tools: new Map(), events: [], mallId: input.shops?.length === 1 ? String(input.shops[0].id) : '' }
+    const activeRun = { conversationId: input.conversationId, mode: input.mode || 'yolo', runId: input.runId, shopName: String(input.shopName || ''), controller: new AbortController(), reject, tools: new Map(), events: [], mallId: input.shops?.length === 1 ? String(input.shops[0].id) : '' }
     const delivery = new Promise(resolve => { activeRun.deliver = resolve })
     activeRun.allowDirectDelivery = input.mode !== 'plan' && canDeliverDirectly(input)
     this.activeRuns.add(activeRun)
     let release
     try {
-    if (input.mode !== 'plan' && input.shops?.length) {
+    // Host-managed shop runs hold the slot across opening, execution, and
+    // close finalization. Avoid acquiring the same shop twice.
+    if (input.mode !== 'plan' && input.shops?.length && input.shopQueueHeld !== true) {
       release = await shopQueue.acquire({ limit: input.settings?.shopConcurrency, keys: input.shops.map(shop => shop.id), signal: activeRun.controller.signal,
         onWait: message => this.send('agent:event', { kind: 'waiting', conversationId: input.conversationId, message }) })
     }

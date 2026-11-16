@@ -75,6 +75,18 @@ md.renderer.rules.code_inline = (tokens, index) => {
 };
 
 md.renderer.rules.link_open = (tokens, index, options, _env, renderer) => {
+  const href = (tokens[index] as any).attrGet?.("href") || "";
+  if (href.startsWith("result-file:")) {
+    const path = decodeURIComponent(href.slice("result-file:".length));
+    tokens[index].attrSet("href", "#");
+    tokens[index].attrSet("data-result-file", path);
+    tokens[index].attrSet("title", i18n.global.t("zhifuAgent.chat.openResultFile"));
+  } else if (href.startsWith("reveal-file:")) {
+    const path = decodeURIComponent(href.slice("reveal-file:".length));
+    tokens[index].attrSet("href", "#");
+    tokens[index].attrSet("data-reveal-file", path);
+    tokens[index].attrSet("title", i18n.global.t("zhifuAgent.chat.openResultFolder"));
+  }
   tokens[index].attrSet("target", "_blank");
   tokens[index].attrSet("rel", "noopener noreferrer");
   return renderer.renderToken(tokens, index, options);
@@ -98,7 +110,7 @@ md.renderer.rules.fence = (tokens, index) => {
 const PURIFY_OPTIONS = {
   USE_PROFILES: { html: true },
   FORBID_TAGS: ["style", "link", "base", "meta"],
-  ADD_ATTR: ["target", "rel", "title", "data-result-file"],
+  ADD_ATTR: ["target", "rel", "title", "data-result-file", "data-reveal-file"],
 };
 
 const markdownCache = new WeakMap<object, { content: string; role?: string; html: string }>();
@@ -220,13 +232,31 @@ export function renderCachedAgentMarkdown(
 
 /** Agent 消息 Markdown 渲染：禁用原文 HTML、自动识别链接，输出经 DOMPurify 净化 */
 export function renderAgentMarkdown(source: string) {
-  const text = source ?? "";
+  const text = linkifyResultPaths(source ?? "");
   if (!text.trim()) return "";
   try {
     return DOMPurify.sanitize(md.render(text), PURIFY_OPTIONS) as string;
   } catch {
     return `<pre>${escapeHtml(text)}</pre>`;
   }
+}
+
+const RESULT_PATH =
+  /(?<![`\w])((?:[A-Za-z]:[\\/]|\\\\)[^\n<>|，。；;]+?\.(?:xlsx?|csv|pdf|docx|txt|png|jpe?g|zip|yml|yaml|md))(?![\w`])/gi;
+
+function linkifyResultPaths(value: string) {
+  return value
+    .split(/(```[\s\S]*?```|`[^`]*`)/g)
+    .map((part, index) =>
+      index % 2
+        ? part
+        : part.replace(
+            RESULT_PATH,
+            (all) =>
+              `[result](${`result-file:${encodeURIComponent(all)}`}) [folder](${`reveal-file:${encodeURIComponent(all)}`})`
+          )
+    )
+    .join("");
 }
 
 /** 处理消息区内代码块复制按钮点击，返回 true 表示已处理 */

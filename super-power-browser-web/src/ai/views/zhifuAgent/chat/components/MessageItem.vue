@@ -49,7 +49,17 @@
       <div v-if="message.files?.length" class="message-files">
         <div v-for="file in message.files" :key="file.id" class="message-file" :title="file.path">
           <el-icon><Document /></el-icon>
-          <span>{{ file.name }}</span>
+          <button type="button" class="message-file-name" :data-result-file="file.path">
+            {{ file.name }}
+          </button>
+          <button
+            type="button"
+            class="message-file-folder"
+            :data-reveal-file="file.path"
+            :title="t('zhifuAgent.chat.openResultFolder')"
+          >
+            <el-icon><FolderOpened /></el-icon>
+          </button>
         </div>
       </div>
       <div :class="{ 'user-request-card': message.role === 'user' }">
@@ -230,6 +240,7 @@ import {
   CopyDocument,
   Document,
   EditPen,
+  FolderOpened,
   MagicStick,
   Refresh,
   RefreshRight,
@@ -248,6 +259,7 @@ import {
   renderConfirmedFileLinks,
   resultFileName,
   resultFileDetails,
+  summaryFilesFromContentSafe,
 } from "../../utils/resultArtifacts";
 import ToolGroup from "./ToolGroup.vue";
 import ResultImage from "./ResultImage.vue";
@@ -295,7 +307,9 @@ const summaryFiles = computed(() =>
 const doneStatuses = new Set(["已完成", "success", "completed"]);
 const failedStatuses = new Set(["失败", "failed", "error"]);
 
-const resultFiles = computed(() => confirmedResultFiles(props.tools));
+const resultFiles = computed(() => [
+  ...new Set([...confirmedResultFiles(props.tools), ...summaryFilesFromContentSafe(visibleContent.value)]),
+]);
 const doneShopCount = computed(
   () => props.message.executionShops?.filter((shop) => doneStatuses.has(shop.status)).length || 0
 );
@@ -662,6 +676,27 @@ onBeforeUnmount(() => window.clearTimeout(copyTimer));
   font-size: 12px;
   background: var(--el-fill-color-light);
   border-radius: 6px;
+}
+
+.message-file-name,
+.message-file-folder {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.message-file-name {
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  color: var(--el-color-primary);
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.message-file-folder {
+  display: inline-flex;
+  padding: 4px;
+  color: var(--el-text-color-secondary);
 }
 
 .thinking {

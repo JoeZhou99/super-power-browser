@@ -54,6 +54,8 @@ export interface ZhifuRunAgentInput {
   }[];
   runId?: string;
   autoCloseShops?: boolean;
+  /** 仅打开并返回店铺结果，不执行 Agent 任务；名额由宿主覆盖整个打开流程。 */
+  openOnly?: boolean;
   shopUsageTokens?: Record<string, string>;
   prompt: string;
   /** data URL */
@@ -112,6 +114,7 @@ export interface ZhifuApprovalRequest {
   sessionId: string;
   toolCallId: string;
   toolName: string;
+  shopName?: string;
   input: any;
 }
 

@@ -65,6 +65,8 @@ export async function startAiHost({
   const chatShopRuns = new Map()
   const conversationJobs = new Map()
   const conversationQueue = new ExecutionQueue()
+  // A shop slot covers opening, execution, result confirmation and closing.
+  const shopQueue = new ExecutionQueue()
   const shopLifecycle = new ShopLifecycle({
     getConnection: isShopBrowserOpen ? async id => ({ isopen: await isShopBrowserOpen(id) }) : getBrowserConnection,
     closeBrowser: closeShopBrowser,
@@ -73,7 +75,7 @@ export async function startAiHost({
   async function runChatShops(input, settings) {
     if (chatShopRuns.has(input.conversationId)) throw new Error('该会话已有店铺任务执行中')
     const shops = normalizeTaskShops(input.shops)
-    const batch = { stopped: false, runners: new Set(), runId: input.runId, deviceLimitError: '' }
+    const batch = { stopped: false, controller: new AbortController(), runners: new Set(), runId: input.runId, deviceLimitError: '' }
     const authorization = { session: agentService.conversationPermissionSet(input.conversationId), task: batch, services: new Set() }
     chatShopRuns.set(input.conversationId, batch)
     const states = shops.map(shop => ({ shop, output: '', status: '等待执行', files: [] }))
@@ -90,6 +92,14 @@ export async function startAiHost({
         if (batch.stopped) throw new Error('任务已停止')
         if (batch.deviceLimitError) throw new Error(batch.deviceLimitError)
         const state = states.find(item => item.shop.id === shop.id)
+        const releaseShop = await shopQueue.acquire({
+          limit: settings.shopConcurrency,
+          keys: [shop.id],
+          signal: batch.controller.signal,
+          onWait: message => { state.status = message; publish() },
+        })
+        let usageToken = input.shopUsageTokens?.[shop.id]
+        let connection
         state.status = '正在连接'
         publish()
         let sessionId
@@ -131,15 +141,24 @@ export async function startAiHost({
         const entry = { runner, getSessionId: () => sessionId }
         batch.runners.add(entry)
         try {
-          const context = taskShopContext([shop], input.shopResults || [])
-          const connection = input.shopResults.find(item => String(item.mallId) === shop.id)
+          if (!usageToken) usageToken = await shopLifecycle.begin(shop.id)
+          const existing = (input.shopResults || []).find(item => String(item.mallId) === String(shop.id))
+          connection = existing || (await openTaskShops([shop]))[0]
+          const context = taskShopContext([shop], [connection])
           const check = await validateShopConnection(connection)
+          if (!check.ok) throw new Error(`CDP connection invalid: ${check.error}`)
+          if (input.openOnly === true) {
+            state.status = 'opened'
+            state.output = connection.message || 'Shop opened'
+            await shopLifecycle.finish(usageToken, { success: true, autoClose: false, connection })
+            return { status: 'success', output: state.output }
+          }
           if (!check.ok) throw new Error(`CDP 连接失效：${check.error}`)
           state.status = '正在执行'
           publish()
           const runResult = await runner.run({
             ...input, conversationId: `${input.conversationId}:shop:${shop.id}:${randomUUID()}`,
-            shops: [shop], shopResults: [connection],
+            shops: [shop], shopResults: [connection], shopName: shop.name, shopQueueHeld: true,
             prompt: `${context}\n\n本次仅执行当前店铺的完整任务，其他店铺由项目调度。跨店铺汇总由项目在全部店铺结束后统一生成，本任务只采集并导出当前店铺实际数据，不要求用户另行提供其他店铺文件，不声称已完成跨店铺汇总。当前店铺只导出必要的原始数据文件供项目合并，不另外生成“单店汇总表”。最终回复展示本店执行过程、实际数据和异常，不罗列中间 Excel 文件链接；项目统一交付所有店铺总表。各店铺临时文件使用独立名称，不覆盖其他店铺文件。\n\n${input.shopPrompt || input.prompt}`,
             settings,
           })
@@ -154,7 +173,7 @@ export async function startAiHost({
           const outcome = shopExecutionOutcome(toolEvents, shop.id)
           state.status = outcome.status === 'success' ? '已完成' : outcome.status === 'error' ? '失败' : '未确认'
           if (outcome.error) state.output += `\n\n${outcome.error}`
-          const closeMessage = await shopLifecycle.finish(input.shopUsageTokens?.[shop.id], {
+          const closeMessage = await shopLifecycle.finish(usageToken, {
             success: outcome.status === 'success', autoClose: input.autoCloseShops === true, connection,
           })
           if (closeMessage) state.output += `\n\n${closeMessage}`
@@ -173,18 +192,19 @@ export async function startAiHost({
           state.status = '失败'
           throw cause
         } finally {
-          await shopLifecycle.finish(input.shopUsageTokens?.[shop.id])
+          await shopLifecycle.finish(usageToken)
           batch.runners.delete(entry)
           publish()
           await runner.dispose()
           backgroundRunners.delete(runner)
+          releaseShop()
         }
       }, settings.shopConcurrency)
       if (batch.deviceLimitError) {
         result.status = 'error'
         result.error = batch.deviceLimitError
       }
-      if (!batch.stopped && !batch.deviceLimitError && result.status !== 'cancelled') {
+      if (!input.openOnly && !batch.stopped && !batch.deviceLimitError && result.status !== 'cancelled') {
         send(CHANNELS.agentEvent, { kind: 'waiting', conversationId: input.conversationId, message: '正在合并本轮所有店铺数据…' })
         try {
           const summary = await summarizeShopResults(input.workspace || settings.workspace, input.conversationId, states)
@@ -192,7 +212,7 @@ export async function startAiHost({
             const toolCallId = 'shop-summary:' + randomUUID()
             send(CHANNELS.agentEvent, { kind: 'tool-start', conversationId: input.conversationId, toolCallId, toolName: 'export_shop_summary', input: { shopIds: shops.map(shop => shop.id) } })
             send(CHANNELS.agentEvent, { kind: 'tool-end', conversationId: input.conversationId, toolCallId, toolName: 'export_shop_summary', output: { ok: true, result: summary } })
-            result.output += '\n\n## 所有店铺操作汇总\n\n已汇总本轮 ' + summary.shopCount + ' 家店铺，共 ' + summary.rowCount + ' 行，含店铺来源、执行状态和来源文件。' + (summary.warnings.length ? '\n\n' + summary.warnings.join('\n') : '')
+            result.output += '\n\n## 所有店铺操作汇总\n\n已汇总本轮 ' + summary.shopCount + ' 家店铺，共 ' + summary.rowCount + ' 行，含店铺来源、执行状态和来源文件。' + (summary.warnings.length ? '\n\n' + summary.warnings.join('\n') : '') + (summary.path ? `\n\n汇总文件：\`${summary.path}\`` : '')
             if (summary.warnings.length && result.status === 'success') result.status = 'partial'
           }
         } catch (cause) {
@@ -221,6 +241,50 @@ export async function startAiHost({
       pendingShopRequests.set(requestId, { resolve, reject, timer, senderId: contents.id })
       contents.send(CHANNELS.openScheduledShops, { requestId, shops })
     })
+  }
+
+  // Single-shop chat runs use the same lifecycle queue as batch runs. This
+  // keeps opening and auto-close decisions inside the host instead of the UI.
+  async function runSingleChatShop(input, shop, settings, job) {
+    const releaseShop = await shopQueue.acquire({
+      limit: settings.shopConcurrency,
+      keys: [shop.id],
+      signal: job.controller.signal,
+      onWait: message => send(CHANNELS.agentEvent, { kind: 'waiting', conversationId: input.conversationId, runId: input.runId, message }),
+    })
+    let usageToken = input.shopUsageTokens?.[shop.id]
+    let connection = (input.shopResults || []).find(item => String(item.mallId) === String(shop.id))
+    try {
+      if (!usageToken) usageToken = await shopLifecycle.begin(shop.id)
+      if (!connection) connection = (await openTaskShops([shop]))[0]
+      const context = taskShopContext([shop], [connection])
+      const check = await validateShopConnection(connection)
+      if (!check.ok) throw new Error(`CDP connection invalid: ${check.error}`)
+      if (input.openOnly === true) {
+        const output = connection.message || 'Shop opened'
+        await shopLifecycle.finish(usageToken, { success: true, autoClose: false, connection })
+        return { status: 'success', output }
+      }
+      const result = await agentService.run({
+        ...input,
+        prompt: `${context}\n\n${input.shopPrompt || input.prompt}`,
+        shops: [shop],
+        shopResults: [connection],
+        shopName: shop.name,
+        shopQueueHeld: true,
+        settings,
+      })
+      const message = await shopLifecycle.finish(usageToken, {
+        success: result.status === 'success' && !job.controller.signal.aborted,
+        autoClose: input.autoCloseShops === true,
+        connection,
+      })
+      if (message) result.closeMessage = message
+      return result
+    } finally {
+      await shopLifecycle.finish(usageToken)
+      releaseShop()
+    }
   }
 
   const send = (channel, payload) => {
@@ -277,7 +341,17 @@ export async function startAiHost({
         progress: states.map(state => `## 店铺：${state.shop.name}（ID：${state.shop.id}）\n\n状态：${state.status}\n\n${state.output}${artifactLines(state)}`).join('\n\n'),
       })
       const execution = await executeTaskForShops(shops, async (shop) => {
-        const usageToken = shop ? await shopLifecycle.begin(shop.id) : null
+        const releaseShop = shop
+          ? await shopQueue.acquire({
+              limit: settings.shopConcurrency,
+              keys: [shop.id],
+              onWait: message => {
+                const waiting = states.find(item => item.shop.id === shop.id)
+                if (waiting) { waiting.status = message; publish() }
+              },
+            })
+          : null
+        let usageToken = null
         let shopOutput = ''
         let executionError = ''
         const toolEvents = []
@@ -310,6 +384,7 @@ export async function startAiHost({
         }, skillService, { unattended: true })
         backgroundRunners.add(runner)
         try {
+        if (shop) usageToken = await shopLifecycle.begin(shop.id)
         if (disposed) throw new Error("任务已停止")
         await authorizeTask()
         if (!taskInWorkspace(task, (await settingsStore.getPrivate()).workspace)) throw new Error("当前工作区已切换，停止启动此工作区的后续任务")
@@ -322,6 +397,8 @@ export async function startAiHost({
           skillNames: selectedSkills.map(skill => skill.name),
           workspace: task.workspace,
           shops: shop ? [shop] : [], shopResults,
+          shopName: shop?.name,
+          shopQueueHeld: Boolean(shop),
           mode: "yolo",
           settings,
         })
@@ -355,6 +432,7 @@ export async function startAiHost({
           }
           await runner.dispose()
           backgroundRunners.delete(runner)
+          releaseShop?.()
         }
       }, settings.shopConcurrency)
       output = execution.output
@@ -363,7 +441,7 @@ export async function startAiHost({
         try {
           const summary = await summarizeShopResults(task.workspace, 'scheduled-' + task.id, states)
           diagnostics.artifacts.push({ id: 'summary:' + randomUUID(), name: 'export_shop_summary', status: 'done', input: {}, output: { ok: true, result: summary } })
-          output += '\n\n## 所有店铺操作汇总\n\n已汇总本轮 ' + summary.shopCount + ' 家店铺，共 ' + summary.rowCount + ' 行，含店铺来源、执行状态和来源文件。'
+          output += '\n\n## 所有店铺操作汇总\n\n已汇总本轮 ' + summary.shopCount + ' 家店铺，共 ' + summary.rowCount + ' 行，含店铺来源、执行状态和来源文件。' + (summary.path ? `\n\n汇总文件：\`${summary.path}\`` : '')
           if (summary.warnings.length) {
             output += '\n\n' + summary.warnings.join('\n')
             if (execution.status === 'success') execution.status = 'partial'
@@ -601,10 +679,13 @@ export async function startAiHost({
       if (input.shops?.length > 1) return await runChatShops(input, settings)
       if (input.shops?.length === 1) {
         const shops = normalizeTaskShops(input.shops)
+        return await runSingleChatShop(input, shops[0], settings, job)
+        /*
         const context = taskShopContext(shops, input.shopResults || [])
         const check = await validateShopConnection(input.shopResults[0])
         if (!check.ok) throw new Error(`CDP 连接失效：${check.error}`)
         input = { ...input, prompt: `${context}\n\n${input.shopPrompt || input.prompt}` }
+        */
       }
       if (job.controller.signal.aborted) return { stopped: true }
       const result = await agentService.run({ ...input, settings })
@@ -646,6 +727,7 @@ export async function startAiHost({
       const batch = chatShopRuns.get(conversationId)
       if (!batch) return (await agentService.stop(conversationId)) || Boolean(job)
       batch.stopped = true
+      batch.controller.abort()
       await Promise.all([...batch.runners].map(async entry => {
         await Promise.all([...entry.runner.activeRuns].map(run => entry.runner.stop(run.conversationId)))
       }))

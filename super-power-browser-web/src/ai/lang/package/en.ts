@@ -295,6 +295,7 @@ export default {
       "openLinkFailed": "Unable to open the link",
       "openResultFile": "Open result file",
       "openResultFileFailed": "Unable to open the result file",
+      "openResultFolder": "Open containing folder",
       "copy": "Copy",
       "copied": "Copied",
       "copyCode": "Copy code",

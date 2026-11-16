@@ -22,6 +22,18 @@ export class ExecutionQueue {
     });
   }
 
+  async run<T>(
+    task: () => Promise<T>,
+    options: { limit?: number; signal?: AbortSignal } = {}
+  ): Promise<T> {
+    const release = await this.acquire(options);
+    try {
+      return await task();
+    } finally {
+      release();
+    }
+  }
+
   private drain() {
     while (this.pending.length && this.active.size < this.limit) {
       const entry = this.pending.shift()!;

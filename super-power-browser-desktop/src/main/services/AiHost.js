@@ -53,9 +53,15 @@ class AiHost {
           const input={...args[0]};
           if(!input.conversationId||typeof input.conversationId!=='string')throw new Error('缺少会话编号');
           const shops=Array.isArray(input.shops)?input.shops:[];
-          if(input.mode!=='plan')input.shopResults=await Promise.all(shops.map(shop=>{
-            const connection=input.shopResults?.find(row=>String(row.mallId)===String(shop.id));return this.checkedConnection(connection);
-          }));
+          if(input.mode!=='plan'&&Array.isArray(input.shopResults)&&input.shopResults.length){
+            input.shopResults=await Promise.all(shops.map(shop=>{
+              const connection=input.shopResults.find(row=>String(row.mallId)===String(shop.id));return this.checkedConnection(connection);
+            }));
+          }else if(input.mode!=='plan'&&shops.length){
+            // The AI host now owns opening and validating shops. Empty results
+            // are valid at the IPC boundary and are filled before AgentService.
+            input.shopResults=[];
+          }
           args[0]=input;
         }
         if(channel==='scheduled:shops-result'&&!args[0]?.error)args[0]={...args[0],results:await Promise.all((args[0]?.results||[]).map(r=>r.ok?this.checkedConnection(r):r))};

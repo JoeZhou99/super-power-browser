@@ -11,9 +11,6 @@ import {
   zhifuListSkills,
   zhifuRunAgent,
   zhifuStopAgent,
-  zhifuBeginShopUsage,
-  zhifuFinishShopUsage,
-  zhifuCancelShopUsage,
   type ZhifuAgentMode,
   type ZhifuApprovalScope,
 } from "@/ai/utils/electronApi";
@@ -23,7 +20,7 @@ import type { PendingFile, PendingImage, SelectedSkill } from "../../type";
 import { collapseRepeatedText, stripThinkingMarkup } from "../../utils/streamText";
 import { normalizeTaskShops } from "../../utils/taskShops";
 import type { SelectedShop } from "../components/ShopSelect.vue";
-import { isMallOpenOnlyRequest, openMallFromPage, mallOpenFailure, MallOpenError, type MallOpenResult } from "../utils/shop";
+import { isMallOpenOnlyRequest, type MallOpenResult } from "../utils/shop";
 import { useModelPlanAccess } from "@/ai/views/modelManage/composables/useModelPlanAccess";
 
 export interface SendPromptPayload {
@@ -53,6 +50,23 @@ export function useAgentRun() {
     );
 
   function shopContext(shops: SelectedShop[], results: MallOpenResult[]) {
+    if (!results.length) {
+      const lines = shops.map((shop) => {
+        const line = t("zhifuAgent.composer.shopLine", {
+          id: shop.id,
+          name: shop.name,
+          platform: shop.platform || "",
+        });
+        return shop.account
+          ? `${line}${t("zhifuAgent.composer.shopAccount", { account: shop.account })}`
+          : line;
+      });
+      return [
+        `[${t("zhifuAgent.composer.shopSelectedTitle")}]`,
+        lines.join("\n"),
+        "[店铺操作要求] 项目层会按店铺并发队列逐家打开、验证并执行。每家店铺只使用项目传入的对应浏览器连接，不串用实例，不再次调用 open_mall，也不要新启动浏览器。连接失败时说明具体错误，不声称已完成。",
+      ].join("\n");
+    }
     const lines = shops.map((shop) => {
       const line = t("zhifuAgent.composer.shopLine", {
         id: shop.id,
@@ -105,10 +119,8 @@ export function useAgentRun() {
   async function sendPrompt(payload: SendPromptPayload) {
     if (!canSend(payload) || store.running) return false;
     store.error = "";
-    if (!String(store.settings.modelId || "").trim()) {
-      store.error = t("zhifuAgent.composer.modelRequired");
-      return false;
-    }
+    // Model validation is performed with the persisted provider settings after
+    // workspace/account preparation, so missing workspace errors stay precise.
     await store.ensureModelKeySaved();
     if (!store.workspace) {
       await store.selectWorkspace().catch((cause) => {
@@ -273,7 +285,6 @@ export function useAgentRun() {
 
     async function continueAcceptedPrompt() {
       let release: (() => void) | undefined;
-      let shopUsageTokens: Record<string, string> = {};
       try {
         await store.flushConversations();
         if (!isCurrent()) return;
@@ -309,6 +320,7 @@ export function useAgentRun() {
         }
 
         if (!isCurrent()) return;
+        /* Shop opening and lifecycle ownership are handled by the desktop host.
         let mallOpenResults: MallOpenResult[] = [];
         if (mode !== "plan" && pendingShops.length) {
           shopUsageTokens = await zhifuBeginShopUsage(pendingShops);
@@ -362,21 +374,22 @@ export function useAgentRun() {
           return;
         }
 
+        */
         if (!isCurrent()) return;
         if (pendingShops.length) assistant.statusLabel = t("zhifuAgent.chat.thinking");
-        const context = pendingShops.length ? shopContext(pendingShops, mallOpenResults) : "";
+        const context = pendingShops.length ? shopContext(pendingShops, []) : "";
         const requestText = [skillMentions, context, text || fallbackText]
           .filter(Boolean)
           .join("\n\n");
 
-        await store.whenSettingsWritten();
+        await store.whenSettingsWritten?.();
         const result = await zhifuRunAgent({
           conversationId: conversation.id,
           history,
           messageId,
           runId,
           autoCloseShops: mode !== "plan" && payload.autoCloseShops === true,
-          shopUsageTokens,
+          openOnly: projectOnlyMallOpen,
           prompt: requestText,
           images: payload.images.map((item) => item.dataUrl),
           files: payload.files.map((item) => item.path),
@@ -389,7 +402,7 @@ export function useAgentRun() {
             platform,
             account,
           })),
-          shopResults: mallOpenResults,
+          shopResults: [],
           shopPrompt: [skillMentions, text || fallbackText].filter(Boolean).join("\n\n"),
         });
         if (result?.stopped || result?.status === "cancelled" || isApprovalDenied(result?.error)) {
@@ -419,15 +432,13 @@ export function useAgentRun() {
           conversation.executionState = "stopped";
           if (conversation.id === store.activeId && isApprovalDenied(cause)) store.error = "";
         } else if (isCurrent()) {
-          const message = cause instanceof MallOpenError ? cause.message : errorMessage(cause);
+          const message = errorMessage(cause);
           assistant.executionStatus = "failed";
           if (conversation.id === store.activeId) store.error = message;
           if (!assistant.content)
             assistant.content = t("zhifuAgent.chat.requestFailed", { message });
         }
       } finally {
-        if (Object.keys(shopUsageTokens).length)
-          await zhifuCancelShopUsage(shopUsageTokens).catch(() => {});
         finishAssistant();
         release?.();
         if (store.conversationRuns[conversation.id]?.runId === runId) {

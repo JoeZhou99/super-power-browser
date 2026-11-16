@@ -295,6 +295,7 @@ export default {
       "openLinkFailed": "无法打开链接",
       "openResultFile": "打开结果文件",
       "openResultFileFailed": "无法打开结果文件",
+      "openResultFolder": "打开所在文件夹",
       "copy": "复制",
       "copied": "已复制",
       "copyCode": "复制代码",

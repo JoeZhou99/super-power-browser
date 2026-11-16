@@ -79,6 +79,20 @@ export function renderConfirmedFileLinks(html: string, paths: string[]): string 
   });
   return doc.body.innerHTML;
 }
+
+/** Recover a host-generated batch workbook when the IPC tool event was not persisted. */
+function legacySummaryFilesFromContent(content: string): string[] {
+  if (!/鎵€鏈夊簵閾烘搷浣滄眹鎬?/.test(content)) return [];
+  return [...content.matchAll(/姹囨€绘枃浠讹細`((?:[A-Za-z]:[\\/]|\/)[^`\r\n]+\.(?:xlsx?|csv))`/gi)].map(
+    (match) => match[1]
+  );
+}
+
+export function summaryFilesFromContentSafe(content: string): string[] {
+  return [...content.matchAll(/`((?:[A-Za-z]:[\\/]|\/)[^`\r\n]+\.(?:xlsx?|csv))`/gi)].map(
+    (match) => match[1]
+  );
+}
 export function resultFileName(path: string): string {
   return (path.split(/[\\/]/).pop() || path).replace(
     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-/i,
