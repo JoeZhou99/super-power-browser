@@ -1,4 +1,4 @@
-const {app,BrowserWindow,ipcMain,dialog,powerSaveBlocker}=require('electron');
+const {app,BrowserWindow,ipcMain,dialog,powerSaveBlocker,Tray,Menu}=require('electron');
 const path=require('node:path');
 const {configuration}=require('./model/InitData');
 const {ApiClient}=require('./services/ApiClient');
@@ -43,10 +43,38 @@ else app.whenReady().then(async()=>{
   handle('checkProxy',id=>proxyChecks.check(id));
   handle('rotateProxy',id=>proxyChecks.changeIp(id));
   const monitor=setInterval(()=>{browsers.enforceAccess().catch(()=>{});ai.enforceAccess().catch(()=>{});},10000);
-  let quitting=false,shutdown=null,applicationTask=null;
+  let quitting=false,shutdown=null,applicationTask=null,tray=null;
+  app.on('before-quit',()=>{quitting=true;});
+  const showWindow=()=>{
+    if(window.isDestroyed())return;
+    if(window.isMinimized())window.restore();
+    window.setSkipTaskbar(false);
+    window.show();window.focus();
+  };
+  const hideWindow=()=>{
+    if(window.isDestroyed())return;
+    // Closing the frameless window hides it from the taskbar but keeps the
+    // process available from the notification area.
+    window.setSkipTaskbar(true);
+    window.hide();
+  };
+  try{
+    tray=new Tray(path.join(config.resources,'branding/icon-16.png'));
+    tray.setToolTip('SuperPower Browser');
+    tray.on('click',showWindow);
+    tray.on('double-click',showWindow);
+    tray.setContextMenu(Menu.buildFromTemplate([
+      {label:'显示主窗口',click:showWindow},
+      {type:'separator'},
+      {label:'退出应用',click:()=>{finishQuit().catch(error=>dialog.showErrorBox('客户端尚未退出',error.message));}},
+    ]));
+  }catch(error){
+    // A missing tray asset must not prevent the browser from starting.
+    console.error('Unable to create the system tray icon:',error);
+  }
   async function finishQuit(relaunch=false){
     if(shutdown)return shutdown;
-    shutdown=(async()=>{await proxyChecks.suspend();await ai.stop();await browsers.closeAll();await closeAllProxyRuntimes();await power.dispose();quitting=true;clearInterval(monitor);local.server.close();if(relaunch)app.relaunch();window.destroy();app.quit();})();
+    shutdown=(async()=>{await proxyChecks.suspend();await ai.stop();await browsers.closeAll();await closeAllProxyRuntimes();await power.dispose();quitting=true;clearInterval(monitor);local.server.close();tray?.destroy();tray=null;if(relaunch)app.relaunch();window.destroy();app.quit();})();
     try{await shutdown;}catch(error){shutdown=null;proxyChecks.resume();throw error;}
   }
   async function applicationAction(action){
@@ -56,12 +84,13 @@ else app.whenReady().then(async()=>{
         await dialog.showMessageBox(window,{type:'error',buttons:['确认'],defaultId:0,title:'登录状态提示',message:'登录状态异常',detail:'你的登录信息已经失效，请重新登录。'});
         await proxyChecks.suspend();await browsers.closeAll();await closeAllProxyRuntimes();
         try{if(api.token)await api.request('/auth/logout',{method:'POST'});}catch(error){if(![401,403].includes(error.status))throw error;}
-        finally{await ai.stop();api.token='';window.webContents.send('spb:loggedOut');window.show();}
+        finally{await ai.stop();api.token='';window.webContents.send('spb:loggedOut');showWindow();}
       }else await finishQuit(action==='closeAllMultiOpen');
     })();
     try{await applicationTask;}finally{applicationTask=null;if(action==='LoginOut')proxyChecks.resume();}
   }
-  window.on('close',event=>{if(quitting)return;event.preventDefault();finishQuit().catch(error=>dialog.showErrorBox('浏览器尚未关闭',error.message));});
-  app.on('second-instance',()=>{if(window.isMinimized())window.restore();window.show();window.focus();});
+  window.on('close',event=>{if(quitting)return;event.preventDefault();hideWindow();});
+  app.on('second-instance',showWindow);
+  app.on('activate',showWindow);
   await window.loadURL(pageUrl);
 }).catch(error=>{dialog.showErrorBox('客户端启动失败',error.message);app.quit();});

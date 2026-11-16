@@ -25,7 +25,7 @@
 .collapsed .account-trigger{justify-content:center;padding:14px 0}
 .collapsed .sidebar-bottom{padding:12px 0 2px}.collapsed .sidebar-bottom a{justify-content:center}
 .shell .workspace-header{height:var(--workspace-header-height);top:var(--desktop-titlebar-height);padding:0 12px;gap:12px;background:#f4f6fb;border:0;z-index:30;isolation:isolate;-webkit-app-region:drag;user-select:none}
-.workspace-header button,.workspace-header a,.workspace-tabs,.workspace-actions{-webkit-app-region:no-drag}
+.workspace-header button,.workspace-header a,.workspace-tab,.workspace-actions{-webkit-app-region:no-drag}
 .shell .workspace-header>.collapse-toggle{width:34px;height:36px;padding:8px;font-size:18px;color:#71819b;flex-shrink:0}
 .shell .workspace-tabs{align-self:stretch;align-items:center;gap:4px;padding:0;overflow-x:auto;scrollbar-width:none}
 .workspace-tabs::-webkit-scrollbar{display:none}

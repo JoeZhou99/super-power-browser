@@ -10,7 +10,7 @@ function registerWindowControls(window,handle){
       else if(window.isMaximized())window.unmaximize();
       else window.maximize();
     }
-    // Keep the main window's existing shutdown handler responsible for closing shops and AI.
+    // The main process decides whether this is a hide-to-tray or a full quit.
     if(action==='close')window.close();
   });
   for(const event of ['maximize','unmaximize','enter-full-screen','leave-full-screen'])window.on(event,publish);
