@@ -23,7 +23,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class SecurityConfig {
     @Bean SecurityFilterChain chain(HttpSecurity http,AuthService auth,ExtensionSessions extensions,AiTickets tickets,ConfigOperatorAuth operators) throws Exception {
         return http.csrf(c->c.disable()).sessionManagement(c->c.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(c->c.requestMatchers("/api/admin/auth/login","/api/auth/login","/api/auth/register","/api/auth/invitations/*","/api/auth/invitations/*/applications","/api/health","/api/ai/skills/files/*").permitAll()
+            .authorizeHttpRequests(c->c.requestMatchers("/api/admin/auth/login","/api/auth/login","/api/auth/register","/api/auth/invitations/*","/api/auth/invitations/*/applications","/api/health","/api/ready","/api/ai/skills/files/*").permitAll()
                 .requestMatchers("/api/admin","/api/admin/**").hasAuthority("CONFIG_OPERATOR").anyRequest().hasAuthority("TENANT_ACTOR"))
             .exceptionHandling(c->c.authenticationEntryPoint((req,res,e)->error(res,401,"请先登录")))
             .addFilterBefore(new OncePerRequestFilter() {

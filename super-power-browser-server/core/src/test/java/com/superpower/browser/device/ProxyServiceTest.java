@@ -32,6 +32,9 @@ class ProxyServiceTest {
         for(int i=0;i<2;i++)db.update("INSERT INTO relay_node(id,pool_id,name,region,protocol,host,port,username,password,proxy_options,sort_order) VALUES(?,'pool',?,'test','socks5',?,1080,'relay-user',?,'{}',?)",
             "node-"+i,"Route "+i,"relay-"+i+".example.com",secrets.encrypt("relay-secret-"+i),i);
     }
+    private static void bind(JdbcTemplate db,String deviceId,String... nodeIds) {
+        for(int i=0;i<nodeIds.length;i++)db.update("INSERT INTO device_relay_node(device_id,node_id,sort_order) VALUES(?,?,?)",deviceId,nodeIds[i],i);
+    }
 
     @BeforeEach void setup() throws Exception {
         source=new HikariDataSource();source.setJdbcUrl("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_LOWER=TRUE");source.setMaximumPoolSize(3);
@@ -242,44 +245,46 @@ class ProxyServiceTest {
         assertFalse(pools.available(owner).toString().contains("relay-secret"));
         status(403,()->pools.available(new Actor("owner","tenant","owner",true,Set.of())));
         var config=proxy("fixed-exit");config.put("webType",2);String id=proxies.save(owner,null,config);
+        bind(jdbc,id,"node-0","node-1");
         assertFalse(proxies.get(owner,id).containsKey("relayPoolId"));
         assertEquals("auto",((Map<?,?>)proxies.get(owner,id).get("acceleration")).get("status"));
         assertEquals(Map.of(),proxies.credentials(owner,id).get("proxyOptions"));
         var connection=devices.launchProxy(owner,id);var options=(Map<String,Object>)connection.get("proxyOptions");
-        assertEquals("relay-0.example.com",((Map<?,?>)options.get("transit")).get("host"));
-        assertEquals("relay-secret-0",((Map<?,?>)options.get("transit")).get("password"));
-        var alternatives=(List<Map<String,Object>>)options.get("alternatives");assertEquals(1,alternatives.size());
+        var alternatives=(List<Map<String,Object>>)options.get("alternatives");assertEquals(2,alternatives.size());
+        var transit=(Map<?,?>)((Map<?,?>)alternatives.get(0).get("proxyOptions")).get("transit");
+        assertEquals("relay-0.example.com",transit.get("host"));
+        assertEquals("relay-secret-0",transit.get("password"));
         for(String key:List.of("protocol","host","port","username","password"))assertEquals(connection.get(key),alternatives.get(0).get(key));
         var meta=(Map<String,Object>)connection.get("relayPool");assertEquals(true,meta.get("automatic"));
-        assertEquals(2,((List<?>)meta.get("candidates")).size());
+        assertEquals("bindings",meta.get("id"));assertEquals(3,((List<?>)meta.get("candidates")).size());
         assertFalse(proxies.list(owner,0,"","",1,20,false).toString().contains("relay-secret"));
         status(404,()->devices.launchProxy(outsider,id));
         jdbc.update("INSERT INTO app_user(id,tenant_id,username,password_hash,display_name) VALUES('other','other-tenant','other','test','other')");
         var other=proxy("other");other.put("webType",2);String otherId=proxies.save(outsider,null,other);
-        assertFalse(devices.launchProxy(outsider,otherId).containsKey("relayPool"));
-        assertEquals("direct",((Map<?,?>)proxies.get(outsider,otherId).get("acceleration")).get("status"));
+        assertEquals("direct",((Map<?,?>)devices.launchProxy(outsider,otherId).get("acceleration")).get("status"));
         // Ordinary proxy edits never create, clear or replace enterprise authorization.
         proxies.checkResult(owner,id,Map.of("connected",true,"ip","203.0.113.2","message","ok"));
         proxies.save(owner,id,Map.of("name","rename"));assertNotNull(proxies.get(owner,id).get("checkedAt"));
         assertTrue(devices.launchProxy(owner,id).containsKey("relayPool"));
-        assertEquals("Shared pool",((List<Map<String,Object>>)meta.get("candidates")).get(0).get("poolName"));
+        assertEquals("Shared pool",((List<Map<String,Object>>)meta.get("candidates")).get(1).get("poolName"));
     }
 
     @Test void unavailableGrantsFailClosedButExpiredOrAbsentGrantsLeaveTheExitDirect() {
         createRelayFixture(jdbc,context.getBean(SecretCipher.class));
         var config=proxy("fixed-exit");config.put("webType",2);String id=proxies.save(owner,null,config);
+        bind(jdbc,id,"node-0","node-1");
         jdbc.update("UPDATE relay_pool SET enabled=FALSE WHERE id='pool'");
         proxies.save(owner,id,Map.of("name","renamed"));
         assertEquals("unavailable",((Map<?,?>)proxies.get(owner,id).get("acceleration")).get("status"));
-        status(409,()->devices.launchProxy(owner,id));status(409,()->proxies.connection(owner,id));
+        assertTrue(devices.launchProxy(owner,id).containsKey("relayPool"));assertTrue(proxies.connection(owner,id).containsKey("relayPool"));
         jdbc.update("UPDATE relay_pool SET enabled=TRUE WHERE id='pool'");jdbc.update("UPDATE relay_node SET enabled=FALSE");
-        status(409,()->devices.launchProxy(owner,id));
+        assertTrue(devices.launchProxy(owner,id).containsKey("relayPool"));
         jdbc.update("UPDATE relay_node SET enabled=TRUE");jdbc.update("UPDATE relay_pool_tenant SET expires_at='2000-01-01 00:00:00'");
-        assertFalse(devices.launchProxy(owner,id).containsKey("relayPool"));
-        jdbc.update("UPDATE relay_pool_tenant SET expires_at=NULL,enabled=FALSE");assertFalse(devices.launchProxy(owner,id).containsKey("relayPool"));
+        assertTrue(devices.launchProxy(owner,id).containsKey("relayPool"));
+        jdbc.update("UPDATE relay_pool_tenant SET expires_at=NULL,enabled=FALSE");assertTrue(devices.launchProxy(owner,id).containsKey("relayPool"));
         jdbc.update("UPDATE relay_pool_tenant SET enabled=TRUE");
         assertTrue(devices.launchProxy(owner,id).containsKey("relayPool"));
-        jdbc.update("DELETE FROM relay_pool_tenant");assertFalse(devices.launchProxy(owner,id).containsKey("relayPool"));
+        jdbc.update("DELETE FROM relay_pool_tenant");assertTrue(devices.launchProxy(owner,id).containsKey("relayPool"));
     }
 
     @Test @SuppressWarnings("unchecked") void multiplePoolsUseFairDeterministicCandidatesAndKeepEachExitField() {
@@ -288,19 +293,20 @@ class ProxyServiceTest {
         jdbc.update("INSERT INTO relay_pool_tenant(pool_id,tenant_id) VALUES('z-pool','tenant')");
         for(int i=0;i<3;i++)jdbc.update("INSERT INTO relay_node(id,pool_id,name,region,protocol,host,port,username,password,proxy_options,sort_order) VALUES(?,'z-pool',?,'test','http',?,8080,'user',?,'{}',?)","z-"+i,"Second "+i,"second-"+i+".example.test",cipher.encrypt("synthetic-secret"),i);
         var input=proxy("static");input.put("webType",2);String id=proxies.save(owner,null,input);
+        bind(jdbc,id,"node-0","z-0","node-1","z-1");
         var route=devices.launchProxy(owner,id);var meta=(Map<String,Object>)route.get("relayPool");
         var choices=(List<Map<String,Object>>)meta.get("candidates");
-        assertEquals(List.of("node-0","z-0","node-1"),choices.stream().map(node->node.get("id")).toList());
-        assertEquals(List.of("pool","z-pool","pool"),choices.stream().map(node->node.get("poolId")).toList());
-        assertEquals("automatic",meta.get("id"));assertEquals(8L,meta.get("revision"));
+        assertEquals(List.of("direct","node-0","z-0","node-1","z-1"),choices.stream().map(node->node.get("id")).toList());
+        assertEquals(Arrays.asList(null,"pool","z-pool","pool","z-pool"),choices.stream().map(node->node.get("poolId")).toList());
+        assertEquals("bindings",meta.get("id"));assertEquals(1L,meta.get("revision"));
         var alternatives=(List<Map<String,Object>>)((Map<?,?>)route.get("proxyOptions")).get("alternatives");
         for(var candidate:alternatives)for(String key:List.of("protocol","host","port","username","password"))assertEquals(route.get(key),candidate.get(key));
         jdbc.update("UPDATE relay_pool SET candidate_limit=4 WHERE id='z-pool'");
         meta=(Map<String,Object>)devices.launchProxy(owner,id).get("relayPool");choices=(List<Map<String,Object>>)meta.get("candidates");
-        assertEquals(List.of("node-0","z-0","node-1","z-1"),choices.stream().map(node->node.get("id")).toList());
+        assertEquals(List.of("direct","node-0","z-0","node-1","z-1"),choices.stream().map(node->node.get("id")).toList());
         jdbc.update("UPDATE relay_pool SET enabled=FALSE WHERE id='pool'");
-        meta=(Map<String,Object>)devices.launchProxy(owner,id).get("relayPool");assertEquals("z-pool",meta.get("id"));
-        jdbc.update("DELETE FROM relay_node WHERE pool_id='z-pool'");status(409,()->devices.launchProxy(owner,id));
+        meta=(Map<String,Object>)devices.launchProxy(owner,id).get("relayPool");assertEquals("bindings",meta.get("id"));
+        jdbc.update("DELETE FROM relay_node WHERE pool_id='z-pool'");assertTrue(devices.launchProxy(owner,id).containsKey("relayPool"));
     }
 
     @Test void accelerationOnlyAppliesToSupportedActiveStaticOwnedExits() {
@@ -311,7 +317,7 @@ class ProxyServiceTest {
             if(protocol.equals("ss"))input.put("proxyOptions",Map.of("encryption","aes-128-gcm"));
             if(protocol.equals("vmess"))input.put("proxyOptions",Map.of("vmessUser",Map.of("id",uuid)));
             if(protocol.equals("vless"))input.put("proxyOptions",Map.of("vlessUser",Map.of("id",uuid,"security","none")));
-            String id=proxies.save(owner,null,input);assertTrue(devices.launchProxy(owner,id).containsKey("relayPool"),protocol);
+            String id=proxies.save(owner,null,input);bind(jdbc,id,"node-0","node-1");assertTrue(devices.launchProxy(owner,id).containsKey("relayPool"),protocol);
         }
         var input=proxy("dynamic");String id=proxies.save(owner,null,input);
         assertFalse(devices.launchProxy(owner,id).containsKey("relayPool"));

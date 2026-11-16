@@ -333,7 +333,13 @@ test('actual chat flow reports every failed shop with name, UUID and unmasked ca
     '@/ai/utils/electronApi': {
       zhifuBeginShopUsage: async () => ({ 'e3813-synthetic': 'synthetic-token' }),
       zhifuCancelShopUsage: async () => { cancellations++; },
-      zhifuRunAgent: async () => { assert.fail('opening-only failure must not invoke the model'); },
+      // Shop opening is owned by the desktop host. The UI still invokes the
+      // host boundary, which returns the aggregated opening errors without
+      // calling the model.
+      zhifuRunAgent: async () => ({
+        status: 'error',
+        error: '\u5e97\u94fa\u300c\u5e97\u94fa\u7532\u300d\uff08ID\uff1ae3813-synthetic\uff09\u6253\u5f00\u5931\u8d25\uff1aECONNREFUSED synthetic\\n\u5e97\u94fa\u300c\u5e97\u94fa\u4e59\u300d\uff08ID\uff1ab3813-synthetic\uff09\u6253\u5f00\u5931\u8d25\uff1aETIMEDOUT synthetic',
+      }),
     },
     '@/ai/views/modelManage/composables/useModelPlanAccess': {
       useModelPlanAccess: () => ({ showTrial: { value: false }, refresh: async () => {} }),
@@ -347,5 +353,6 @@ test('actual chat flow reports every failed shop with name, UUID and unmasked ca
   assert.equal(store.error, '店铺「店铺甲」（ID：e3813-synthetic）打开失败：ECONNREFUSED synthetic\n店铺「店铺乙」（ID：b3813-synthetic）打开失败：ETIMEDOUT synthetic');
   assert.equal(conversation.messages.at(-1).content, store.error);
   assert.equal(conversation.messages.at(-1).executionStatus, 'failed');
-  assert.equal(cancellations, 1);
+  // Shop usage is finalized by the desktop host that owns opening failures.
+  assert.equal(cancellations, 0);
 });

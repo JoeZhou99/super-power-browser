@@ -12,7 +12,10 @@ public class AuthController {
     private final PublicAuthRateLimiter publicLimits = new PublicAuthRateLimiter();
     public AuthController(AuthService auth) { this.auth=auth; }
     @GetMapping("/health") Object health() { return Map.of("status","UP","version","0.1.0"); }
-    @PostMapping("/auth/login") Object login(@RequestBody Map<String,Object> body,jakarta.servlet.http.HttpServletRequest request) { return auth.login(body,Objects.toString(request.getHeader("User-Agent"),""),request.getRemoteAddr()); }
+    @PostMapping("/auth/login") Object login(@RequestBody Map<String,Object> body,jakarta.servlet.http.HttpServletRequest request) {
+        publicLimits.check("login",request.getRemoteAddr(),10);
+        return auth.login(body,Objects.toString(request.getHeader("User-Agent"),""),request.getRemoteAddr());
+    }
     @PostMapping("/auth/register") Object register(@RequestBody Map<String,Object> body,jakarta.servlet.http.HttpServletRequest request) {
         publicLimits.check("register",request.getRemoteAddr(),12);
         return auth.register(body,Objects.toString(request.getHeader("User-Agent"),""),request.getRemoteAddr());

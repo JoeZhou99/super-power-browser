@@ -19,7 +19,8 @@ class TaskRepository {
     void complete(String taskId,String orderId) { db.execute("UPDATE task SET status='DONE',lease_until=NULL,error_message=NULL WHERE id=?",taskId); db.execute("UPDATE business_order SET delivery_status='DELIVERED',failure_reason=NULL,updated_at=CURRENT_TIMESTAMP WHERE id=?",orderId); }
     void failed(Map<String,Object> task,String message) {
         boolean exhausted=number(task,"attempts")>=5;
-        db.execute("UPDATE task SET status=?,available_at=?,lease_until=NULL,error_message=? WHERE id=?",exhausted?"FAILED":"PENDING",Timestamp.from(Instant.now().plusSeconds(60)),message,text(task,"id"));
+        long delaySeconds=exhausted?900:Math.min(900,60L << Math.max(0,number(task,"attempts")-1));
+        db.execute("UPDATE task SET status=?,available_at=?,lease_until=NULL,error_message=? WHERE id=?",exhausted?"FAILED":"PENDING",Timestamp.from(Instant.now().plusSeconds(delaySeconds)),message,text(task,"id"));
         db.execute("UPDATE business_order SET delivery_status=?,failure_reason=?,updated_at=CURRENT_TIMESTAMP WHERE id=?",exhausted?"FAILED":"PENDING",message,text(task,"orderId"));
     }
     void processing(String id) { db.execute("UPDATE business_order SET delivery_status='PROCESSING',updated_at=CURRENT_TIMESTAMP WHERE id=?",id); }

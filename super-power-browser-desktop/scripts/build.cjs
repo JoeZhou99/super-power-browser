@@ -9,6 +9,9 @@ execFileSync(process.execPath,[path.join(aiRoot,'scripts/build-embedded.mjs')],{
 const pluginRoot=path.resolve(root,'../super-power-browser-plugins');
 fs.cpSync(path.resolve(root,'../branding'),path.join(root,'branding'),{recursive:true});
 require('./notification-sound.cjs')(path.join(root,'branding'));
+for(const asset of ['app.ico','icon-16.png','icon-32.png']){
+  if(!fs.existsSync(path.join(root,'branding',asset)))throw new Error(`缺少桌面发布资源: branding/${asset}`);
+}
 execFileSync(process.execPath,[path.join(pluginRoot,'scripts/build.mjs')],{stdio:'inherit'});
 fs.cpSync(path.join(pluginRoot,'dist/superpower/Plugin'),path.join(root,'Plugin'),{recursive:true});
 fs.copyFileSync(path.join(pluginRoot,'lib/bootstrap.mjs'),path.join(root,'src/main/pluginManage/bootstrap.mjs'));

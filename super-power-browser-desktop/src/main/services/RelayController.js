@@ -8,9 +8,7 @@ const bounded = (value, fallback, minimum, maximum) => Number.isInteger(value) ?
 class RelayController {
   constructor(routes, switchRoute, {policy = {}, signal, now = Date.now, schedule = setTimeout, cancel = clearTimeout} = {}) {
     this.routes = routes; this.switchRoute = switchRoute; this.now = now; this.schedule = schedule; this.cancel = cancel;
-    // Route selection is manual. A failed route is reported to the client and
-    // never replaced silently while the shop is running.
-    this.automatic = false; this.failures = 0; this.status = 'initializing'; this.lastSwitchAt = 0;
+    this.automatic = policy.automatic !== false; this.failures = 0; this.status = 'initializing'; this.lastSwitchAt = 0;
     this.startupChecks = [];
     this.interval = bounded(policy.probeIntervalMs, 60000, 15000, 300000);
     this.threshold = bounded(policy.failureThreshold, 3, 2, 10);

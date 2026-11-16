@@ -411,7 +411,8 @@ export function useAgentRun() {
         } else if (isCurrent()) {
           if (result.output) assistant.content = result.output;
           if (result.closeMessage) assistant.content += `\n\n${result.closeMessage}`;
-          if (result.status) assistant.executionStatus = result.status;
+          if (result.status)
+            assistant.executionStatus = result.status === "error" ? "failed" : result.status;
           if (
             result.status === "success" &&
             !result.error &&
@@ -421,7 +422,12 @@ export function useAgentRun() {
           )
             store.error = "";
           if (result.error) {
-            const friendlyError = errorMessage(result.error);
+            const rawError = typeof result.error === "string" ? result.error : String(result.error);
+            const friendlyError = (result.status === "error" && /\u5e97\u94fa.*\u6253\u5f00\u5931\u8d25/u.test(rawError)
+              ? rawError
+              : errorMessage(result.error)
+            ).replace(/\\n/g, "\n");
+            if (conversation.id === store.activeId) store.error = friendlyError;
             if (!assistant.content.includes(friendlyError))
               assistant.content += `\n\n${friendlyError}`;
           }

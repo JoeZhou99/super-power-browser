@@ -1,6 +1,7 @@
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const net=require('node:net');
+const {setInterval,clearInterval}=require('node:timers');
 const {spawn}=require('node:child_process');
 const {ProxyRuntime,upstream,proxyError}=require('../services/ProxyRuntime');
 const {ProxyRoutes,proxySnapshotId}=require('../services/ProxyRoutes');
@@ -94,7 +95,7 @@ class BrowserHost {
     const automatic=followsProxy(environment.fingerprint),localeRequired=automatic.language||automatic.timezone;
     const localeCache=new ProxyLocaleCache(profile,environment);
     const run={status:'starting',startupTimings,pluginGeneration:0,routeRevision:0,networkAttempt:0,localeVerified:!localeRequired,networkController:new AbortController(),notifications:environment.fingerprint.notifications!==false,kernelVersion:kernel.version,proxy,profile,iconPath,child:null,port:await freePort(),debuggerUrl:null};
-    const proxyProbeBudget=(startup=Boolean(run.networkStarting))=>{
+    const proxyProbeBudget=(startup=Boolean(run.networkStarting||run.networkState?.phase==='initializing'))=>{
       if(!environment.proxy.relayPool)return {};
       // Startup can accommodate a slow relay handshake; later checks must fit
       // inside the 15-second network-info RPC. The relay startup round is capped separately.
@@ -136,12 +137,12 @@ class BrowserHost {
         run.startupWindow?.update({message:verdict.allowed?'代理检测通过，正在启动店铺':verdict.message,retry:!verdict.allowed});
       };
       const routeCache=new ProxyRouteCache(this.config.dataPath);
-      const routes=new ProxyRoutes(environment.proxy,proxy,{target:environment.startUrl,resources:this.config.resources,signal:probeSignal,cache:routeCache,reuse:true,
+      const routes=new ProxyRoutes(environment.proxy,proxy,{target:environment.startUrl,resources:this.config.resources,signal:probeSignal,cache:routeCache,reuse:false,
         probe:async(candidate,candidateSignal)=>{
           // One identical lightweight HTTPS endpoint for every candidate. Its
           // response proves the real exit and gives complete-path elapsed time.
           // No locale lookup or merchant HEAD is a prerequisite for list speed.
-          const exit=await collectGeo({proxyUrl:candidate.url,providers:['https://api.ipify.org?format=json'],timeout:12000,requestTimeout:12000,
+          const exit=await collectGeo({proxyUrl:candidate.url,providers:['https://api.ipify.org?format=json'],...proxyProbeBudget(false),
             expectedIp:exitValidation.expectedIp,firstValid:true,signal:candidateSignal});
           const verdict=exitValidation.validate(exit);if(!verdict.allowed)throw proxyError(verdict.message);return exit;
         },

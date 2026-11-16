@@ -35,6 +35,9 @@ class ExtensionRoutesTest {
         for(int i=0;i<2;i++)db.update("INSERT INTO relay_node(id,pool_id,name,region,protocol,host,port,username,password,proxy_options,sort_order) VALUES(?,'pool',?,'test','socks5',?,1080,'relay-user',?,'{}',?)",
             "node-"+i,"Route "+i,"relay-"+i+".example.com",secrets.encrypt("relay-secret-"+i),i);
     }
+    private static void bind(JdbcTemplate db,String deviceId,String... nodeIds) {
+        for(int i=0;i<nodeIds.length;i++)db.update("INSERT INTO device_relay_node(device_id,node_id,sort_order) VALUES(?,?,?)",deviceId,nodeIds[i],i);
+    }
 
     @BeforeEach void setup() throws Exception {
         source=new HikariDataSource();source.setJdbcUrl("jdbc:h2:mem:"+UUID.randomUUID()+";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1");
@@ -52,6 +55,7 @@ class ExtensionRoutesTest {
         for(String user:List.of("owner","stranger"))jdbc.update("INSERT INTO app_user(id,tenant_id,username,password_hash,display_name) VALUES(?,'tenant',?,'synthetic',?)",user,user,user);
         createRelayFixture(jdbc,cipher);
         deviceId=proxies.save(owner,null,Map.of("name","proxy","host","main.example.com","port",8080,"protocol","http","username","primary-user","password","primary-secret"));
+        bind(jdbc,deviceId,"node-0","node-1");
         for(String shop:List.of("first","second"))jdbc.update("INSERT INTO environment(id,tenant_id,owner_id,name,start_url,device_id,fingerprint_seed,fingerprint) VALUES(?,'tenant','owner',?,'https://example.com',?,'seed','{}')",shop,shop,deviceId);
     }
     @AfterEach void close(){if(context!=null)context.close();if(jdbc!=null)jdbc.execute("DROP ALL OBJECTS");if(source!=null)source.close();}
@@ -61,32 +65,32 @@ class ExtensionRoutesTest {
         var envelope=(Map<String,Object>)extensions.call(first,"getMallInfo",Map.of());
         var mall=(Map<String,Object>)envelope.get("data");var main=(Map<String,Object>)mall.get("has_one_agent_ip_v2");
         assertEquals(0,main.get("candidateIndex"));var candidates=(List<Map<String,Object>>)main.get("transfer_proxies");
-        assertEquals(1,candidates.size());assertEquals(1,candidates.get(0).get("candidateIndex"));
+        assertEquals(2,candidates.size());assertEquals(1,candidates.get(0).get("candidateIndex"));assertEquals(2,candidates.get(1).get("candidateIndex"));
         String publicData=json(envelope);assertFalse(publicData.contains("primary-secret"));assertFalse(publicData.contains("alternate-secret"));assertFalse(publicData.contains("alternate-user"));
         assertEquals(0,extensions.bootstrap(first).get("preferredCandidateIndex"));
         assertEquals(snapshot(first),snapshot(second));
-        assertEquals("relay-1.example.com",candidates.get(0).get("ip"));assertEquals("Route 1",candidates.get(0).get("name"));
+        assertEquals("relay-0.example.com",candidates.get(0).get("ip"));assertEquals("Route 0",candidates.get(0).get("name"));
         assertFalse(publicData.contains("relay-secret"));
-        extensions.call(first,"updateMainTransfer",Map.of("mall_id","first","candidateIndex",1,"snapshotId",snapshot(first),"password","injected-secret","transfer_name","untrusted.example.com"));
-        assertEquals(1,extensions.bootstrap(first).get("preferredCandidateIndex"));assertEquals(0,extensions.bootstrap(second).get("preferredCandidateIndex"));
+        extensions.call(first,"updateMainTransfer",Map.of("mall_id","first","candidateIndex",2,"snapshotId",snapshot(first),"password","injected-secret","transfer_name","untrusted.example.com"));
+        assertEquals(2,extensions.bootstrap(first).get("preferredCandidateIndex"));assertEquals(0,extensions.bootstrap(second).get("preferredCandidateIndex"));
         String stored=jdbc.queryForObject("SELECT payload FROM extension_document WHERE environment_id='first' AND document_id='preferredProxyRoute'",String.class);
         assertFalse(stored.contains("candidateIndex"));assertFalse(stored.contains("secret"));
-        assertEquals(403,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",2))).status);
+        assertEquals(403,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",3))).status);
         assertEquals(400,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",0.5))).status);
         assertEquals(403,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("mall_id","second","candidateIndex",0))).status);
         assertEquals(404,assertThrows(BusinessException.class,()->extensions.bootstrap(session("first",stranger))).status);
-        assertEquals(1,extensions.bootstrap(first).get("preferredCandidateIndex"));
+        assertEquals(2,extensions.bootstrap(first).get("preferredCandidateIndex"));
     }
 
     @Test void editedOrRemovedCandidatesInvalidateTheSavedPreference() {
         var first=session("first",owner);
-        extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",1,"snapshotId",snapshot(first)));
-        proxies.save(owner,deviceId,Map.of("name","renamed"));assertEquals(1,extensions.bootstrap(first).get("preferredCandidateIndex"));
+        extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",2,"snapshotId",snapshot(first)));
+        proxies.save(owner,deviceId,Map.of("name","renamed"));assertEquals(2,extensions.bootstrap(first).get("preferredCandidateIndex"));
         jdbc.update("UPDATE relay_node SET host='replacement.example.com' WHERE id='node-1'");
         assertEquals(0,extensions.bootstrap(first).get("preferredCandidateIndex"));
-        extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",1,"snapshotId",snapshot(first)));assertEquals(1,extensions.bootstrap(first).get("preferredCandidateIndex"));
+        extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",2,"snapshotId",snapshot(first)));assertEquals(2,extensions.bootstrap(first).get("preferredCandidateIndex"));
         jdbc.update("UPDATE relay_node SET enabled=FALSE WHERE id='node-1'");assertEquals(0,extensions.bootstrap(first).get("preferredCandidateIndex"));
-        assertEquals(403,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",1))).status);
+        assertEquals(403,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",2))).status);
     }
 
     @Test void runningSnapshotCannotSaveAPreferenceForAnEditedRouteAtTheSameIndex() {
@@ -94,10 +98,10 @@ class ExtensionRoutesTest {
         proxies.save(owner,deviceId,Map.of("name","renamed"));assertEquals(started,snapshot(first));
         jdbc.update("UPDATE relay_node SET host='replacement.example.com' WHERE id='node-1'");
         assertNotEquals(started,snapshot(first));
-        assertEquals(409,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",1,"snapshotId",started))).status);
-        assertEquals(409,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",1))).status);
+        assertEquals(409,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",2,"snapshotId",started))).status);
+        assertEquals(409,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",2))).status);
         assertEquals(0,extensions.bootstrap(first).get("preferredCandidateIndex"));
-        extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",1,"snapshotId",snapshot(first)));
-        assertEquals(1,extensions.bootstrap(first).get("preferredCandidateIndex"));
+        extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",2,"snapshotId",snapshot(first)));
+        assertEquals(2,extensions.bootstrap(first).get("preferredCandidateIndex"));
     }
 }
