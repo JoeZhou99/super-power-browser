@@ -123,11 +123,11 @@ SuperPower 检测页自动重试最多一次，修复旧版 `maxRetryTimes > max
 
 ### 原 Xray 迁移验收
 
-在 Web 目录执行 `npm run build`，再在 desktop 目录执行 `npm run build`。桌面构建会准备当前平台代理资源、构建插件并复制 Web 产物。
+先在 Web 目录执行 `npm run build`，再构建平级插件项目并将 ZIP 复制到 `super-power-browser-desktop/Plugin/`，最后在 desktop 目录执行 `npm run build`。桌面构建会准备代理资源并复制 Web 产物。
 
 desktop 的 `npm run test:proxy` 覆盖配置编译、真实代理转发、共享引用、并发启动、取消、恢复、认证和失败不直连。设置 `SPB_XRAY_TEST_PATH` 为本项目准备的可执行文件，可额外验证各传输配置被真实 Xray 接受。
 
-插件认证和启动的真实 Chromium 测试位于 `super-power-browser-plugins/scripts/proxy-auth.test.mjs` 和 `proxy-bootstrap.test.mjs`，设置 `SPB_PROXY_AUTH_BROWSER=1` 和 `SPB_PLAYWRIGHT_MODULE` 后运行。测试使用临时 profile、本机代理与本机目标，不使用真实店铺；重开用例复用同一临时 profile，并显式重放上次的过期 PAC，验证新端口在后台请求前生效。当前 Chromium 144 的 unpacked 扩展重开不会稳定保留旧 PAC，因此这个用例验证的是受控旧状态恢复，不代表自然复现了持久化故障。
+插件认证和启动的真实 Chromium 测试位于 `../../super-power-browser-plugins/scripts/proxy-auth.test.mjs` 和 `proxy-bootstrap.test.mjs`，设置 `SPB_PROXY_AUTH_BROWSER=1` 和 `SPB_PLAYWRIGHT_MODULE` 后运行。测试使用临时 profile、本机代理与本机目标，不使用真实店铺；重开用例复用同一临时 profile，并显式重放上次的过期 PAC，验证新端口在后台请求前生效。当前 Chromium 144 的 unpacked 扩展重开不会稳定保留旧 PAC，因此这个用例验证的是受控旧状态恢复，不代表自然复现了持久化故障。
 
 本次 Windows 验收共 180 项：桌面 82 项、插件 36 项、Web 导入/配置 22 项、服务端 40 项，全部通过且无跳过。覆盖真实代理转发、签名清单、线路快照、取消清理、认证/切线/分流和服务端回归；真实 Chromium 验证店铺和资源域名分别通过各自认证入口，以及重开时受控过期 PAC 的恢复。服务端使用独立 H2 数据库；本机 JDK 17 通过命令行覆盖 `java.version` 执行测试，项目声明的 Java 版本未修改。Web 类型检查和生产构建、桌面构建、插件 132 个文件及 178 个资源引用验证均通过。
 

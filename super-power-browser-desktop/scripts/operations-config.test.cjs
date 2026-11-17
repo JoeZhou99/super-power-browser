@@ -70,7 +70,7 @@ test('published rules have bounded supported endpoint and match-pattern shapes',
   assert.deepEqual(validateOperations(body).accessPolicy.exceptions,['https://support.example.com/']);
 });
 test('global routing feeds actual PAC without changing proxy snapshot; nonempty local rules win',async()=>{
-  const {createProxyPac}=await import(pathToFileURL(path.resolve(__dirname,'../../super-power-browser-plugins/runtime/proxy-routing.mjs')));
+  const {createProxyPac}=await import(pathToFileURL(path.resolve(__dirname,'../../../super-power-browser-plugins/runtime/proxy-routing.mjs')));
   const vm=require('node:vm'),ops=validateOperations(publication());
   const proxy={protocol:'http',host:'proxy.example.com',port:8080,username:'synthetic',password:'synthetic',proxyOptions:{}};
   const before=JSON.stringify(proxy),snapshot=proxySnapshotId(proxy);
@@ -98,7 +98,7 @@ test('global routing feeds actual PAC without changing proxy snapshot; nonempty 
 });
 
 test('managed relay pools keep every destination on the same exit despite global or former local bypass rules',async()=>{
-  const {createProxyPac}=await import(pathToFileURL(path.resolve(__dirname,'../../super-power-browser-plugins/runtime/proxy-routing.mjs')));
+  const {createProxyPac}=await import(pathToFileURL(path.resolve(__dirname,'../../../super-power-browser-plugins/runtime/proxy-routing.mjs')));
   const vm=require('node:vm'),ops=validateOperations(publication());
   const proxy={protocol:'http',host:'exit.example.com',port:8080,relayPool:{id:'pool',name:'共享线路',candidates:[{id:'relay'}]},
     proxyOptions:{transit:{protocol:'socks5',host:'relay.example.com',port:1080},routing:{directDomains:['legacy.example.com']}}};

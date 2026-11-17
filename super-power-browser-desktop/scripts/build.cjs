@@ -4,17 +4,22 @@ const {execFileSync}=require('node:child_process');
 const root=path.resolve(__dirname,'..');
 execFileSync(process.execPath,[path.join(__dirname,'prepare-proxy-runtime.cjs')],{cwd:root,stdio:'inherit'});
 execFileSync(process.execPath,[path.join(__dirname,'prepare-ssr-runtime.cjs'),'--host-if-supported'],{cwd:root,stdio:'inherit'});
-const aiRoot=path.resolve(root,'../super-power-browser-ai');
+const aiRoot=path.resolve(root,'resources/ai');
 execFileSync(process.execPath,[path.join(aiRoot,'scripts/build-embedded.mjs')],{cwd:aiRoot,stdio:'inherit'});
-const pluginRoot=path.resolve(root,'../super-power-browser-plugins');
 fs.cpSync(path.resolve(root,'../branding'),path.join(root,'branding'),{recursive:true});
 require('./notification-sound.cjs')(path.join(root,'branding'));
 for(const asset of ['app.ico','icon-16.png','icon-32.png']){
   if(!fs.existsSync(path.join(root,'branding',asset)))throw new Error(`缺少桌面发布资源: branding/${asset}`);
 }
-execFileSync(process.execPath,[path.join(pluginRoot,'scripts/build.mjs')],{stdio:'inherit'});
-fs.cpSync(path.join(pluginRoot,'dist/superpower/Plugin'),path.join(root,'Plugin'),{recursive:true});
-fs.copyFileSync(path.join(pluginRoot,'lib/bootstrap.mjs'),path.join(root,'src/main/pluginManage/bootstrap.mjs'));
+const pluginDir=path.join(root,'Plugin');
+const pluginPackages=['RXMallHelper','RXAccountManage'];
+for(const name of pluginPackages){
+  const archive=path.join(pluginDir,`${name}.zip`);
+  if(!fs.existsSync(archive)||fs.statSync(archive).size<1024)throw new Error(`缺少有效插件安装包: Plugin/${name}.zip，请先在平级的 super-power-browser-plugins 项目构建并复制 ZIP`);
+  const AdmZip=require('adm-zip');
+  const zip=new AdmZip(archive);
+  if(!zip.getEntry('manifest.json')||!zip.getEntry('runtime/build.json'))throw new Error(`插件安装包内容不完整: Plugin/${name}.zip`);
+}
 function check(dir){for(const entry of fs.readdirSync(dir,{withFileTypes:true})){const file=path.join(dir,entry.name);if(entry.isDirectory())check(file);else if(file.endsWith('.js'))execFileSync(process.execPath,['--check',file],{stdio:'inherit'});}}
 check(path.join(root,'src'));
 const out=path.join(root,'out');

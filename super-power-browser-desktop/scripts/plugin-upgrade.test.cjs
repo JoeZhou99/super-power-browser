@@ -8,7 +8,7 @@ const WebSocket = require('ws');
 const {activatePlugins} = require('../src/main/pluginManage/PluginActivation');
 
 const desktop = path.resolve(__dirname, '..');
-const plugins = path.resolve(desktop, '../super-power-browser-plugins');
+const plugins = path.resolve(desktop, '../../super-power-browser-plugins');
 
 async function chromiumExecutable() {
   if (process.env.SPB_CHROMIUM_EXECUTABLE) return path.resolve(process.env.SPB_CHROMIUM_EXECUTABLE);

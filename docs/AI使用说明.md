@@ -5,7 +5,7 @@ SuperPower AI 是 SuperPower Browser 的 AI 工作区，提供聊天、附件、
 ## 组成
 
 - `super-power-browser-web/src/ai`：AI 工作区页面。
-- `super-power-browser-ai`：本机执行引擎、工具、审批、技能及会话存储。
+- `super-power-browser-desktop/resources/ai`：本机执行引擎、工具、审批、技能及会话存储。
 - `super-power-browser-desktop/src/main/services/AiHost.js`：桌面通信、账号及店铺权限校验。
 - `super-power-browser-server/ai`：模型配置、官方模型网关、套餐、额度及技能商店，通过现有 API 服务部署。
 
@@ -19,9 +19,9 @@ AI 使用权限为 `ai.use`，套餐购买权限为 `ai.purchase`。店铺执行
 
 ## 安装和启动
 
-1. `super-power-browser-ai`：`npm ci --ignore-scripts`。
+1. `super-power-browser-desktop/resources/ai`：`npm ci --ignore-scripts`。
 2. `super-power-browser-web`：`npm ci`，`npm run build`。
-3. `super-power-browser-desktop`：`npm ci`，`npm run build`。桌面构建包含 AI 和插件构建，并装入 Web 资源。
+3. 在 `super-power-browser-desktop` 执行 `npm ci` 和 `npm run build`。桌面构建会嵌入 AI、校验已复制的插件 ZIP，并装入 Web 资源。
 4. `super-power-browser-server`：`mvn package`。本机 JDK 17 使用 `mvn '-Djava.version=17' package`。生产目标仍为 JDK 21 / MySQL 8.4。
 5. 沿用根目录 `start-preview.ps1` 或既有正式启动方式。AI 不需要独立前端端口；客户端页面通过本机页面服务嵌入。
 

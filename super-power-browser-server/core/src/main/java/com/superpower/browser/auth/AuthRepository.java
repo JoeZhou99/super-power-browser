@@ -17,17 +17,20 @@ class AuthRepository {
         createUser(userId,tenantId,username,hash,name,owner,defaultDepartment(tenantId));
     }
     void createUser(String userId, String tenantId, String username, String hash, String name, boolean owner, String departmentId) {
-        db.execute("INSERT INTO app_user(id,tenant_id,username,password_hash,display_name,owner,department_id) VALUES(?,?,?,?,?,?,?)", userId, tenantId, username, hash, name, owner,departmentId);
+        createUser(userId,tenantId,username,hash,name,owner,departmentId,"","");
+    }
+    void createUser(String userId, String tenantId, String username, String hash, String name, boolean owner, String departmentId, String email, String phone) {
+        db.execute("INSERT INTO app_user(id,tenant_id,username,password_hash,display_name,owner,department_id,email,phone) VALUES(?,?,?,?,?,?,?,?,?)", userId, tenantId, username, hash, name, owner,departmentId,email,phone);
     }
     Optional<Map<String,Object>> loginUser(String username) {
-        return rows(db.select("SELECT * FROM app_user WHERE username=? AND enabled=TRUE AND deleted=FALSE", username)).stream().findFirst();
+        return rows(db.select("SELECT * FROM app_user WHERE (username=? OR email=? OR phone=?) AND enabled=TRUE AND deleted=FALSE", username,username,username)).stream().findFirst();
     }
     Optional<Map<String,Object>> sessionUser(String hash) {
         return rows(db.select("SELECT u.* FROM auth_session s JOIN app_user u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>CURRENT_TIMESTAMP AND u.enabled=TRUE AND u.deleted=FALSE", hash)).stream().findFirst();
     }
     void createSession(String hash, String userId, Instant expiry, String client, String address) { db.execute("INSERT INTO auth_session(id,token_hash,user_id,expires_at,client_name,remote_address) VALUES(?,?,?,?,?,?)", id(),hash,userId,Timestamp.from(expiry),client,address); }
     Map<String,Object> profile(String userId) {
-        return one(db.select("SELECT u.id,u.username,u.display_name,u.owner,u.tenant_id,u.department_id,d.name AS department_name,u.created_at,t.name AS company_name FROM app_user u JOIN tenant t ON t.id=u.tenant_id LEFT JOIN department d ON d.id=u.department_id WHERE u.id=? AND u.deleted=FALSE",userId));
+        return one(db.select("SELECT u.id,u.username,u.email,u.phone,u.display_name,u.owner,u.tenant_id,u.department_id,d.name AS department_name,u.created_at,t.name AS company_name FROM app_user u JOIN tenant t ON t.id=u.tenant_id LEFT JOIN department d ON d.id=u.department_id WHERE u.id=? AND u.deleted=FALSE",userId));
     }
     long memberCount(String tenantId) { return number(one(db.select("SELECT COUNT(*) AS total FROM app_user WHERE tenant_id=? AND enabled=TRUE AND deleted=FALSE",tenantId)),"total"); }
     List<String> roleNames(String userId) { return rows(db.select("SELECT r.name FROM member_role m JOIN role r ON r.id=m.role_id JOIN app_user u ON u.id=m.user_id AND u.department_id=r.department_id WHERE m.user_id=? AND r.enabled=TRUE ORDER BY r.name",userId)).stream().map(r->text(r,"name")).toList(); }
@@ -50,7 +53,7 @@ class AuthRepository {
         return rows(db.select("SELECT r.member_type,p.permission FROM member_role m JOIN role r ON r.id=m.role_id JOIN app_user u ON u.id=m.user_id AND u.department_id=r.department_id LEFT JOIN role_permission p ON p.role_id=r.id WHERE m.user_id=? AND u.deleted=FALSE AND r.tenant_id=?",userId,tenantId));
     }
     Map<String,Object> member(String tenantId, String userId) {
-        var member=one(db.select("SELECT id,tenant_id,username,display_name,phone,owner,enabled,department_id FROM app_user WHERE id=? AND tenant_id=? AND deleted=FALSE", userId, tenantId));
+        var member=one(db.select("SELECT id,tenant_id,username,email,display_name,phone,owner,enabled,department_id FROM app_user WHERE id=? AND tenant_id=? AND deleted=FALSE", userId, tenantId));
         member.put("memberType",memberType(member)); return member;
     }
     Map<String,Object> activeUser(String userId) { return one(db.select("SELECT id,tenant_id,username,owner,department_id FROM app_user WHERE id=? AND enabled=TRUE AND deleted=FALSE",userId)); }
@@ -59,13 +62,14 @@ class AuthRepository {
         return (int)number(one(db.select("SELECT COALESCE(MAX(r.member_type),1) AS member_type FROM member_role m JOIN role r ON r.id=m.role_id WHERE m.user_id=? AND r.tenant_id=? AND r.department_id=? AND r.enabled=TRUE",text(user,"id"),text(user,"tenantId"),text(user,"departmentId"))),"memberType");
     }
     List<Map<String,Object>> members(String tenantId) {
-        var result = rows(db.select("SELECT u.id,u.tenant_id,u.username,u.display_name,u.phone,u.enabled,u.owner,u.department_id,d.name AS department_name,u.created_at FROM app_user u LEFT JOIN department d ON d.id=u.department_id WHERE u.tenant_id=? AND u.deleted=FALSE ORDER BY u.created_at", tenantId));
+        var result = rows(db.select("SELECT u.id,u.tenant_id,u.username,u.email,u.display_name,u.phone,u.enabled,u.owner,u.department_id,d.name AS department_name,u.created_at FROM app_user u LEFT JOIN department d ON d.id=u.department_id WHERE u.tenant_id=? AND u.deleted=FALSE ORDER BY u.created_at", tenantId));
         var assignments = rows(db.select("SELECT m.user_id,m.role_id FROM member_role m JOIN app_user u ON u.id=m.user_id WHERE u.tenant_id=?", tenantId));
         result.forEach(u -> { u.put("roles", assignments.stream().filter(r -> r.get("userId").equals(u.get("id"))).map(r -> r.get("roleId")).toList()); u.put("memberType",memberType(u)); });
         return result;
     }
     void updateMember(String tenantId, String userId, String name, boolean enabled) { db.execute("UPDATE app_user SET display_name=?,enabled=? WHERE id=? AND tenant_id=?", name, enabled, userId, tenantId); }
     void phone(String userId,String phone) { db.execute("UPDATE app_user SET phone=? WHERE id=?",phone,userId); }
+    void email(String userId,String email) { db.execute("UPDATE app_user SET email=? WHERE id=?",email,userId); }
     void memberDepartment(String userId,String departmentId) { db.execute("UPDATE app_user SET department_id=? WHERE id=?",departmentId,userId); }
     void password(String userId, String hash) { db.execute("UPDATE app_user SET password_hash=? WHERE id=?", hash, userId); deleteUserSessions(userId); }
     List<Map<String,Object>> roles(String tenantId) {
@@ -106,6 +110,8 @@ class AuthRepository {
     // Serialize enterprise mutations so a concurrent role/member change cannot bypass the hierarchy checks.
     void lockTenant(String tenantId) { one(db.select("SELECT id FROM tenant WHERE id=? FOR UPDATE",tenantId)); }
     boolean usernameExists(String username) { return !db.select("SELECT id FROM app_user WHERE username=?",username).isEmpty(); }
+    boolean emailExists(String email) { return !email.isBlank() && !db.select("SELECT id FROM app_user WHERE email=?",email).isEmpty(); }
+    boolean phoneExists(String phone) { return !phone.isBlank() && !db.select("SELECT id FROM app_user WHERE phone=?",phone).isEmpty(); }
     String defaultDepartment(String tenantId) { return text(one(db.select("SELECT id FROM department WHERE tenant_id=? AND is_default=TRUE AND deleted=FALSE",tenantId)),"id"); }
     Map<String,Object> department(String tenantId,String departmentId) { return one(db.select("SELECT * FROM department WHERE id=? AND tenant_id=? AND deleted=FALSE",departmentId,tenantId)); }
     List<Map<String,Object>> departments(String tenantId) {

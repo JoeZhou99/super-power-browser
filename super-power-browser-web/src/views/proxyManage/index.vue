@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search, Refresh, Plus, Download, Delete, ArrowLeft } from '@element-plus/icons-vue';
 import { usePermissions } from '@/store/modules/permission.store';
+import { request, post } from '@/utils/request';
 import { proxyApi, type ProxyRecord, type ProxyQuery } from '@/api/proxy/proxy.api';
 import { PROXY_PROTOCOLS } from '@/utils/proxyImport';
 import { downloadWorkbook } from '@/utils/workbook';
@@ -22,6 +23,7 @@ const query = ref(''), protocol = ref(''), webType = ref(0), loading = ref(false
 const editing = ref(false), editRow = ref<ProxyRecord>(), binding = ref(false), bindingRow = ref<ProxyRecord>();
 const busy = ref(false), exporting = ref(false), activeId = ref(''), progress = ref('');
 const failures = ref<Failure[]>([]), lastAction = ref<BatchAction>('check'), resultSummary = ref('');
+const freeOffer = ref<{eligible:boolean;claimed:boolean;available:number}>({eligible:false,claimed:false,available:0}), claiming = ref(false);
 let loadVersion = 0, contextVersion = 0, disposed = false;
 const canCheck = computed(() => typeof window.api?.checkProxy === 'function');
 const desktop = () => window.api as (typeof window.api & {rotateProxy?: (id: string) => Promise<CheckResult>});
@@ -52,11 +54,22 @@ async function load() {
   } catch (failure) { if (version === loadVersion && !disposed) loadError.value = errorText(failure); }
   finally { if (version === loadVersion && !disposed) loading.value = false; }
 }
+async function loadFreeOffer() {
+  if (recycled.value || dynamic.value) return;
+  try { freeOffer.value = await request('/free-proxies'); } catch { freeOffer.value = {eligible:false,claimed:false,available:0}; }
+}
+async function claimFreeProxy() {
+  if (claiming.value) return;
+  claiming.value = true;
+  try { await post('/free-proxies/claim'); ElMessage.success('免费代理已领取，已加入代理列表'); await loadFreeOffer(); await load(); }
+  catch (error) { ElMessage.error(error instanceof Error ? error.message : '领取失败，请稍后重试'); }
+  finally { claiming.value = false; }
+}
 function search() { page.value = 1; void load(); }
 watch([recycled, dynamic], () => {
   contextVersion++; page.value = 1; webType.value = 0; protocol.value = ''; query.value = '';
   items.value = []; selected.value = []; total.value = 0; failures.value = []; resultSummary.value = '';
-  editing.value = false; binding.value = false; void load();
+  editing.value = false; binding.value = false; void load(); void loadFreeOffer();
 }, {immediate: true});
 onBeforeUnmount(() => { disposed = true; loadVersion++; contextVersion++; });
 function edit(row?: ProxyRecord) { if (!permissions.can('proxy.edit') || recycled.value || busy.value) return; editRow.value = row; editing.value = true; }
@@ -144,6 +157,7 @@ async function exportAll() {
 <template>
   <section class="panel page-list proxy-page">
     <div class="proxy-heading"><h1 class="page-title">{{title}}</h1><el-button v-if="recycled" :icon="ArrowLeft" :disabled="busy" @click="router.push('/proxy/list')">返回代理列表</el-button><el-button v-else :icon="Delete" :disabled="busy" @click="router.push('/proxy/recycle')">代理回收站</el-button></div>
+    <el-alert v-if="!recycled&&!dynamic&&freeOffer.eligible&&freeOffer.available>0" class="free-offer" type="success" :closable="false" show-icon title="新用户专享：免费领取一条 VPS 代理"><template #default><span>当前还有 {{freeOffer.available}} 条可领取资源，领取后会自动加入代理列表。</span><el-button type="success" size="small" :loading="claiming" @click="claimFreeProxy">立即领取</el-button></template></el-alert>
     <p class="proxy-description">{{recycled ? '静态和动态代理共用回收站，恢复后可重新绑定店铺。' : dynamic ? '管理供应商提供的动态网关和会话账号，检测实际出口 IP，并按需请求换 IP。' : '集中管理自行购买的代理服务，检测连接并为店铺配置网络。'}}</p>
     <el-alert v-if="!recycled && !canCheck" title="请在桌面客户端检测代理和请求换 IP，以确认当前电脑能连接到代理服务。" type="info" :closable="false"/>
     <div class="toolbar proxy-toolbar">
@@ -191,5 +205,5 @@ async function exportAll() {
 </template>
 
 <style scoped>
-.proxy-heading{display:flex;align-items:flex-start;gap:20px;border-bottom:1px solid #edf1f7;margin-bottom:16px}.proxy-heading .page-title{flex:1;border:0;margin:0!important}.proxy-description{font-size:13px;line-height:1.8;color:var(--el-text-color-secondary);margin-bottom:4px}.proxy-toolbar .search{min-width:230px}.proxy-filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px;font-size:13px}.proxy-filters .el-select{width:145px}.proxy-filters>.muted{margin-left:auto}.progress{color:var(--el-color-primary)}.endpoint{overflow-wrap:anywhere}.remark{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.expired{font-size:11px;color:var(--el-color-warning)}.row-actions{display:flex;align-items:center;gap:12px;min-height:25px}.row-actions .el-button+.el-button{margin-left:0}.batch-result{padding:12px 16px;margin-bottom:16px;border:1px solid var(--el-color-warning-light-5);background:var(--el-color-warning-light-9);border-radius:6px;font-size:13px}.batch-result-heading{display:flex;align-items:center;gap:12px}.batch-result-heading b{margin-right:auto}.batch-result ul{max-height:150px;overflow:auto;margin:10px 0 0;padding-left:20px;line-height:1.8}.table-link:disabled{cursor:default}.batch-actions{flex-wrap:wrap}
+.proxy-heading{display:flex;align-items:flex-start;gap:20px;border-bottom:1px solid #edf1f7;margin-bottom:16px}.proxy-heading .page-title{flex:1;border:0;margin:0!important}.proxy-description{font-size:13px;line-height:1.8;color:var(--el-text-color-secondary);margin-bottom:4px}.proxy-toolbar .search{min-width:230px}.proxy-filters{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px;font-size:13px}.proxy-filters .el-select{width:145px}.proxy-filters>.muted{margin-left:auto}.progress{color:var(--el-color-primary)}.endpoint{overflow-wrap:anywhere}.remark{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.expired{font-size:11px;color:var(--el-color-warning)}.row-actions{display:flex;align-items:center;gap:12px;min-height:25px}.row-actions .el-button+.el-button{margin-left:0}.batch-result{padding:12px 16px;margin-bottom:16px;border:1px solid var(--el-color-warning-light-5);background:var(--el-color-warning-light-9);border-radius:6px;font-size:13px}.batch-result-heading{display:flex;align-items:center;gap:12px}.batch-result-heading b{margin-right:auto}.batch-result ul{max-height:150px;overflow:auto;margin:10px 0 0;padding-left:20px;line-height:1.8}.table-link:disabled{cursor:default}.batch-actions{flex-wrap:wrap}.free-offer{margin:0 0 16px}.free-offer :deep(.el-alert__content){display:flex;align-items:center;gap:14px;flex-wrap:wrap}.free-offer :deep(.el-alert__title){font-weight:600}
 </style>

@@ -15,7 +15,6 @@ target/
 dist/
 out/
 *.log
-/super-power-browser-desktop/Plugin/
 /super-power-browser-desktop/resources/web/
 /super-power-browser-desktop/proxy-runtime/.downloads/
 /super-power-browser-desktop/proxy-runtime/.test-fixtures/

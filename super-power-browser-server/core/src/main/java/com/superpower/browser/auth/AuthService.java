@@ -18,6 +18,8 @@ import static com.superpower.browser.shared.BusinessException.require;
 public class AuthService implements MemberDirectory {
     public static final Set<String> PERMISSIONS = PermissionCatalog.codes();
     private static final Pattern USERNAME = Pattern.compile("^[A-Za-z0-9_]{3,80}$");
+    private static final Pattern EMAIL = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+    private static final Pattern PHONE = Pattern.compile("^\\+?[0-9][0-9 ()-]{6,24}$");
     private static final Pattern PASSWORD_UPPER = Pattern.compile("[A-Z]"), PASSWORD_LOWER = Pattern.compile("[a-z]"), PASSWORD_DIGIT = Pattern.compile("[0-9]");
     private final AuthRepository repository;
     private final AuditRepository audit;
@@ -33,13 +35,17 @@ public class AuthService implements MemberDirectory {
 
     @Transactional
     public Map<String,Object> register(Map<String,Object> request,String client,String address) {
-        String username=username(request), name=displayName(request,username);
+        String email=email(request), phone=phone(request);
+        if(text(request,"username").trim().isEmpty()) require(!email.isEmpty()&&!phone.isEmpty(),400,"注册必须填写邮箱和手机号");
+        if(!email.isEmpty()) require(!repository.emailExists(email),409,"邮箱已被使用");
+        if(!phone.isEmpty()) require(!repository.phoneExists(phone),409,"手机号已被使用");
+        String username=registrationUsername(request,email,phone), name=displayName(request,username);
         require(!repository.usernameExists(username),409,"用户名已被使用");
         String passwordHash=encodePassword(text(request,"password")),tenantId=id(),userId=id();
         repository.createTenant(tenantId);
         repository.company(tenantId,name.substring(0,Math.min(name.length(),116))+"的团队");
         repository.initializeDepartment(tenantId,tenantId,"默认部门",true);
-        repository.createUser(userId,tenantId,username,passwordHash,name,true,tenantId);
+        repository.createUser(userId,tenantId,username,passwordHash,name,true,tenantId,email,phone);
         wallets.open(tenantId);
         audit.record(authorizedUser(userId),"account.register",userId,Map.of());
         return newSession(userId,client,address);
@@ -48,7 +54,9 @@ public class AuthService implements MemberDirectory {
     public Map<String,Object> login(Map<String,Object> request) { return login(request,"",""); }
     @Transactional
     public Map<String,Object> login(Map<String,Object> request,String client,String address) {
-        String username=required(request,"username",80),password=text(request,"password");
+        String username=text(request,"identifier").trim();
+        if(username.isEmpty()) username=required(request,"username",254);
+        String password=text(request,"password");
         var user=repository.loginUser(username).orElseThrow(()->new BusinessException(401,"用户名或密码错误"));
         require(password.getBytes(StandardCharsets.UTF_8).length<=72 && encoder.matches(password,text(user,"passwordHash")),401,"用户名或密码错误");
         return newSession(text(user,"id"),client,address);
@@ -367,8 +375,18 @@ public class AuthService implements MemberDirectory {
     private static String username(Map<String,Object> request) {
         String value=text(request,"username").trim(); require(USERNAME.matcher(value).matches(),400,"用户名需为 3 至 80 位英文字母、数字或下划线"); return value;
     }
+    private static String registrationUsername(Map<String,Object> request,String email,String phone) {
+        String value=text(request,"username").trim();
+        if(!value.isEmpty()) return username(request);
+        String source=!email.isEmpty()?email.substring(0,email.indexOf('@')):phone.replaceAll("\\D","");
+        value=source.replaceAll("[^A-Za-z0-9_]","");
+        if(value.length()<3) value="user"+value;
+        if(value.length()>80) value=value.substring(0,80);
+        return value;
+    }
     private static String displayName(Map<String,Object> request,String fallback) { return text(request,"displayName").trim().isEmpty()?fallback:required(request,"displayName",120); }
-    private static String phone(Map<String,Object> request) { String value=text(request,"phone").trim(); require(value.length()<=40,400,"联系电话最多 40 字"); return value; }
+    private static String phone(Map<String,Object> request) { String value=text(request,"phone").trim(); require(value.length()<=40 && (value.isEmpty() || PHONE.matcher(value).matches()),400,"请输入有效的手机号"); return value; }
+    private static String email(Map<String,Object> request) { String value=text(request,"email").trim().toLowerCase(Locale.ROOT); require(value.length()<=254 && (value.isEmpty() || EMAIL.matcher(value).matches()),400,"请输入有效的邮箱地址"); return value; }
     static String encodePassword(String password) {
         // Match the legacy member form, including its UTF-16 length and allowed extra characters.
         require(password.length()>=8&&password.length()<=16&&PASSWORD_UPPER.matcher(password).find()&&PASSWORD_LOWER.matcher(password).find()&&PASSWORD_DIGIT.matcher(password).find(),400,"密码需为 8 至 16 位，且包含大写字母、小写字母和数字");

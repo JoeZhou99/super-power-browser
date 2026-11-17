@@ -2,21 +2,29 @@
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { FormInstance, FormRules } from 'element-plus';
-import { Check, Connection, Lock, Monitor, Right, User } from '@element-plus/icons-vue';
+import { Check, Connection, Lock, Monitor, Right, User, Message, Phone } from '@element-plus/icons-vue';
 import { passwordError, publicAuth, usernameError, type AuthSession } from './public-auth';
 
 const route = useRoute();
 const router = useRouter();
 const formRef = ref<FormInstance>();
-const form = reactive({ username: '', password: '', confirmPassword: '' });
+const form = reactive({ username: '', email: '', phone: '', password: '', confirmPassword: '' });
 const isRegister = computed(() => route.path === '/register');
 const busy = ref(false);
 const capsLock = ref(false);
 const formError = ref('');
 let submission: AbortController | undefined;
 const rules = computed<FormRules>(() => ({
-  username: [{ required: true, trigger: 'blur', validator: (_rule, value, callback) => {
-    const error = isRegister.value ? usernameError(value || '') : (!value?.trim() ? '请输入用户名' : '');
+  username: [{ required: !isRegister.value, trigger: 'blur', validator: (_rule, value, callback) => {
+    const error = isRegister.value ? (value?.trim() ? usernameError(value) : '') : (!value?.trim() ? '请输入用户名、邮箱或手机号' : '');
+    callback(error ? new Error(error) : undefined);
+  } }],
+  email: [{ required: true, trigger: 'blur', validator: (_rule, value, callback) => {
+    const error = !value?.trim() ? '请输入邮箱地址' : !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(value.trim()) ? '请输入有效的邮箱地址' : '';
+    callback(error ? new Error(error) : undefined);
+  } }],
+  phone: [{ required: true, trigger: 'blur', validator: (_rule, value, callback) => {
+    const error = !value?.trim() ? '请输入手机号' : !/^\\+?[0-9][0-9 ()-]{6,24}$/.test(value.trim()) ? '请输入有效的手机号' : '';
     callback(error ? new Error(error) : undefined);
   } }],
   password: [{ required: true, trigger: 'blur', validator: (_rule, value, callback) => {
@@ -34,6 +42,8 @@ watch(isRegister, () => {
   busy.value = false;
   form.password = '';
   form.confirmPassword = '';
+  form.email = '';
+  form.phone = '';
   capsLock.value = false;
   formError.value = '';
   formRef.value?.clearValidate();
@@ -56,7 +66,7 @@ async function submit() {
     if (!(await formRef.value.validate().catch(() => false))) return;
     if (controller.signal.aborted) return;
     const data = await publicAuth<AuthSession>(registering ? '/register' : '/login', {
-      body: { username: form.username.trim(), password: form.password, ...(registering ? { displayName: form.username.trim() } : {}) },
+      body: registering ? { username: form.username.trim(), email: form.email.trim(), phone: form.phone.trim(), password: form.password, displayName: form.email.trim() } : { identifier: form.username.trim(), password: form.password },
       signal: controller.signal,
     });
     if (controller.signal.aborted) return;
@@ -64,6 +74,8 @@ async function submit() {
     sessionStorage.setItem('spb-token', data.token);
     form.password = '';
     form.confirmPassword = '';
+    form.email = '';
+    form.phone = '';
     await router.replace('/dashboard');
   } catch (error) {
     if (!controller.signal.aborted) formError.value = error instanceof Error ? error.message : `${registering ? '注册' : '登录'}失败，请稍后重试`;
@@ -130,9 +142,13 @@ async function submit() {
           <p class="form-description">{{ isRegister ? '注册后即可开始管理店铺与团队。' : '登录工作台，开始今天的工作。' }}</p>
 
           <el-form :key="isRegister ? 'register' : 'login'" ref="formRef" :model="form" :rules="rules" label-position="top" class="auth-form" :aria-busy="busy" @submit.prevent="submit" @input="formError = ''">
-            <el-form-item label="用户名" prop="username">
-              <el-input v-model.trim="form.username" name="username" :placeholder="isRegister ? '3–80 位字母、数字或下划线' : '请输入用户名'" autocomplete="username" :maxlength="isRegister ? 80 : undefined" :prefix-icon="User" :disabled="busy" autocapitalize="none" :spellcheck="false" />
+            <el-form-item :label="isRegister ? '用户名（可选）' : '登录账号'" prop="username">
+              <el-input v-model.trim="form.username" name="username" :placeholder="isRegister ? '可留空，默认使用邮箱前缀' : '请输入用户名、邮箱或手机号'" autocomplete="username" :maxlength="80" :prefix-icon="User" :disabled="busy" autocapitalize="none" :spellcheck="false" />
             </el-form-item>
+            <template v-if="isRegister">
+              <el-form-item label="邮箱地址" prop="email"><el-input v-model.trim="form.email" name="email" type="email" placeholder="name@example.com" autocomplete="email" :prefix-icon="Message" :disabled="busy" autocapitalize="none" /></el-form-item>
+              <el-form-item label="手机号" prop="phone"><el-input v-model.trim="form.phone" name="tel" type="tel" placeholder="请输入常用手机号" autocomplete="tel" :prefix-icon="Phone" :disabled="busy" /></el-form-item>
+            </template>
             <el-form-item label="密码" prop="password">
               <el-input v-model="form.password" name="password" :placeholder="isRegister ? '8–16 位，包含大写、小写字母和数字' : '请输入密码'" type="password" show-password :autocomplete="isRegister ? 'new-password' : 'current-password'" :prefix-icon="Lock" :disabled="busy" @keydown="checkCapsLock" @keyup="checkCapsLock" @blur="capsLock = false" />
             </el-form-item>
@@ -141,7 +157,7 @@ async function submit() {
             </el-form-item>
             <div class="form-status" aria-live="polite">
               <span v-if="capsLock" class="caps-warning">大写锁定已开启</span>
-              <span v-else>{{ isRegister ? '请使用不易猜测的密码，并妥善保存。' : '使用注册账号或管理员分配的账号登录' }}</span>
+              <span v-else>{{ isRegister ? '邮箱和手机号用于账户联系与安全通知。' : '支持使用用户名、邮箱或手机号登录。' }}</span>
             </div>
             <div v-if="formError" class="login-error" role="alert">{{ formError }}</div>
             <el-button class="login-submit" type="primary" native-type="submit" :loading="busy" :disabled="busy">

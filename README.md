@@ -2,17 +2,18 @@
 
 SuperPower Browser 提供店铺浏览器管理、设备管理、代理管理、成员权限和 AI 工作区。Web、Electron、后端分别维护依赖和构建入口。
 
-**使用开源 Chromium 144.0.7559.132，已在 Windows x64 验证店铺启动、插件通信和环境检测。** 内核运行资源由后端发布，当前使用上游预编译包。来源、启动方式和限制见 [独立内核说明](super-power-browser-kernel/README.md)。账号、Cookie、书签和通行密钥由后端管理，完整业务验收仍需继续。
+**使用开源 Chromium 144.0.7559.132，已在 Windows x64 验证店铺启动、插件通信和环境检测。** 内核运行资源由后端发布，当前使用上游预编译包。内核工具位于桌面工程的 [内核工具说明](super-power-browser-desktop/tools/kernel/README.md)。账号、Cookie、书签和通行密钥由后端管理，完整业务验收仍需继续。
 
 ```text
 super-power-browser/
-├─ super-power-browser-web/        Vue 管理页面
-├─ super-power-browser-desktop/    Electron 本地客户端
-├─ super-power-browser-ai/         SuperPower AI 引擎、工具、审批和 SQLite 会话
-├─ super-power-browser-server/     Java API、core、Worker
-├─ super-power-browser-plugins/    店铺助手、账号助手及运行适配
-├─ super-power-browser-kernel/     开源内核版本锁定、校验与发布
-└─ docs/                          架构、使用说明与部署状态
++-- super-power-browser-web/        Web management UI
++-- super-power-browser-desktop/    Electron client
+|   +-- tools/kernel/              kernel lock and release tools
+|   \-- resources/ai/              local AI runtime
++-- super-power-browser-server/     Java API/core/Worker
+\-- docs/                           architecture and deployment docs
+
+Sibling project: ../super-power-browser-plugins/  plugin source and ZIP build
 ```
 
 已接入新后端的页面：首页与新手引导、账户悬浮菜单、账号安全；店铺、平台设备、代理管理及各自回收站；购买／续费／加速；人民币余额充值与订单；成员、角色与双层授权；精简设置中心。店铺、设备、代理、订单支持 Excel 导出，密码不导出。店铺支持 Excel 模板导入，单次最多 200 条；代理支持单条添加和批量文本添加，单次最多 500 条。原自有设备统一展示在代理管理，ID 和店铺绑定保持不变，详见 [代理管理说明](docs/代理管理.md)。正式发布前仍需完成全部业务场景验收，范围见 [功能与部署状态](docs/功能与部署状态.md)。
@@ -49,7 +50,7 @@ Flyway 管理表结构，金额使用整数分和 `CNY`。初始企业余额为 
 
 ## 启动 Web 与桌面
 
-SuperPower AI 提供聊天、店铺任务、工具执行、技能和本地 SQLite 会话。模型配置、官方模型网关、套餐和技能商店由 `super-power-browser-server/ai` 提供，使用项目统一的登录、权限和订单服务。安装与配置见 [AI 使用说明](docs/AI使用说明.md)。首次构建桌面前，在 `super-power-browser-ai` 执行 `npm ci --ignore-scripts`。
+SuperPower AI 提供聊天、店铺任务、工具执行、技能和本地 SQLite 会话。模型配置、官方模型网关、套餐和技能商店由 `super-power-browser-server/ai` 提供，使用项目统一的登录、权限和订单服务。安装与配置见 [AI 使用说明](docs/AI使用说明.md)。首次构建桌面前，在 `super-power-browser-desktop/resources/ai` 执行 `npm ci --ignore-scripts`。
 
 Web 开发端口为 `3100`，默认代理新 API 的 `8080` 端口：
 
@@ -69,13 +70,13 @@ Copy-Item runtime.config.example.json runtime.config.json
 npm run dev
 ```
 
-桌面构建会自动构建相邻插件工程并复制 ZIP，同时将 Web 的 `dist` 复制到 `resources/web`。客户端通过仅监听 `127.0.0.1` 的页面服务加载。Electron 锁定 `35.7.5`。
+先在平级的 `super-power-browser-plugins` 项目构建插件并将 ZIP 复制到桌面项目的 `Plugin/` 目录。桌面构建只校验并打包这些 ZIP，同时将 Web `dist` 复制到 `resources/web`；客户端页面通过 `127.0.0.1` 服务加载，Electron 固定为 `35.7.5`。
 
 店铺与代理检测统一通过独立打包的本地 Xray 转发，支持账号认证、高级协议、中转和已配置的备用线路切换。构建会准备并校验代理运行组件；迁移范围、测试和平台限制见 [代理与 Xray 迁移](docs/代理与Xray迁移.md)。
 
-内核版本由数据库管理；生产安装包通过私有 S3 兼容对象存储分发，发布、停用、推荐和本地包导入使用运维 CLI。配置步骤与真实云服务尚待验证的边界见 [生产内核分发](super-power-browser-kernel/PRODUCTION.md)。
+内核版本由数据库管理；生产安装包不内置 Chromium，客户端首次打开店铺时从后端下载并校验内核。内核包通过私有 S3 兼容对象存储分发，发布、停用、推荐和本地包导入使用桌面工程内的运维工具。配置步骤与真实云服务尚待验证的边界见 [生产内核分发](super-power-browser-desktop/tools/kernel/PRODUCTION.md)。
 
-`runtime.config.json`、`.env` 不应提交版本库。`corePath` 是新项目可写的内核缓存，留空使用独立数据目录下的 `Core`；`dataPath` 必须为新项目专用目录。先按 [内核发布步骤](super-power-browser-kernel/README.md) 配置内核清单，再运行根目录的 `./start-preview.ps1`，选择已发布的 144 内核后打开店铺；无需手动安装插件。具体目录和通信流程见 [插件接入说明](super-power-browser-plugins/docs/integration.md)。
+`runtime.config.json`、`.env` 不应提交版本库。`corePath` 是新项目可写的内核缓存，留空使用独立数据目录下的 `Core`；`dataPath` 必须为新项目专用目录。先按 [内核发布步骤](super-power-browser-desktop/tools/kernel/README.md) 配置内核清单，再运行根目录的 `./start-preview.ps1`，选择已发布的 144 内核后打开店铺；无需手动安装插件。插件源码在平级项目 `../super-power-browser-plugins`，构建后将 `dist/superpower/Plugin/*.zip` 复制到 `super-power-browser-desktop/Plugin/`；桌面只消费 ZIP。
 
 ## 待接入能力
 

@@ -31,6 +31,7 @@ public class BrowserConfiguration {
         seed("resolutions",Map.of("entries",resolutionSeeds()));
         seed("browser-defaults",Map.of("values",Map.of("timezone","Asia/Shanghai","language","zh-CN","resolution","1920x1080")));
         seed("platform-sites",Map.of()); // The existing platform_site catalog remains the source of truth.
+        seed("free-proxies",Map.of("entries",List.of()));
         if(!flag(one(db.select("SELECT locale_modes_initialized FROM config_state WHERE id=1")),"localeModesInitialized")) {
             appendLocaleModes("timezones",List.of(entry("auto","跟随代理 IP",true,0),entry("__local__","本地时区",true,0)));
             appendLocaleModes("languages",List.of(entry("auto","跟随代理 IP",true,0)));
@@ -90,6 +91,7 @@ public class BrowserConfiguration {
         return one(db.select("SELECT config_key,payload,revision,updated_at FROM browser_config WHERE config_key=?",key));
     }
     private Map<String,Object> payload(String key) { return object(text(metadata(key),"payload")); }
+    public List<Map<String,Object>> freeProxyPool() { return entries(payload("free-proxies")); }
     private Map<String,Object> document(String key) {
         var meta=metadata(key);var result=new LinkedHashMap<String,Object>();
         result.put("key",key);result.put("title",TITLES.get(key));result.put("revision",meta.get("revision"));result.put("updatedAt",meta.get("updatedAt"));

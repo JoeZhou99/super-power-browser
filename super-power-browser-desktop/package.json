@@ -17,7 +17,7 @@
     "build:mac": "npm run prepare:proxy -- --targets darwin-x64,darwin-arm64 && npm run prepare:ssr -- --targets darwin-x64 && npm run build && node scripts/mac-icon.cjs && electron-builder --mac --x64 --arm64"
   },
   "dependencies": {
-    "@super-power-browser/ai": "file:../super-power-browser-ai",
+    "@super-power-browser/ai": "file:resources/ai",
     "adm-zip": "0.5.16",
     "https-proxy-agent": "7.0.6",
     "koffi": "2.12.3",
