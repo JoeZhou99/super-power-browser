@@ -6,14 +6,15 @@ import {useAccount} from '@/store/modules/account.store';
 import {request,post,patch,remove} from '@/utils/request';
 import {date} from '@/utils/format';
 import {passwordError,usernameError} from '@/views/login/public-auth';
+import {clearRememberedPassword} from '@/views/login/remembered-accounts';
 const account=useAccount(),sessions=ref<any[]>([]),editing=ref(false),passwordDialog=ref(false),busy=ref(false);
 const profile=reactive<any>({}),password=reactive({currentPassword:'',newPassword:'',confirm:''});
 async function load(){await account.load();sessions.value=await request('/me/sessions');}
 onMounted(load);
 function editProfile(){Object.assign(profile,account.profile,{currentPassword:''});editing.value=true;}
-async function saveProfile(){const username=String(profile.username||'').trim();const error=username!==account.profile?.username?usernameError(username):'';if(error){ElMessage.warning(error);return;}busy.value=true;try{await patch('/me/profile',{...profile,username});await account.load();editing.value=false;ElMessage.success('账户资料已更新');}finally{busy.value=false;}}
+async function saveProfile(){const username=String(profile.username||'').trim();const previousUsername=String(account.profile?.username||'');const error=username!==previousUsername?usernameError(username):'';if(error){ElMessage.warning(error);return;}busy.value=true;try{await patch('/me/profile',{...profile,username});if(username!==previousUsername){try{await clearRememberedPassword(previousUsername);}catch{/* local credentials are best effort */}}await account.load();editing.value=false;ElMessage.success('账户资料已更新');}finally{busy.value=false;}}
 function editPassword(){Object.assign(password,{currentPassword:'',newPassword:'',confirm:''});passwordDialog.value=true;}
-async function savePassword(){if(password.newPassword!==password.confirm){ElMessage.warning('两次输入的新密码不一致');return;}const error=passwordError(password.newPassword);if(error){ElMessage.warning(error);return;}busy.value=true;try{await post('/me/password',password);await window.api?.closeAll();await window.api?.setSession('');sessionStorage.removeItem('spb-token');ElMessage.success('密码已更新，请重新登录');location.hash='/login';}finally{busy.value=false;}}
+async function savePassword(){if(password.newPassword!==password.confirm){ElMessage.warning('两次输入的新密码不一致');return;}const error=passwordError(password.newPassword);if(error){ElMessage.warning(error);return;}busy.value=true;try{await post('/me/password',password);try{await clearRememberedPassword(String(account.profile?.username||''));}catch{/* local credentials are best effort */}await window.api?.closeAll();await window.api?.setSession('');sessionStorage.setItem('spb-skip-auto-login','1');sessionStorage.removeItem('spb-token');ElMessage.success('密码已更新，请重新登录');location.hash='/login';}finally{busy.value=false;}}
 async function revoke(session:any){try{await ElMessageBox.confirm('结束该登录会话？该会话之后的请求将无法访问账户。','剔除登录');}catch{return;}await remove(`/me/sessions/${session.id}`);sessions.value=await request('/me/sessions');ElMessage.success('该会话已退出');}
 const client=(agent:string)=>agent.includes('Electron')?'桌面客户端':agent.includes('Edg/')?'Microsoft Edge':agent.includes('Chrome')?'Chrome 浏览器':agent||'历史登录';
 </script>

@@ -164,7 +164,6 @@
       @error="(message) => emit('error', message)"
       @changed="loadUploadedNames"
     />
-    <SkillEditorDialog v-model="editorOpen" :skill="editingSkill" @saved="reload" />
     <SkillTrialDialog v-model="trialSkill" />
     <SkillShareDialog ref="shareDialogRef" />
   </div>
@@ -188,7 +187,6 @@ import { errorMessage, skillIdentity, useZhifuAgentStore } from "@/ai/store/modu
 import { zhifuInstallSkill, zhifuToggleSkill, zhifuUninstallSkill } from "@/ai/utils/electronApi";
 import type { DisplaySkill } from "../../type";
 import { readSkillPage, useInstalledSkillInChat } from "../skillListShared";
-import SkillEditorDialog from "./SkillEditorDialog.vue";
 import SkillShareDialog from "./SkillShareDialog.vue";
 import UploadedSkills from "./UploadedSkills.vue";
 import SkillTrialDialog from "./SkillTrialDialog.vue";
@@ -202,7 +200,10 @@ const keywords = reactive({
 });
 
 defineProps<{ showCreateTip?: boolean }>();
-const emit = defineEmits<{ error: [message: string] }>();
+const emit = defineEmits<{
+  error: [message: string];
+  edit: [skill: DisplaySkill];
+}>();
 const sourceTab = ref<"local" | "uploaded">("local");
 const reviewStatus = ref(0);
 
@@ -228,9 +229,7 @@ function onSourceTab(tab: string | number | boolean | undefined) {
   loadUploadedNames();
 }
 
-const editorOpen = ref(false);
 const trialSkill = ref<DisplaySkill | null>(null);
-const editingSkill = ref<DisplaySkill | null>(null);
 const shareDialogRef = ref<InstanceType<typeof SkillShareDialog>>();
 const sharingId = ref("");
 const statusMessage = ref("");
@@ -318,8 +317,7 @@ async function installSkill(kind: "folder" | "zip") {
 }
 
 function openEditor(skill: DisplaySkill) {
-  editingSkill.value = skill;
-  editorOpen.value = true;
+  emit("edit", skill);
 }
 
 async function toggle(skill: DisplaySkill) {

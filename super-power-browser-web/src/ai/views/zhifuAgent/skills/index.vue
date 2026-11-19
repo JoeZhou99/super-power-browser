@@ -1,11 +1,16 @@
 <template>
-  <div :class="['zhifu-page', { 'is-creating': creating }]">
-    <SkillCreatorDialog
+  <div :class="['zhifu-page', { 'is-creating': creating || updating }]">
+    <SkillStartDialog
       v-if="creating"
-      ref="creatorRef"
       @close="closeCreator"
-      @trial="onTrial"
-      @schedule="onSchedule"
+      @start="startSkillCreation"
+    />
+    <SkillUpdateStartDialog
+      v-else-if="updating && updateDraft"
+      :skill-name="updateDraft.skillName"
+      :shops="updateDraft.shops"
+      @close="closeUpdater"
+      @start="startSkillUpdate"
     />
     <template v-else>
       <header class="page-header">
@@ -17,6 +22,13 @@
               : t("zhifuAgent.skills.storeDesc")
           }}
         </p>
+        <el-alert
+          class="automation-notice"
+          type="info"
+          :title="t('zhifuAgent.skills.automationNotice')"
+          :closable="false"
+          show-icon
+        />
         <div v-if="showCreateTip" class="create-tip">
           <button
             type="button"
@@ -105,6 +117,7 @@
               v-model:keyword="skillKeyword"
               :show-create-tip="showCreateTip"
               @error="installError = $event"
+              @edit="openSkillUpdate"
             />
           </el-tab-pane>
           <el-tab-pane :label="t('zhifuAgent.skills.store')" name="store" lazy>
@@ -140,12 +153,13 @@ import {
   Download,
 } from "@element-plus/icons-vue";
 import { useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
-import { ZHIFU_STORAGE_KEYS } from "../constants";
+import type { SelectedShop } from "../chat/components/ShopSelect.vue";
 import type { DisplaySkill } from "../type";
 import MySkills from "./components/MySkills.vue";
-import SkillCreatorDialog from "./components/SkillCreatorDialog.vue";
 import SkillInstallErrorDialog from "./components/SkillInstallErrorDialog.vue";
 import SkillRedeemDialog from "./components/SkillRedeemDialog.vue";
+import SkillStartDialog from "./components/SkillStartDialog.vue";
+import SkillUpdateStartDialog from "./components/SkillUpdateStartDialog.vue";
 import SkillStore from "./components/SkillStore.vue";
 
 const store = useZhifuAgentStore();
@@ -155,11 +169,16 @@ const activeTab = ref<"mine" | "store">("mine");
 const skillKeyword = ref("");
 const storeKeyword = ref("");
 const creating = ref(false);
+const updating = ref(false);
+const updateDraft = ref<{
+  skillName: string;
+  skills?: { id: string | number; name: string; scope: "workspace" | "global" }[];
+  shops: SelectedShop[];
+} | null>(null);
 const installError = ref("");
 const redeemVisible = ref(false);
 const mySkillsRef = ref<InstanceType<typeof MySkills>>();
 const skillStoreRef = ref<InstanceType<typeof SkillStore>>();
-const creatorRef = ref<InstanceType<typeof SkillCreatorDialog>>();
 const showCreateTip = ref(true);
 const createTipSteps = [
   "zhifuAgent.skills.createTipStep1",
@@ -172,37 +191,83 @@ function onImportCommand(command: string | number | object) {
 }
 
 function openCreator() {
-  localStorage.removeItem(ZHIFU_STORAGE_KEYS.skillCreatorDraft);
   activeTab.value = "mine";
   creating.value = true;
+}
+
+/** Open the standalone update flow from a skill row's three-dot menu. */
+function openSkillUpdate(skill: DisplaySkill) {
+  activeTab.value = "mine";
+  creating.value = false;
+  updateDraft.value = {
+    skillName: skill.name,
+    skills: [{ id: skill.id, name: skill.name, scope: skill.scope }],
+    shops: [],
+  };
+  updating.value = true;
 }
 
 function closeCreator() {
   creating.value = false;
 }
 
-async function onTrial(skill: DisplaySkill) {
-  creating.value = false;
-  await nextTick();
-  mySkillsRef.value?.openTrial(skill);
+function closeUpdater() {
+  updating.value = false;
+  updateDraft.value = null;
 }
 
-async function onSchedule(skill: DisplaySkill) {
+function startSkillCreation({ shops, url }: { shops: SelectedShop[]; url: string }) {
+  const page = url.trim() || "当前页面";
+  store.pendingSend = {
+    text: t("zhifuAgent.chat.createSkillRequest", {
+      requirement: "……",
+      page,
+    }),
+    skills: [],
+    shops,
+    autoSend: false,
+  };
   creating.value = false;
-  await nextTick();
-  mySkillsRef.value?.scheduleSkill(skill);
+  store.openPage("chat");
+}
+
+function startSkillUpdate({
+  skillName,
+  shops,
+  url,
+}: {
+  skillName: string;
+  shops: SelectedShop[];
+  url?: string;
+}) {
+  const draft = updateDraft.value;
+  store.pendingSend = {
+    text: t("zhifuAgent.chat.updateSkillRequest", {
+      name: skillName,
+      shops: shops.map((shop) => shop.name).join("、"),
+      page: url?.trim() || "当前页面",
+    }),
+    skills: draft?.skills || [],
+    shops,
+    autoSend: false,
+  };
+  updating.value = false;
+  updateDraft.value = null;
+  store.openPage("chat");
 }
 
 watch(
-  () => store.pendingSkillDraft,
-  async (draft) => {
-    if (!draft) return;
-    const next = { ...draft };
-    store.pendingSkillDraft = null;
-    activeTab.value = "mine";
-    creating.value = true;
-    await nextTick();
-    creatorRef.value?.applyDraft(next);
+  () => store.pendingSkillUpdate,
+  (target) => {
+    if (!target) return;
+    store.pendingSkillUpdate = null;
+    updateDraft.value = {
+      skillName: target.skillName,
+      skills: target.skills,
+      shops: target.shops,
+    };
+    creating.value = false;
+    updating.value = true;
   },
   { immediate: true }
 );
@@ -223,6 +288,10 @@ onMounted(() => {
   position: relative;
   display: flex;
   flex-direction: column;
+}
+
+.automation-notice {
+  margin-top: 12px;
 }
 
 .mine-toolbar {

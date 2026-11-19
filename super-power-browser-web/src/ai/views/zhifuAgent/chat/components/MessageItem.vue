@@ -216,6 +216,18 @@
               <Refresh />
             </el-icon>
           </el-tooltip>
+          <el-tooltip
+            v-if="failedShopCount && failedSkillNames.length"
+            :content="t('zhifuAgent.chat.updateFailedSkill')"
+            placement="top"
+          >
+            <el-icon
+              :class="['action-icon', { 'is-disabled': store.running }]"
+              @click="updateFailedSkill"
+            >
+              <EditPen />
+            </el-icon>
+          </el-tooltip>
         </template>
         <el-tooltip
           v-if="message.content"
@@ -316,6 +328,9 @@ const doneShopCount = computed(
 const failedShopCount = computed(
   () => props.message.executionShops?.filter((shop) => failedStatuses.has(shop.status)).length || 0
 );
+const failedSkillNames = computed(() =>
+  (requestBefore()?.skills || []).map((skill) => skill.name).filter(Boolean)
+);
 const runSucceeded = computed(() =>
   ["success", "completed"].includes(props.message.executionStatus || "")
 );
@@ -380,15 +395,34 @@ function retryFailedShops() {
 function saveSuccessfulSkill() {
   const request = requestBefore();
   if (!request || store.running) return;
-  const task = request.content;
-  workflowDialogs?.openSkillCreator({
-    name: task.slice(0, 18),
-    requirement: task,
-    description: task,
-    triggersText: task,
-    instructions: t("zhifuAgent.chat.saveSkillInstructions", { task }),
-    step: 2,
-  });
+  store.pendingSend = {
+    text: t("zhifuAgent.chat.createSkillRequest", {
+      requirement: request.content,
+      page: "当前页面",
+    }),
+    skills: [],
+    shops: (request.shops || []).map((shop) => ({ ...shop })),
+    autoSend: false,
+  };
+  store.openPage("chat");
+}
+
+function updateFailedSkill() {
+  const request = requestBefore();
+  if (!request || store.running || !failedSkillNames.value.length) return;
+  const failedIds = new Set(
+    (props.message.executionShops || [])
+      .filter((shop) => failedStatuses.has(shop.status))
+      .map((shop) => String(shop.id))
+  );
+  const shops = (request.shops || []).filter((shop) => failedIds.has(String(shop.id)));
+  if (!shops.length) return;
+  store.pendingSkillUpdate = {
+    skillName: failedSkillNames.value.join("、"),
+    skills: (request.skills || []).map((skill) => ({ ...skill })),
+    shops: shops.map((shop) => ({ ...shop })),
+  };
+  store.openPage("skills");
 }
 
 function scheduleSuccessfulRun() {

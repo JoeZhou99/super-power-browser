@@ -38,6 +38,17 @@ powershell -ExecutionPolicy Bypass -File scripts/start.ps1 -Process api
 powershell -ExecutionPolicy Bypass -File scripts/start.ps1 -Process worker
 ```
 
+开发时可以在后端目录直接一次启动 API 和 Worker（脚本会复用已构建的 JAR；首次运行或需要重新编译时加 `-Build`）：
+
+```powershell
+cd super-power-browser-server
+powershell -ExecutionPolicy Bypass -File scripts/dev.ps1 -Build
+# 或直接执行：
+./dev.cmd -Build
+```
+
+脚本会把进程 PID 和日志写入 `super-power-browser-server/.dev`，停止时执行 `./dev.cmd -Stop`。如果希望 Web、API、Worker 一起启动，可在项目根目录执行 `./dev.cmd -Build`；只启动后端则加 `-NoWeb`。
+
 `ADMIN_PASSWORD` 首次启动至少 12 位，UTF-8 不超过 72 字节，不提供默认密码。`APP_DATA_KEY` 是 32 个随机字节的 Base64 编码，API 与 Worker 必须保持一致，妥善备份；丢失后不能解密代理和店铺密码。可用 PowerShell 生成后填入 `.env`：
 
 ```powershell

@@ -45,124 +45,127 @@
     </div>
 
     <div class="composer" @mousedown="focusPrompt">
-      <div v-if="images.length" class="composer-images">
-        <div v-for="item in images" :key="item.id" class="composer-image">
-          <img
-            :src="item.preview"
-            :alt="item.name"
-            @click.stop="emit('open-image', item.dataUrl, item.name)"
+      <ApprovalDialog />
+      <template v-if="!hasInlineApproval">
+        <div v-if="images.length" class="composer-images">
+          <div v-for="item in images" :key="item.id" class="composer-image">
+            <img
+              :src="item.preview"
+              :alt="item.name"
+              @click.stop="emit('open-image', item.dataUrl, item.name)"
+            />
+            <el-icon class="remove" @click.stop="removeImage(item.id)"><Close /></el-icon>
+          </div>
+        </div>
+        <div class="input-row">
+          <div v-if="shops.length || skills.length || files.length" class="selection-row">
+            <span
+              v-for="item in shops"
+              :key="item.id"
+              class="composer-chip selected-shop-chip"
+              :title="item.name"
+            >
+              <el-icon aria-hidden="true"><Shop /></el-icon>
+              <span class="chip-label">{{ item.name }}</span>
+              <button
+                type="button"
+                :title="t('zhifuAgent.composer.removeShop', { name: item.name })"
+                :aria-label="t('zhifuAgent.composer.removeShop', { name: item.name })"
+                @click.stop="removeShop(item.id)"
+              >
+                <el-icon><Close /></el-icon>
+              </button>
+            </span>
+            <span
+              v-for="skill in skills"
+              :key="skill.name"
+              class="composer-chip skill-chip"
+              :title="skill.name"
+            >
+              <el-icon aria-hidden="true"><MagicStick /></el-icon>
+              <span class="chip-label">{{ skill.name }}</span>
+              <button
+                type="button"
+                :title="'移除技能 ' + skill.name"
+                :aria-label="'移除技能 ' + skill.name"
+                @click.stop="removeSkill(skill.name)"
+              >
+                <el-icon><Close /></el-icon>
+              </button>
+            </span>
+            <span
+              v-for="file in files"
+              :key="file.id"
+              class="composer-chip file-chip"
+              :title="file.path || file.name"
+            >
+              <el-icon aria-hidden="true"><Paperclip /></el-icon>
+              <span class="chip-label">{{ file.name }}</span>
+              <button
+                type="button"
+                :title="'移除附件 ' + file.name"
+                :aria-label="'移除附件 ' + file.name"
+                @click.stop="removeFile(file.id)"
+              >
+                <el-icon><Close /></el-icon>
+              </button>
+            </span>
+          </div>
+          <textarea
+            ref="promptInput"
+            v-model="prompt"
+            rows="1"
+            :placeholder="
+              skills.length
+                ? t('zhifuAgent.skills.trialRequestPlaceholder')
+                : t('zhifuAgent.composer.placeholder')
+            "
+            @mousedown.stop
+            @paste="handleImagePaste"
+            @keydown.backspace="handlePromptBackspace"
+            @keydown.enter.exact.prevent="send"
+          ></textarea>
+        </div>
+        <div class="composer-footer" @mousedown.stop>
+          <ShopSelect
+            v-model="shops"
+            v-model:auto-close-shops="autoCloseShops"
+            multiple
+            show-execution-options
           />
-          <el-icon class="remove" @click.stop="removeImage(item.id)"><Close /></el-icon>
-        </div>
-      </div>
-      <div class="input-row">
-        <div v-if="shops.length || skills.length || files.length" class="selection-row">
-          <span
-            v-for="item in shops"
-            :key="item.id"
-            class="composer-chip selected-shop-chip"
-            :title="item.name"
-          >
-            <el-icon aria-hidden="true"><Shop /></el-icon>
-            <span class="chip-label">{{ item.name }}</span>
-            <button
-              type="button"
-              :title="t('zhifuAgent.composer.removeShop', { name: item.name })"
-              :aria-label="t('zhifuAgent.composer.removeShop', { name: item.name })"
-              @click.stop="removeShop(item.id)"
-            >
-              <el-icon><Close /></el-icon>
-            </button>
-          </span>
-          <span
-            v-for="skill in skills"
-            :key="skill.name"
-            class="composer-chip skill-chip"
-            :title="skill.name"
-          >
-            <el-icon aria-hidden="true"><MagicStick /></el-icon>
-            <span class="chip-label">{{ skill.name }}</span>
-            <button
-              type="button"
-              :title="'移除技能 ' + skill.name"
-              :aria-label="'移除技能 ' + skill.name"
-              @click.stop="removeSkill(skill.name)"
-            >
-              <el-icon><Close /></el-icon>
-            </button>
-          </span>
-          <span
-            v-for="file in files"
-            :key="file.id"
-            class="composer-chip file-chip"
-            :title="file.path || file.name"
-          >
-            <el-icon aria-hidden="true"><Paperclip /></el-icon>
-            <span class="chip-label">{{ file.name }}</span>
-            <button
-              type="button"
-              :title="'移除附件 ' + file.name"
-              :aria-label="'移除附件 ' + file.name"
-              @click.stop="removeFile(file.id)"
-            >
-              <el-icon><Close /></el-icon>
-            </button>
-          </span>
-        </div>
-        <textarea
-          ref="promptInput"
-          v-model="prompt"
-          rows="1"
-          :placeholder="
-            skills.length
-              ? t('zhifuAgent.skills.trialRequestPlaceholder')
-              : t('zhifuAgent.composer.placeholder')
-          "
-          @mousedown.stop
-          @paste="handleImagePaste"
-          @keydown.backspace="handlePromptBackspace"
-          @keydown.enter.exact.prevent="send"
-        ></textarea>
-      </div>
+          <SkillPicker @select="addSkill" />
+          <el-button size="small" text :icon="Paperclip" @click="selectFiles">
+            {{ t("zhifuAgent.composer.attachment") }}
+          </el-button>
+          <PermissionModeSelect />
 
-      <div class="composer-footer" @mousedown.stop>
-        <ShopSelect
-          v-model="shops"
-          v-model:auto-close-shops="autoCloseShops"
-          show-execution-options
-        />
-        <SkillPicker @select="addSkill" />
-        <el-button size="small" text :icon="Paperclip" @click="selectFiles">
-          {{ t("zhifuAgent.composer.attachment") }}
-        </el-button>
-        <PermissionModeSelect />
+          <!-- <WorkspaceSelect @select="emit('select-workspace')" /> -->
+          <div class="model-switch">
+            <QuickModelSwitch />
+          </div>
 
-        <!-- <WorkspaceSelect @select="emit('select-workspace')" /> -->
-        <div class="model-switch">
-          <QuickModelSwitch />
+          <el-button
+            v-if="store.running"
+            :disabled="store.conversationRuns[store.activeId]?.stopping"
+            class="send-action"
+            type="danger"
+            circle
+            :icon="VideoPause"
+            :title="t('zhifuAgent.composer.stop')"
+            @click="stopAgent"
+          />
+          <el-button
+            v-else
+            class="send-action"
+            type="primary"
+            circle
+            :icon="Promotion"
+            :disabled="!canSend(currentPayload)"
+            :title="t('zhifuAgent.composer.send')"
+            @click="send"
+          />
         </div>
-
-        <el-button
-          v-if="store.running"
-          :disabled="store.conversationRuns[store.activeId]?.stopping"
-          class="send-action"
-          type="danger"
-          circle
-          :icon="VideoPause"
-          :title="t('zhifuAgent.composer.stop')"
-          @click="stopAgent"
-        />
-        <el-button
-          v-else
-          class="send-action"
-          type="primary"
-          circle
-          :icon="Promotion"
-          :disabled="!canSend(currentPayload)"
-          :title="t('zhifuAgent.composer.send')"
-          @click="send"
-        />
-      </div>
+      </template>
     </div>
     <div class="status-line">
       <el-icon><Lock /></el-icon>
@@ -192,6 +195,7 @@ import {
 } from "../../constants";
 import type { DisplaySkill, PendingFile, PendingImage, SelectedSkill } from "../../type";
 import { useAgentRun, type SendPromptPayload } from "../composables/useAgentRun";
+import ApprovalDialog from "./ApprovalDialog.vue";
 import PermissionModeSelect from "./PermissionModeSelect.vue";
 import QuickModelSwitch from "./QuickModelSwitch.vue";
 import ShopSelect, { type SelectedShop } from "./ShopSelect.vue";
@@ -214,7 +218,9 @@ const skills = ref<SelectedSkill[]>([]);
 const shops = ref<SelectedShop[]>([]);
 const autoCloseShops = ref(false);
 const promptInput = ref<HTMLTextAreaElement>();
-
+const hasInlineApproval = computed(
+  () => Boolean(store.approval && store.approval.conversationId === store.activeId)
+);
 const currentPayload = computed<SendPromptPayload>(() => ({
   text: prompt.value,
   images: images.value,

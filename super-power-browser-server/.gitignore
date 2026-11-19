@@ -4,3 +4,4 @@
 .env
 legacy-runtime.properties
 *.log
+/.dev/

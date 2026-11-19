@@ -20,7 +20,7 @@ const tabsElement=ref<HTMLElement>();
 function tabIcon(path:string){return path.startsWith('/mall')?Shop:path.startsWith('/agentIp')?Monitor:path.startsWith('/proxy')?Connection:path.startsWith('/money')?Wallet:path.startsWith('/companyManage')?User:path.startsWith('/zhifuAgent')?ChatDotRound:path.startsWith('/dashboard')?House:Setting;}
 const groups=computed(()=>[
   {name:'shop',title:'店铺管理',icon:Shop,children:[['店铺管理','/mall/mallManage','shop.view'],['回收站','/mall/recycle','shop.view']]},
-  {name:'device',title:'设备管理',icon:Monitor,children:[['设备列表','/agentIp/all','device.view'],['购买设备','/agentIp/aggregateBuy3','device.buy'],['设备回收站','/agentIp/recycle','device.view']]},
+  // {name:'device',title:'设备管理',icon:Monitor,children:[['设备列表','/agentIp/all','device.view'],['购买设备','/agentIp/aggregateBuy3','device.buy'],['设备回收站','/agentIp/recycle','device.view']]},
   {name:'proxy',title:'代理管理',icon:Connection,children:[['代理列表','/proxy/list','proxy.view'],['动态代理','/proxy/dynamic','proxy.view'],['代理 IP 推荐','/proxy/recommend','proxy.view']]},
   {name:'money',title:'费用管理',icon:Wallet,children:[['账户余额','/money/account','wallet.view'],['账户充值','/money/recharge','wallet.recharge|wallet.view'],['订单管理','/money/order','order.view']]},
   {name:'company',title:'企业管理',icon:User,children:[['部门与成员','/companyManage/membersMamanger','member.manage|role.manage'],['角色权限','/companyManage/roles','role.manage|member.manage']]}

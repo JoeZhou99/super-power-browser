@@ -18,6 +18,6 @@ const app=createApp(App);
 (window as any).openShop = (params: {browserId: string | number}) => window.api?.openBrowser(String(params.browserId));
 app.config.errorHandler=(error)=>ElMessage.error(error instanceof Error?error.message:'操作失败');
 app.use(store).use(i18n).use(router).use(ElementPlus,{locale:zhCn});
-window.api?.onLoggedOut?.(()=>{usePermissions().user=null;sessionStorage.removeItem('spb-token');void router.replace('/login');});
+window.api?.onLoggedOut?.(()=>{usePermissions().user=null;sessionStorage.setItem('spb-skip-auto-login','1');sessionStorage.removeItem('spb-token');void router.replace('/login');});
 router.isReady().then(()=>app.mount('#app'));
 window.addEventListener('unhandledrejection',event=>{event.preventDefault();ElMessage.error(event.reason?.message||'请求失败');});

@@ -5,7 +5,6 @@
       <ChatTimeline @open-image="openImage" />
       <Composer v-model="prompt" @open-image="openImage" @select-workspace="selectWorkspace" />
     </main>
-    <ApprovalDialog />
     <ImageViewer :image="viewerImage" @close="viewerImage = null" />
     <WorkflowDialogs ref="workflowDialogsRef" />
   </div>
@@ -13,7 +12,6 @@
 
 <script setup lang="ts">
 import { errorMessage, useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
-import ApprovalDialog from "./components/ApprovalDialog.vue";
 import ChatHeader from "./components/ChatHeader.vue";
 import ChatTimeline from "./components/ChatTimeline.vue";
 import Composer from "./components/Composer.vue";

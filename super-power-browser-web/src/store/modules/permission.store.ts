@@ -5,7 +5,7 @@ export const usePermissions=defineStore('permissions',{
   actions:{
     async load(){this.user=await request('/me/permissions');},
     can(permission:string){return this.user?.permissions.includes(permission)||false;},
-    async logout(){try{await window.api?.closeAll();await post('/auth/logout');}finally{this.user=null;sessionStorage.removeItem('spb-token');await window.api?.setSession('');window.location.hash='/login';}},
+    async logout(){try{await window.api?.closeAll();await post('/auth/logout');}finally{this.user=null;sessionStorage.setItem('spb-skip-auto-login','1');sessionStorage.removeItem('spb-token');await window.api?.setSession('');window.location.hash='/login';}},
     async syncDesktop(){await window.api?.setSession(token());}
   }
 });

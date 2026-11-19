@@ -39,7 +39,7 @@
       </el-select>
     </div>
     <div class="shop-list-hint">仅显示绑定设备的店铺</div>
-    <div class="selection-toolbar">
+    <div v-if="props.multiple" class="selection-toolbar">
       <el-checkbox
         :model-value="allVisibleSelected"
         :indeterminate="someVisibleSelected && !allVisibleSelected"
@@ -127,7 +127,7 @@ export interface SelectedShop {
 const PAGE_SIZE = 20;
 const MAX_SHOPS = 20;
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     placement?: "top" | "top-start" | "bottom" | "bottom-start";
     /** 为 true 时点击切换选中，并保持列表打开以便连续多选 */
@@ -268,6 +268,12 @@ function toggleVisibleShops(checked: boolean | string | number) {
 }
 
 function choose(shop: SelectedShop) {
+  // 创建技能等场景使用单选；聊天执行可通过 multiple=true 保留多店铺选择。
+  if (!props.multiple) {
+    modelValue.value = isSelected(shop) ? [] : [shop];
+    visible.value = false;
+    return;
+  }
   if (isSelected(shop)) {
     modelValue.value = modelValue.value.filter((item) => String(item.id) !== String(shop.id));
     return;

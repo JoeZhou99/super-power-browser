@@ -528,6 +528,18 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
     }[];
     autoSend?: boolean;
   } | null>(null);
+  /** 失败店铺触发的技能更新页预填数据。 */
+  const pendingSkillUpdate = ref<{
+    skillName: string;
+    skills?: SelectedSkill[];
+    shops: {
+      id: string | number;
+      name: string;
+      platform?: string;
+      account?: string;
+      logo?: string;
+    }[];
+  } | null>(null);
   const pendingSkillDraft = ref<SkillCreatorPrefill | null>(null);
   const pendingSkillEdit = ref<{ id: string | number; scope: ZhifuSkillScope } | null>(null);
   const pendingScheduledDraft = ref<Partial<ScheduledTask> | null>(null);
@@ -2355,6 +2367,7 @@ export const useZhifuAgentStore = defineStore("zhifuAgent", () => {
     pendingSkill,
     pendingPrompt,
     pendingSend,
+    pendingSkillUpdate,
     pendingSkillDraft,
     pendingSkillEdit,
     pendingScheduledDraft,

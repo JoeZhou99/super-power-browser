@@ -1,9 +1,16 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { FormInstance, FormRules } from 'element-plus';
 import { Check, Connection, Lock, Monitor, Right, User, Message, Phone } from '@element-plus/icons-vue';
 import { passwordError, publicAuth, usernameError, type AuthSession } from './public-auth';
+import {
+  loadRememberedAccounts,
+  readRememberPreference,
+  saveRememberedAccounts,
+  writeRememberPreference,
+  type RememberedAccount,
+} from './remembered-accounts';
 
 const route = useRoute();
 const router = useRouter();
@@ -13,7 +20,12 @@ const isRegister = computed(() => route.path === '/register');
 const busy = ref(false);
 const capsLock = ref(false);
 const formError = ref('');
+const rememberedAccounts = ref<RememberedAccount[]>([]);
+const rememberPassword = ref(false);
+const autoLoginAttempted = ref(false);
 let submission: AbortController | undefined;
+let selectedIdentifier = '';
+let applyingAccountSelection = false;
 const rules = computed<FormRules>(() => ({
   username: [{ required: !isRegister.value, trigger: 'blur', validator: (_rule, value, callback) => {
     const error = isRegister.value ? (value?.trim() ? usernameError(value) : '') : (!value?.trim() ? '请输入用户名、邮箱或手机号' : '');
@@ -46,16 +58,84 @@ watch(isRegister, () => {
   form.phone = '';
   capsLock.value = false;
   formError.value = '';
+  selectedIdentifier = '';
+  autoLoginAttempted.value = isRegister.value;
   formRef.value?.clearValidate();
+  if (!isRegister.value) void initializeLogin(false);
 });
 onBeforeUnmount(() => { submission?.abort(); form.password = ''; form.confirmPassword = ''; });
+
+watch(() => form.username, (value) => {
+  const identifier = value.trim();
+  if (applyingAccountSelection || identifier === selectedIdentifier) return;
+  selectedIdentifier = identifier;
+  form.password = '';
+  formError.value = '';
+  const account = rememberedAccounts.value.find((item) => item.value.toLowerCase() === identifier.toLowerCase());
+  if (account?.password) {
+    form.password = account.password;
+    rememberPassword.value = true;
+  }
+});
 
 function checkCapsLock(event: Event | KeyboardEvent) {
   if (!(event instanceof KeyboardEvent)) return;
   capsLock.value = event.getModifierState('CapsLock');
 }
 
-async function submit() {
+function queryAccounts(queryString: string, callback: (accounts: RememberedAccount[]) => void) {
+  const query = queryString.trim().toLowerCase();
+  callback(query ? rememberedAccounts.value.filter((item) => item.value.toLowerCase().includes(query)) : rememberedAccounts.value);
+}
+
+function selectAccount(item: Record<string, any>) {
+  const account = rememberedAccounts.value.find((candidate) => candidate.value === String(item.value || '').trim());
+  if (!account) return;
+  applyingAccountSelection = true;
+  form.username = account.value;
+  form.password = account.password;
+  selectedIdentifier = account.value;
+  rememberPassword.value = Boolean(account.password);
+  formError.value = '';
+  void nextTick(() => { applyingAccountSelection = false; });
+}
+
+async function removeAccount(item: Record<string, any>) {
+  const value = String(item.value || '').trim();
+  if (!value) return;
+  rememberedAccounts.value = rememberedAccounts.value.filter((account) => account.value.toLowerCase() !== value.toLowerCase());
+  if (form.username.trim().toLowerCase() === value.toLowerCase()) {
+    form.password = '';
+    rememberPassword.value = false;
+    selectedIdentifier = '';
+  }
+  await saveRememberedAccounts(rememberedAccounts.value);
+}
+
+async function changeRememberPreference(value: unknown) {
+  rememberPassword.value = value === true;
+  writeRememberPreference(rememberPassword.value);
+  if (rememberPassword.value) return;
+  const account = rememberedAccounts.value.find((item) => item.value.toLowerCase() === selectedIdentifier.toLowerCase());
+  if (!account?.password) return;
+  account.password = '';
+  try { await saveRememberedAccounts(rememberedAccounts.value); } catch { /* storage can be disabled */ }
+}
+
+async function persistAccount(identifier: string, password: string) {
+  const normalized = identifier.trim();
+  if (!normalized) return;
+  const existing = rememberedAccounts.value.find((item) => item.value.toLowerCase() === normalized.toLowerCase());
+  const account: RememberedAccount = {
+    value: existing?.value || normalized,
+    password: rememberPassword.value ? password : '',
+    updatedAt: Date.now(),
+  };
+  rememberedAccounts.value = [account, ...rememberedAccounts.value.filter((item) => item.value.toLowerCase() !== normalized.toLowerCase())];
+  try { await saveRememberedAccounts(rememberedAccounts.value); } catch { /* login must still succeed if local storage is unavailable */ }
+}
+
+async function submit(fromAutoLogin = false) {
   if (busy.value || !formRef.value) return;
   busy.value = true;
   formError.value = '';
@@ -65,12 +145,18 @@ async function submit() {
   try {
     if (!(await formRef.value.validate().catch(() => false))) return;
     if (controller.signal.aborted) return;
+    const identifier = form.username.trim();
+    if (!registering && !identifier) {
+      formError.value = '请输入用户名、邮箱或手机号';
+      return;
+    }
     const data = await publicAuth<AuthSession>(registering ? '/register' : '/login', {
-      body: registering ? { username: form.username.trim(), email: form.email.trim(), phone: form.phone.trim(), password: form.password, displayName: form.email.trim() } : { identifier: form.username.trim(), password: form.password },
+      body: registering ? { username: identifier, email: form.email.trim(), phone: form.phone.trim(), password: form.password, displayName: form.email.trim() } : { username: identifier, identifier, password: form.password },
       signal: controller.signal,
     });
     if (controller.signal.aborted) return;
     if (!data.token) throw new Error('登录信息不完整，请稍后重试');
+    if (!registering) await persistAccount(form.username, form.password);
     sessionStorage.setItem('spb-token', data.token);
     form.password = '';
     form.confirmPassword = '';
@@ -78,11 +164,43 @@ async function submit() {
     form.phone = '';
     await router.replace('/dashboard');
   } catch (error) {
-    if (!controller.signal.aborted) formError.value = error instanceof Error ? error.message : `${registering ? '注册' : '登录'}失败，请稍后重试`;
+    if (!controller.signal.aborted) {
+      formError.value = fromAutoLogin
+        ? `自动登录失败：${error instanceof Error ? error.message : '请检查账号密码'}`
+        : error instanceof Error ? error.message : `${registering ? '注册' : '登录'}失败，请稍后重试`;
+    }
   } finally {
     if (submission === controller) busy.value = false;
   }
 }
+
+async function initializeLogin(autoLoginOnLoad: boolean) {
+  rememberPassword.value = readRememberPreference();
+  const loaded = await loadRememberedAccounts();
+  const skipAutoLogin = sessionStorage.getItem('spb-skip-auto-login') === '1';
+  if (skipAutoLogin) sessionStorage.removeItem('spb-skip-auto-login');
+  if (isRegister.value || autoLoginAttempted.value) return;
+  rememberedAccounts.value = loaded;
+  if (!autoLoginOnLoad || skipAutoLogin) {
+    autoLoginAttempted.value = true;
+    return;
+  }
+  const account = loaded.find((item) => item.value.trim() && item.password);
+  if (!account || form.username.trim() || form.password) return;
+  applyingAccountSelection = true;
+  form.username = account.value.trim();
+  form.password = account.password;
+  selectedIdentifier = account.value.trim();
+  rememberPassword.value = true;
+  await nextTick();
+  applyingAccountSelection = false;
+  if (!autoLoginAttempted.value) {
+    autoLoginAttempted.value = true;
+    await submit(true);
+  }
+}
+
+onMounted(() => { void initializeLogin(true); });
 </script>
 
 <template>
@@ -141,9 +259,31 @@ async function submit() {
           <h2 id="login-title">{{ isRegister ? '创建账号' : '欢迎回来' }}</h2>
           <p class="form-description">{{ isRegister ? '注册后即可开始管理店铺与团队。' : '登录工作台，开始今天的工作。' }}</p>
 
-          <el-form :key="isRegister ? 'register' : 'login'" ref="formRef" :model="form" :rules="rules" label-position="top" class="auth-form" :aria-busy="busy" @submit.prevent="submit" @input="formError = ''">
+          <el-form :key="isRegister ? 'register' : 'login'" ref="formRef" :model="form" :rules="rules" label-position="top" class="auth-form" :aria-busy="busy" @submit.prevent="submit(false)" @input="formError = ''">
             <el-form-item :label="isRegister ? '用户名（可选）' : '登录账号'" prop="username">
-              <el-input v-model.trim="form.username" name="username" :placeholder="isRegister ? '可留空，默认使用邮箱前缀' : '请输入用户名、邮箱或手机号'" autocomplete="username" :maxlength="80" :prefix-icon="User" :disabled="busy" autocapitalize="none" :spellcheck="false" />
+              <el-autocomplete
+                v-if="!isRegister"
+                v-model.trim="form.username"
+                name="username"
+                :fetch-suggestions="queryAccounts"
+                :placeholder="'请输入用户名、邮箱或手机号'"
+                autocomplete="username"
+                :maxlength="80"
+                :prefix-icon="User"
+                :disabled="busy"
+                autocapitalize="none"
+                :spellcheck="false"
+                class="account-autocomplete"
+                @select="selectAccount"
+              >
+                <template #default="{ item }">
+                  <div class="account-suggestion">
+                    <span>{{ item.value }}</span>
+                    <el-button link type="danger" :disabled="busy" @click.stop="removeAccount(item)">移除</el-button>
+                  </div>
+                </template>
+              </el-autocomplete>
+              <el-input v-else v-model.trim="form.username" name="username" placeholder="可留空，默认使用邮箱前缀" autocomplete="username" :maxlength="80" :prefix-icon="User" :disabled="busy" autocapitalize="none" :spellcheck="false" />
             </el-form-item>
             <template v-if="isRegister">
               <el-form-item label="邮箱地址" prop="email"><el-input v-model.trim="form.email" name="email" type="email" placeholder="name@example.com" autocomplete="email" :prefix-icon="Message" :disabled="busy" autocapitalize="none" /></el-form-item>
@@ -155,6 +295,10 @@ async function submit() {
             <el-form-item v-if="isRegister" label="确认密码" prop="confirmPassword">
               <el-input v-model="form.confirmPassword" name="confirm-password" placeholder="请再次输入密码" type="password" show-password autocomplete="new-password" :prefix-icon="Lock" :disabled="busy" @keydown="checkCapsLock" @keyup="checkCapsLock" @blur="capsLock = false" />
             </el-form-item>
+            <div v-if="!isRegister" class="remember-row">
+              <el-checkbox v-model="rememberPassword" :disabled="busy" @change="changeRememberPreference">记住密码</el-checkbox>
+              <span>下次选择此账号可自动填充，并在重新打开时自动登录</span>
+            </div>
             <div class="form-status" aria-live="polite">
               <span v-if="capsLock" class="caps-warning">大写锁定已开启</span>
               <span v-else>{{ isRegister ? '邮箱和手机号用于账户联系与安全通知。' : '支持使用用户名、邮箱或手机号登录。' }}</span>
@@ -279,6 +423,14 @@ async function submit() {
 .auth-form :deep(.el-input__inner::placeholder) { color: #99a4b6; }
 .auth-form :deep(.el-form-item__error) { padding-top: 5px; font-size: 11px; }
 .auth-form :deep(.el-input__password:focus-visible) { outline: 2px solid #386bff; outline-offset: 3px; border-radius: 3px; }
+.account-autocomplete { width: 100%; }
+.account-suggestion { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; }
+.account-suggestion > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.account-suggestion .el-button { flex: 0 0 auto; padding: 0; font-size: 11px; }
+.remember-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 22px; margin: -6px 0 17px; color: #7e8ba1; font-size: 11px; line-height: 1.6; }
+.remember-row .el-checkbox { margin-right: auto; height: auto; color: #53627a; }
+.remember-row :deep(.el-checkbox__label) { padding-left: 7px; font-size: 12px; }
+.remember-row > span { flex: 1; text-align: right; }
 .form-status { min-height: 20px; margin: -4px 0 22px; font-size: 11px; color: #7e8ba1; line-height: 20px; }
 .caps-warning { color: #a96714; }
 .login-error { background: #fff3f2; border: 1px solid #f9dedb; border-radius: 8px; padding: 10px 12px; margin: -5px 0 16px; color: #b13e39; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }

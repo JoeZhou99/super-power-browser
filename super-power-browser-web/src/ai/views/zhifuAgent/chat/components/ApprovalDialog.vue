@@ -1,83 +1,90 @@
 <template>
-  <el-dialog
-    :model-value="dialogVisible"
-    width="560px"
-    :show-close="false"
-    :close-on-click-modal="false"
-    :close-on-press-escape="false"
-    append-to-body
-    class="zhifu-approval-dialog"
+  <section
+    v-if="dialogVisible && store.approval"
+    class="inline-approval"
+    role="dialog"
+    aria-live="polite"
+    aria-label="人工确认"
+    @mousedown.stop
   >
-    <template #header>
-      <div class="approval-heading">
-        <div class="approval-icon">
-          <el-icon :size="20"><Lock /></el-icon>
-        </div>
-        <div>
-          <h2>{{ manual ? "需要你完成操作" : "确认操作授权" }}</h2>
-          <p>请确认来源会话和操作内容</p>
-        </div>
+    <div class="approval-heading">
+      <div class="approval-icon">
+        <el-icon :size="17"><Lock /></el-icon>
       </div>
-    </template>
-    <template v-if="store.approval">
-      <div class="approval-source">
-        <div class="source-topline">
-          <span class="source-label">来源会话</span>
-          <el-button link type="primary" :disabled="!sourceConversation" @click="viewSource">
-            查看该会话 ↗
-          </el-button>
-        </div>
-        <strong class="source-title">{{ conversationTitle }}</strong>
-        <p v-if="approvalShopName" class="source-shop">店铺：{{ approvalShopName }}</p>
-        <p v-if="taskText" class="source-task" :title="taskText">{{ taskText }}</p>
-        <span v-if="sourceCreatedAt" class="source-date">创建于 {{ sourceCreatedAt }}</span>
+      <div class="approval-heading-copy">
+        <strong>{{ manual ? "需要你完成操作" : "确认操作" }}</strong>
+        <span>{{ conversationTitle }}</span>
       </div>
-      <p v-if="manual" class="manual-instruction">
-        {{ store.approval.input?.message || "请完成登录或验证码，完成后点击继续。" }}
+    </div>
+
+    <p v-if="manual" class="approval-question">
+      {{ store.approval.input?.message || "请完成登录或验证码，完成后点击继续。" }}
+    </p>
+    <template v-else>
+      <p class="approval-question">
+        确认操作：<strong>{{ formatTool(store.approval.toolName) }}</strong>
+        <span v-if="approvalSummary">（{{ approvalSummary }}）</span>，是否允许？
       </p>
-      <template v-else>
-        <div class="operation-summary">
-          <span>请求操作</span>
-          <strong>{{ formatTool(store.approval.toolName) }}</strong>
-        </div>
-        <details class="operation-details">
-          <summary>查看操作详情</summary>
-          <pre>{{ approvalInput }}</pre>
-        </details>
-        <fieldset class="scope-options">
-          <legend>授权范围</legend>
-          <label
-            v-for="option in scopeOptions"
-            :key="option.value"
-            :class="['scope-option', { selected: selectedScope === option.value }]"
-          >
-            <input
-              v-model="selectedScope"
-              type="radio"
-              name="approval-scope"
-              :value="option.value"
-            />
-            <span>
-              <strong>{{ option.label }}</strong>
-              <small>{{ option.description }}</small>
-            </span>
-          </label>
-        </fieldset>
-      </template>
-      <p class="approval-scope">
-        {{ manual ? "确认后仅继续此来源会话的任务。" : "仅对上方来源会话生效，不会授权其他会话。" }}
-      </p>
+      <details class="operation-details">
+        <summary>查看操作详情</summary>
+        <pre>{{ approvalInput }}</pre>
+      </details>
     </template>
-    <template #footer>
+
+    <div v-if="manual" class="approval-choice-list">
+      <button
+        type="button"
+        class="approval-choice approval-choice-primary"
+        @click="decideApproval(true, 'once')"
+      >
+        <span class="choice-index">1</span>
+        <span class="choice-copy">
+          <strong>已完成，继续</strong>
+          <small>我已在浏览器中完成登录或验证码操作</small>
+        </span>
+        <el-icon class="choice-arrow"><ArrowRight /></el-icon>
+      </button>
+      <button type="button" class="approval-choice" @click="decideApproval(false)">
+        <span class="choice-index">2</span>
+        <span class="choice-copy">
+          <strong>拒绝并停止</strong>
+          <small>取消本次人工操作并停止任务</small>
+        </span>
+      </button>
+    </div>
+    <template v-else>
+      <fieldset class="scope-options">
+        <legend>授权范围</legend>
+        <label
+          v-for="option in scopeOptions"
+          :key="option.value"
+          :class="['scope-option', { selected: selectedScope === option.value }]"
+        >
+          <input
+            v-model="selectedScope"
+            type="radio"
+            name="approval-scope"
+            :value="option.value"
+          />
+          <span>
+            <strong>{{ option.label }}</strong>
+            <small>{{ option.description }}</small>
+          </span>
+        </label>
+      </fieldset>
       <div class="approval-actions">
         <span class="deny-hint">拒绝将停止本次任务</span>
-        <el-button @click="decideApproval(false)">拒绝</el-button>
-        <el-button type="primary" @click="decideApproval(true, manual ? 'once' : selectedScope)">
-          {{ manual ? "已完成，继续" : "允许并继续" }}
+        <el-button size="small" @click="decideApproval(false)">拒绝</el-button>
+        <el-button size="small" type="primary" @click="decideApproval(true, selectedScope)">
+          允许并继续
         </el-button>
       </div>
     </template>
-  </el-dialog>
+    <p class="approval-scope">
+      {{ manual ? "确认后仅继续此来源会话的任务。" : "仅对上方来源会话生效，不会授权其他会话。" }}
+    </p>
+  </section>
+
   <div
     v-if="noticeConversations.length"
     class="background-approval"
@@ -100,17 +107,24 @@
 </template>
 
 <script setup lang="ts">
-import { Lock } from "@element-plus/icons-vue";
+import { ArrowRight, Lock } from "@element-plus/icons-vue";
 import { computed, ref, watch } from "vue";
 import type { ZhifuApprovalScope } from "@/ai/utils/electronApi";
 import { useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
-import { formatTool } from "../../utils/format";
+import { formatTool, summarizeInput } from "../../utils/format";
 import { useAgentRun } from "../composables/useAgentRun";
 
 const store = useZhifuAgentStore();
 const approvalInput = computed(() => {
   const input = store.approval?.input;
   return typeof input === "string" ? input : input == null ? "" : JSON.stringify(input, null, 2);
+});
+const approvalSummary = computed(() => {
+  const input = store.approval?.input;
+  if (input && typeof input === "object" && typeof input.message === "string") {
+    return input.message.slice(0, 220);
+  }
+  return summarizeInput(input);
 });
 const manual = computed(() => store.approval?.toolName === "browser_wait_user");
 const selectedScope = ref<ZhifuApprovalScope>("turn");
@@ -127,163 +141,179 @@ const scopeOptions = [
     description: "后续消息的工具操作持续放行，人工确认除外",
   },
 ] as const;
+
 watch(
   () => store.approval?.approvalId,
   () => {
     selectedScope.value = "turn";
   }
 );
-const { decideApproval } = useAgentRun();
-const deferredId = ref("");
-const dialogVisible = computed(() =>
-  Boolean(
-    store.approval &&
-    store.approval.conversationId === store.activeId &&
-    deferredId.value !== store.approval.approvalId
-  )
-);
 
+const { decideApproval } = useAgentRun();
+const dialogVisible = computed(() =>
+  Boolean(store.approval && store.approval.conversationId === store.activeId)
+);
 const sourceConversation = computed(() =>
   store.conversations.find((item) => item.id === store.approval?.conversationId)
 );
 const conversationTitle = computed(() => sourceConversation.value?.title || "来源会话已不可用");
-const approvalShopName = computed(() => String(store.approval?.shopName || "").trim());
-const taskText = computed(
-  () =>
-    [...(sourceConversation.value?.messages || [])].reverse().find((item) => item.role === "user")
-      ?.content || ""
-);
-const sourceCreatedAt = computed(() =>
-  sourceConversation.value?.createdAt
-    ? new Date(sourceConversation.value.createdAt).toLocaleString()
-    : ""
-);
 const backgroundConversations = computed(() => store.backgroundApprovalConversations || []);
-const noticeConversations = computed(() =>
-  store.approval && deferredId.value === store.approval.approvalId && sourceConversation.value
-    ? [sourceConversation.value, ...backgroundConversations.value]
-    : backgroundConversations.value
-);
-async function viewConversation(id: string, openDetails = true) {
-  if (openDetails) deferredId.value = "";
+const noticeConversations = computed(() => backgroundConversations.value);
+
+async function viewConversation(id: string) {
   store.activePage = "chat";
   await store.selectConversation(id);
-}
-async function viewSource() {
-  if (sourceConversation.value) {
-    deferredId.value = store.approval?.approvalId || "";
-    await viewConversation(sourceConversation.value.id, false);
-  }
 }
 </script>
 
 <style lang="scss" scoped>
-.approval-actions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  .el-button + .el-button {
-    margin-left: 0;
-  }
+.inline-approval {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #eef0f1;
+  background: #fff;
 }
-.deny-hint {
-  margin-right: auto;
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
-}
+
 .approval-heading {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
 }
-.approval-heading p {
-  margin: 4px 0 0;
-  font-size: 12px;
+
+.approval-heading-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
   text-align: left;
 }
+
+.approval-heading-copy strong {
+  color: #2d3438;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.approval-heading-copy span {
+  overflow: hidden;
+  color: #899297;
+  font-size: 11px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .approval-icon {
   display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
   color: var(--el-color-warning);
   background: var(--el-color-warning-light-9);
-  border-radius: 12px;
+  border-radius: 9px;
 }
 
-h2 {
-  margin: 0 0 6px;
-  font-size: 17px;
+.approval-question {
+  margin: 10px 0 8px;
+  color: #4c575c;
+  font-size: 13px;
+  line-height: 1.6;
   text-align: left;
+  overflow-wrap: anywhere;
 }
 
-.approval-source {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
+.operation-details {
+  margin: 2px 0 10px;
+}
+
+.operation-details summary {
+  padding: 4px 0;
+  color: #899297;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.approval-choice-list {
+  display: grid;
   gap: 6px;
-  padding: 14px 16px;
-  margin: 0 0 18px;
-  border: 1px solid var(--el-color-primary-light-8);
-  border-left: 3px solid var(--el-color-primary);
+  margin-top: 8px;
+}
+
+.approval-choice {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 8px;
+  color: #3b454a;
+  text-align: left;
+  cursor: pointer;
+  background: #fff;
+  border: 1px solid #e5e8e9;
   border-radius: 8px;
-  background: var(--el-color-primary-light-9);
-  strong {
-    max-width: 100%;
-    overflow-wrap: anywhere;
+  transition: background 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background: #f8fafb;
+    border-color: #cfd6da;
   }
 }
-.source-topline {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+
+.approval-choice-primary {
+  border-color: #d8e5ff;
+  background: #f7f9ff;
+
+  &:hover {
+    border-color: #a9c4ff;
+    background: #f1f5ff;
+  }
 }
-.source-title {
-  color: var(--el-text-color-primary);
-  font-size: 17px;
-  line-height: 1.5;
-}
-.source-shop {
-  margin: 0;
-  color: var(--el-text-color-regular);
-  font-size: 13px;
-  line-height: 1.5;
-}
-.source-task {
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  overflow: hidden;
-  margin: 0;
-  text-align: left;
-  line-height: 1.6;
-  color: var(--el-text-color-regular);
-}
-.operation-summary {
-  display: flex;
-  gap: 12px;
-  align-items: baseline;
-  font-size: 13px;
-  margin-bottom: 8px;
-}
-.operation-summary span {
-  color: var(--el-text-color-secondary);
-}
-.operation-summary strong {
-  color: var(--el-text-color-primary);
-}
-.operation-details {
-  margin-bottom: 18px;
-}
-.operation-details summary {
-  cursor: pointer;
+
+.choice-index {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  place-items: center;
+  color: #6f7a80;
   font-size: 12px;
-  color: var(--el-text-color-secondary);
-  padding: 4px 0;
+  background: #f1f3f4;
+  border-radius: 6px;
 }
+
+.approval-choice-primary .choice-index {
+  color: #3370ff;
+  background: #e6eeff;
+}
+
+.choice-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.choice-copy strong {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.choice-copy small {
+  overflow: hidden;
+  color: #8b959a;
+  font-size: 11px;
+  line-height: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.choice-arrow {
+  margin-left: auto;
+  color: #606b70;
+}
+
 .scope-options {
   display: grid;
   gap: 8px;
@@ -292,134 +322,125 @@ h2 {
   border: 0;
   min-width: 0;
 }
+
 .scope-options legend {
-  font-size: 13px;
-  color: var(--el-text-color-primary);
-  font-weight: 600;
   padding: 0;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  color: #49555a;
+  font-size: 12px;
+  font-weight: 600;
 }
+
 .scope-option {
   display: flex;
-  gap: 10px;
   align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 8px;
-  padding: 11px 12px;
   cursor: pointer;
 }
+
 .scope-option.selected {
   border-color: var(--el-color-primary);
   background: var(--el-color-primary-light-9);
 }
+
 .scope-option input {
+  flex-shrink: 0;
   margin: 3px 0 0;
   accent-color: var(--el-color-primary);
-  flex-shrink: 0;
 }
+
 .scope-option strong {
   display: block;
-  font-size: 13px;
-  line-height: 20px;
   color: var(--el-text-color-primary);
-}
-.scope-option small {
-  display: block;
-  margin-top: 2px;
   font-size: 12px;
   line-height: 18px;
+}
+
+.scope-option small {
+  display: block;
+  margin-top: 1px;
   color: var(--el-text-color-secondary);
+  font-size: 11px;
+  line-height: 16px;
 }
-.manual-instruction {
-  text-align: left;
-  line-height: 1.7;
-  padding: 12px;
-  border-radius: 8px;
-  background: var(--el-fill-color-light);
+
+.approval-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid #eef0f1;
+
+  .el-button + .el-button {
+    margin-left: 0;
+  }
 }
-.source-label,
-.source-date {
-  color: var(--el-text-color-secondary);
-  font-size: 12px;
+
+.deny-hint {
+  margin-right: auto;
+  color: #8d969b;
+  font-size: 11px;
 }
+
 .approval-scope {
-  font-size: 12px;
+  margin: 8px 0 0;
+  color: #969fa3;
+  font-size: 11px;
   line-height: 1.6;
   text-align: left;
-  margin: 12px 0 0;
 }
+
+pre {
+  max-height: 160px;
+  padding: 8px 10px;
+  margin: 0;
+  overflow: auto;
+  font-family: Consolas, Menlo, monospace;
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: var(--el-fill-color-light);
+  border-radius: 7px;
+}
+
 .background-approval {
   position: fixed;
   right: 24px;
   bottom: 24px;
   z-index: 1999;
   display: flex;
+  max-width: min(420px, calc(100vw - 48px));
   align-items: center;
   gap: 16px;
-  max-width: min(420px, calc(100vw - 48px));
   padding: 14px 16px;
+  font-size: 13px;
+  background: var(--el-bg-color-overlay);
   border: 1px solid var(--el-border-color-lighter);
   border-radius: 10px;
-  background: var(--el-bg-color-overlay);
   box-shadow: var(--el-box-shadow-light);
-  font-size: 13px;
+
   div {
     min-width: 0;
   }
+
   p {
     margin: 4px 0 0;
-    text-align: left;
     overflow-wrap: anywhere;
     font-size: 12px;
-  }
-}
-
-p {
-  margin: 0 0 10px;
-  color: var(--el-text-color-secondary);
-  text-align: center;
-}
-
-pre {
-  max-height: 220px;
-  padding: 10px 12px;
-  margin: 0;
-  overflow: auto;
-  font-family: Consolas, Menlo, monospace;
-  font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  background: var(--el-fill-color-light);
-  border-radius: 8px;
-}
-@media (max-width: 600px) {
-  .deny-hint {
-    flex-basis: 100%;
     text-align: left;
   }
 }
-</style>
 
-<style lang="scss">
-.el-dialog.zhifu-approval-dialog {
-  max-width: calc(100vw - 32px);
-  margin-top: 6vh;
-  padding: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  .el-dialog__header {
-    padding: 20px 24px 16px;
-    margin: 0;
-    border-bottom: 1px solid var(--el-border-color-extra-light);
-  }
-  .el-dialog__body {
-    padding: 20px 24px;
-    max-height: min(65vh, calc(100dvh - 260px));
-    overflow-y: auto;
-  }
-  .el-dialog__footer {
-    padding: 14px 24px;
-    border-top: 1px solid var(--el-border-color-extra-light);
+@media (max-width: 600px) {
+  .approval-actions .deny-hint {
+    flex-basis: 100%;
+    text-align: left;
   }
 }
 </style>
