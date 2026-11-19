@@ -334,6 +334,8 @@ export default {
       "placeholder": "想要做点什么…",
       "attachment": "附件",
       "attachmentPathHint": "附件仅保存原文件路径。移动、重命名或删除文件后，任务将无法执行。",
+      "dropTitle": "拖放文件到这里",
+      "dropHint": "支持图片和普通文件，松开后即可添加",
       "pickSkill": "选技能",
       "pickShop": "选店铺",
       "searchShop": "搜索店铺名称",
@@ -376,6 +378,8 @@ export default {
       "maxFiles": "每条消息最多添加 {count} 个文件",
       "fileTooLarge": "文件 {name} 需小于 50MB",
       "selectFileFailed": "文件选择失败",
+      "dropFileFailed": "拖入的文件读取失败",
+      "dropPathFailed": "无法获取文件 {name} 的本地路径",
       "modelRequired": "请先选择模型",
       "modelUnavailable": "当前会话的模型已不可用，请重新选择模型"
     },

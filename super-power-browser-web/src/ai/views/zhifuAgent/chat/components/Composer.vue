@@ -44,21 +44,58 @@
       </button>
     </div>
 
-    <div class="composer" @mousedown="focusPrompt">
+    <div
+      class="composer"
+      :class="{ 'is-dragging': isDraggingFiles }"
+      @mousedown="focusPrompt"
+      @dragenter.prevent="handleDragEnter"
+      @dragover.prevent="handleDragOver"
+      @dragleave.prevent="handleDragLeave"
+      @drop.prevent="handleDrop"
+    >
+      <div v-if="isDraggingFiles" class="drop-overlay" aria-live="polite">
+        <div class="drop-overlay-card">
+          <el-icon class="drop-overlay-icon"><Upload /></el-icon>
+          <strong>{{ t("zhifuAgent.composer.dropTitle") }}</strong>
+          <span>{{ t("zhifuAgent.composer.dropHint") }}</span>
+        </div>
+      </div>
       <ApprovalDialog />
       <template v-if="!hasInlineApproval">
-        <div v-if="images.length" class="composer-images">
-          <div v-for="item in images" :key="item.id" class="composer-image">
-            <img
-              :src="item.preview"
-              :alt="item.name"
-              @click.stop="emit('open-image', item.dataUrl, item.name)"
-            />
-            <el-icon class="remove" @click.stop="removeImage(item.id)"><Close /></el-icon>
-          </div>
-        </div>
         <div class="input-row">
-          <div v-if="shops.length || skills.length || files.length" class="selection-row">
+          <div
+            v-if="images.length || shops.length || skills.length || files.length"
+            class="selection-row"
+          >
+            <el-popover
+              v-for="item in images"
+              :key="item.id"
+              :width="240"
+              placement="top-start"
+              trigger="hover"
+              :show-after="120"
+              popper-class="composer-image-popover"
+            >
+              <img class="composer-hover-image" :src="item.preview" :alt="item.name" />
+              <template #reference>
+                <span
+                  class="composer-chip file-chip image-chip"
+                  :title="item.name"
+                  @click.stop="emit('open-image', item.dataUrl, item.name)"
+                >
+                  <el-icon aria-hidden="true"><Picture /></el-icon>
+                  <span class="chip-label">{{ item.name }}</span>
+                  <button
+                    type="button"
+                    :title="'移除附件 ' + item.name"
+                    :aria-label="'移除附件 ' + item.name"
+                    @click.stop="removeImage(item.id)"
+                  >
+                    <el-icon><Close /></el-icon>
+                  </button>
+                </span>
+              </template>
+            </el-popover>
             <span
               v-for="item in shops"
               :key="item.id"
@@ -134,9 +171,6 @@
             show-execution-options
           />
           <SkillPicker @select="addSkill" />
-          <el-button size="small" text :icon="Paperclip" @click="selectFiles">
-            {{ t("zhifuAgent.composer.attachment") }}
-          </el-button>
           <PermissionModeSelect />
 
           <!-- <WorkspaceSelect @select="emit('select-workspace')" /> -->
@@ -181,12 +215,14 @@ import {
   Lock,
   MagicStick,
   Paperclip,
+  Picture,
   Promotion,
   Shop,
+  Upload,
   VideoPause,
 } from "@element-plus/icons-vue";
 import { errorMessage, newId, useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
-import { zhifuSelectFiles } from "@/ai/utils/electronApi";
+import { zhifuGetPathForFile } from "@/ai/utils/electronApi";
 import {
   MAX_ATTACHED_FILES,
   MAX_ATTACHMENT_SIZE,
@@ -218,6 +254,8 @@ const skills = ref<SelectedSkill[]>([]);
 const shops = ref<SelectedShop[]>([]);
 const autoCloseShops = ref(false);
 const promptInput = ref<HTMLTextAreaElement>();
+const dragDepth = ref(0);
+const isDraggingFiles = ref(false);
 const hasInlineApproval = computed(
   () => Boolean(store.approval && store.approval.conversationId === store.activeId)
 );
@@ -244,6 +282,34 @@ const suggestions = computed(() =>
 );
 
 const focusPrompt = () => nextTick(() => promptInput.value?.focus());
+
+function isFileDrag(event: DragEvent) {
+  return (
+    Array.from(event.dataTransfer?.types || []).includes("Files") ||
+    Boolean(event.dataTransfer?.files?.length)
+  );
+}
+
+function handleDragEnter(event: DragEvent) {
+  if (!isFileDrag(event)) return;
+  dragDepth.value += 1;
+  isDraggingFiles.value = true;
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+}
+
+function handleDragOver(event: DragEvent) {
+  if (!isFileDrag(event)) return;
+  isDraggingFiles.value = true;
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+}
+
+function handleDragLeave(event: DragEvent) {
+  // Chromium may omit `types` when the pointer leaves the window. Once a
+  // file drag is active, still let the depth counter clear the highlight.
+  if (!isDraggingFiles.value && !isFileDrag(event)) return;
+  dragDepth.value = Math.max(0, dragDepth.value - 1);
+  if (!dragDepth.value) isDraggingFiles.value = false;
+}
 
 function applySuggestion(text: string) {
   prompt.value = text;
@@ -379,6 +445,85 @@ const createImagePreview = (dataUrl: string) =>
     image.src = dataUrl;
   });
 
+const isImageFile = (file: File) =>
+  file.type.startsWith("image/") || /\.(?:avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(file.name);
+
+function uniqueAttachmentName(name: string, fallback: string) {
+  const original = name || fallback;
+  const usedNames = new Set(
+    [...images.value, ...files.value].map((item) => item.name.toLocaleLowerCase())
+  );
+  if (!usedNames.has(original.toLocaleLowerCase())) return original;
+
+  const extensionIndex = original.lastIndexOf(".");
+  const stem = extensionIndex > 0 ? original.slice(0, extensionIndex) : original;
+  const extension = extensionIndex > 0 ? original.slice(extensionIndex) : "";
+  let index = 1;
+  let candidate = `${stem}-${index}${extension}`;
+  while (usedNames.has(candidate.toLocaleLowerCase())) {
+    index += 1;
+    candidate = `${stem}-${index}${extension}`;
+  }
+  return candidate;
+}
+
+async function handleDrop(event: DragEvent) {
+  if (!isFileDrag(event)) return;
+  dragDepth.value = 0;
+  isDraggingFiles.value = false;
+  store.error = "";
+
+  const droppedFiles = Array.from(event.dataTransfer?.files || []);
+  for (const file of droppedFiles) {
+    if (isImageFile(file)) {
+      if (images.value.length >= MAX_PASTED_IMAGES) {
+        store.error = t("zhifuAgent.composer.maxImages", { count: MAX_PASTED_IMAGES });
+        continue;
+      }
+      if (file.size > MAX_IMAGE_SIZE) {
+        store.error = t("zhifuAgent.composer.imageTooLarge", { name: file.name });
+        continue;
+      }
+      try {
+        const dataUrl = await readAsDataUrl(file);
+        const preview = await createImagePreview(dataUrl);
+        const fallbackName = t("zhifuAgent.composer.clipboardImage");
+        images.value.push({
+          id: newId(),
+          name: uniqueAttachmentName(file.name, fallbackName),
+          type: file.type || "image/*",
+          dataUrl,
+          preview,
+        });
+      } catch (cause) {
+        store.error = errorMessage(cause, t("zhifuAgent.composer.dropFileFailed"));
+      }
+      continue;
+    }
+
+    if (files.value.length >= MAX_ATTACHED_FILES) {
+      store.error = t("zhifuAgent.composer.maxFiles", { count: MAX_ATTACHED_FILES });
+      continue;
+    }
+    if (file.size >= MAX_ATTACHMENT_SIZE) {
+      store.error = t("zhifuAgent.composer.fileTooLarge", { name: file.name });
+      continue;
+    }
+    const path = zhifuGetPathForFile(file) || String((file as File & { path?: string }).path || "");
+    if (!path) {
+      store.error = t("zhifuAgent.composer.dropPathFailed", { name: file.name });
+      continue;
+    }
+    const fallbackName = path.split(/[\\/]/).pop() || path;
+    files.value.push({
+      id: newId(),
+      name: uniqueAttachmentName(file.name, fallbackName),
+      path,
+    });
+  }
+  focusPrompt();
+}
+
 async function handleImagePaste(event: ClipboardEvent) {
   const pasted = Array.from(event.clipboardData?.items || [])
     .filter((item) => item.kind === "file" && item.type.startsWith("image/"))
@@ -402,7 +547,7 @@ async function handleImagePaste(event: ClipboardEvent) {
       const preview = await createImagePreview(dataUrl);
       images.value.push({
         id: newId(),
-        name: file.name || clipboardName,
+        name: uniqueAttachmentName(file.name, clipboardName),
         type: file.type,
         dataUrl,
         preview,
@@ -415,30 +560,6 @@ async function handleImagePaste(event: ClipboardEvent) {
 
 function removeImage(id: string) {
   images.value = images.value.filter((item) => item.id !== id);
-}
-
-async function selectFiles() {
-  try {
-    store.error = "";
-    const selected = await zhifuSelectFiles();
-    const knownPaths = new Set(files.value.map((item) => item.path.toLowerCase()));
-    for (const file of selected || []) {
-      if (files.value.length >= MAX_ATTACHED_FILES) {
-        store.error = t("zhifuAgent.composer.maxFiles", { count: MAX_ATTACHED_FILES });
-        break;
-      }
-      if (typeof file.size === "number" && file.size >= MAX_ATTACHMENT_SIZE) {
-        store.error = t("zhifuAgent.composer.fileTooLarge", { name: file.name });
-        continue;
-      }
-      if (!knownPaths.has(file.path.toLowerCase())) {
-        files.value.push({ ...file, id: newId() });
-        knownPaths.add(file.path.toLowerCase());
-      }
-    }
-  } catch (cause) {
-    store.error = errorMessage(cause, t("zhifuAgent.composer.selectFileFailed"));
-  }
 }
 
 function removeFile(id: string) {
@@ -537,10 +658,12 @@ defineExpose({ focus: focusPrompt });
 }
 
 .composer {
+  position: relative;
   width: min(820px, 100%);
   min-height: 100px;
   padding: 0;
   margin: 0 auto;
+  overflow: hidden;
   background: #fff;
   border: 1px solid #eceeef;
   border-radius: 12px;
@@ -552,36 +675,45 @@ defineExpose({ focus: focusPrompt });
   }
 }
 
-.composer-images {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 12px 14px 0;
+.composer.is-dragging {
+  border-color: #3370ff;
+  box-shadow: 0 8px 26px rgb(51 112 255 / 16%);
 }
 
-.composer-image {
-  position: relative;
+.drop-overlay {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  pointer-events: none;
+  background: rgb(247 250 255 / 94%);
+  border: 2px dashed #3370ff;
+  border-radius: 11px;
+}
 
-  img {
-    width: 64px;
-    height: 64px;
-    cursor: zoom-in;
-    border: 1px solid var(--el-border-color-lighter);
-    border-radius: 6px;
-    object-fit: cover;
+.drop-overlay-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  color: #3370ff;
+  text-align: center;
+
+  strong {
+    font-size: 14px;
+    font-weight: 600;
   }
 
-  .remove {
-    position: absolute;
-    top: -6px;
-    right: -6px;
-    padding: 2px;
+  span {
     font-size: 12px;
-    color: #fff;
-    cursor: pointer;
-    background: rgb(0 0 0 / 55%);
-    border-radius: 50%;
+    color: #6e88bd;
   }
+}
+
+.drop-overlay-icon {
+  font-size: 28px;
 }
 
 .composer-files {
@@ -665,6 +797,7 @@ defineExpose({ focus: focusPrompt });
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    line-height: 1.25;
   }
   button {
     display: grid;
@@ -697,6 +830,26 @@ defineExpose({ focus: focusPrompt });
   color: #2868d7;
   background: #edf4ff;
   border-color: #cbdcfb;
+}
+
+.image-chip {
+  cursor: zoom-in;
+  color: #4d6fa6;
+  background: #f1f6ff;
+  border-color: #d7e3f7;
+}
+
+.composer-hover-image {
+  display: block;
+  width: 228px;
+  max-height: 180px;
+  object-fit: contain;
+  border-radius: 5px;
+}
+
+:global(.composer-image-popover.el-popper) {
+  min-width: 0;
+  padding: 6px;
 }
 
 .composer-footer {

@@ -334,6 +334,8 @@ export default {
       "placeholder": "What would you like to do…",
       "attachment": "Attach",
       "attachmentPathHint": "Attachments keep the original file path only. Moving, renaming, or deleting a file will stop the task from running.",
+      "dropTitle": "Drop files here",
+      "dropHint": "Images and regular files are supported",
       "pickSkill": "Skills",
       "pickShop": "Shops",
       "searchShop": "Search name",
@@ -376,6 +378,8 @@ export default {
       "maxFiles": "Up to {count} files per message",
       "fileTooLarge": "File {name} must be under 50MB",
       "selectFileFailed": "Failed to select files",
+      "dropFileFailed": "Failed to read the dropped file",
+      "dropPathFailed": "Could not get a local path for {name}",
       "modelRequired": "Please select a model first",
       "modelUnavailable": "This conversation’s model is unavailable. Please select a model."
     },
