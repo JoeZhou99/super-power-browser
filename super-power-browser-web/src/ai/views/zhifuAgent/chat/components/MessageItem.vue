@@ -541,6 +541,30 @@ onBeforeUnmount(() => window.clearTimeout(copyTimer));
     overflow-wrap: anywhere;
   }
 }
+
+.shop-result-section {
+  margin: 16px 0;
+  padding: 14px 16px 12px;
+  background: var(--el-fill-color-blank, #fff);
+  border: 1px solid var(--el-border-color-lighter, #ebeef5);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgb(31 45 61 / 4%);
+
+  & + .shop-result-section {
+    margin-top: 20px;
+  }
+
+  .zhifu-markdown {
+    :deep(h2),
+    :deep(h3) {
+      margin-top: 0;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--el-border-color-lighter, #ebeef5);
+      font-size: 16px;
+    }
+  }
+}
+
 .message {
   display: flex;
   gap: 12px;
@@ -826,8 +850,85 @@ onBeforeUnmount(() => window.clearTimeout(copyTimer));
     color: var(--el-color-primary);
   }
 
+  :deep(.plain-link) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+
+  :deep(.copy-link) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 24px;
+    padding: 3px 10px;
+    margin-left: 8px;
+    font-size: 12px;
+    line-height: 1.2;
+    color: var(--el-color-primary);
+    white-space: nowrap;
+    cursor: pointer;
+    background: #f5f8ff;
+    border: 1px solid #c9d8ff;
+    border-radius: 5px;
+    transition:
+      background 0.15s,
+      border-color 0.15s;
+
+    &:hover {
+      background: #eaf1ff;
+      border-color: var(--el-color-primary-light-5);
+    }
+  }
+
+  :deep(.plain-link .copy-link) {
+    margin-left: 0;
+  }
+
   :deep(.shop-result-display) {
     margin: 10px 0 24px;
+  }
+
+  :deep(.agent-technical-error) {
+    margin: 12px 0;
+    padding: 12px 14px;
+    color: var(--el-color-danger, #d94b4b);
+    background: var(--el-color-danger-light-9, #fef0f0);
+    border: 1px solid var(--el-color-danger-light-7, #fbc4c4);
+    border-left: 3px solid var(--el-color-danger, #f56c6c);
+    border-radius: 8px;
+
+    strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 14px;
+    }
+
+    p {
+      margin: 0 0 8px;
+      color: var(--el-text-color-regular);
+      font-size: 13px;
+    }
+
+    details {
+      color: var(--el-text-color-secondary);
+      font-size: 12px;
+
+      summary {
+        width: fit-content;
+        cursor: pointer;
+      }
+
+      pre {
+        max-height: 220px;
+        margin: 8px 0 0;
+        overflow: auto;
+        color: var(--el-text-color-secondary);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+    }
   }
 
   :deep(.shop-result-summary),

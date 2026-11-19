@@ -45,6 +45,7 @@
     </div>
 
     <div
+      ref="composerRef"
       class="composer"
       :class="{ 'is-dragging': isDraggingFiles }"
       @mousedown="focusPrompt"
@@ -158,6 +159,7 @@
                 : t('zhifuAgent.composer.placeholder')
             "
             @mousedown.stop
+            @input="handlePromptInput"
             @paste="handleImagePaste"
             @keydown.backspace="handlePromptBackspace"
             @keydown.enter.exact.prevent="send"
@@ -165,12 +167,21 @@
         </div>
         <div class="composer-footer" @mousedown.stop>
           <ShopSelect
+            ref="shopSelect"
             v-model="shops"
+            v-model:visible="shopPickerVisible"
             v-model:auto-close-shops="autoCloseShops"
+            :reference-el="composerRef"
             multiple
             show-execution-options
+            @select="handleShopSelect"
           />
-          <SkillPicker @select="addSkill" />
+          <SkillPicker
+            ref="skillPicker"
+            v-model:visible="skillPickerVisible"
+            :reference-el="composerRef"
+            @select="handleSkillSelect"
+          />
           <PermissionModeSelect />
 
           <!-- <WorkspaceSelect @select="emit('select-workspace')" /> -->
@@ -254,6 +265,13 @@ const skills = ref<SelectedSkill[]>([]);
 const shops = ref<SelectedShop[]>([]);
 const autoCloseShops = ref(false);
 const promptInput = ref<HTMLTextAreaElement>();
+const composerRef = ref<HTMLElement>();
+const shopSelect = ref<InstanceType<typeof ShopSelect>>();
+const shopPickerVisible = ref(false);
+const shopTriggerRange = ref<{ end: number; start: number } | null>(null);
+const skillPicker = ref<InstanceType<typeof SkillPicker>>();
+const skillPickerVisible = ref(false);
+const skillTriggerRange = ref<{ end: number; start: number } | null>(null);
 const dragDepth = ref(0);
 const isDraggingFiles = ref(false);
 const hasInlineApproval = computed(
@@ -282,6 +300,53 @@ const suggestions = computed(() =>
 );
 
 const focusPrompt = () => nextTick(() => promptInput.value?.focus());
+
+function handlePromptInput(event: Event) {
+  const target = event.target as HTMLTextAreaElement | null;
+  if (!target) return;
+  const cursor = target.selectionStart ?? target.value.length;
+  const trigger = target.value[cursor - 1];
+  if (trigger !== "@" && trigger !== "/") return;
+  const previous = target.value[cursor - 2];
+  if (previous && !/\s/.test(previous)) return;
+  const range = { start: cursor - 1, end: cursor };
+  if (trigger === "@") {
+    skillPicker.value?.close();
+    skillTriggerRange.value = null;
+    shopTriggerRange.value = range;
+    shopSelect.value?.open();
+  } else {
+    shopSelect.value?.close();
+    shopTriggerRange.value = null;
+    skillTriggerRange.value = range;
+    skillPicker.value?.open();
+  }
+}
+
+function removeTrigger(range: { end: number; start: number } | null, trigger: string) {
+  if (!range) return;
+  const value = prompt.value;
+  if (value.slice(range.start, range.end) === trigger) {
+    prompt.value = value.slice(0, range.start) + value.slice(range.end);
+  }
+  nextTick(() => {
+    const input = promptInput.value;
+    if (!input) return;
+    input.focus();
+    input.setSelectionRange(range.start, range.start);
+  });
+}
+
+function handleShopSelect() {
+  removeTrigger(shopTriggerRange.value, "@");
+  shopTriggerRange.value = null;
+}
+
+function handleSkillSelect(skill: DisplaySkill) {
+  addSkill(skill);
+  removeTrigger(skillTriggerRange.value, "/");
+  skillTriggerRange.value = null;
+}
 
 function isFileDrag(event: DragEvent) {
   return (

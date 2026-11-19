@@ -1,9 +1,13 @@
 <template>
   <el-popover
+    ref="popoverRef"
     v-model:visible="visible"
     :placement="placement"
+    :reference-el="referenceEl"
+    :offset="12"
     :width="520"
     :popper-style="{ maxWidth: 'calc(100vw - 24px)' }"
+    :show-arrow="false"
     trigger="click"
     @show="handleShow"
   >
@@ -111,7 +115,7 @@
 
 <script setup lang="ts">
 import { Check, Search, Shop } from "@element-plus/icons-vue";
-import type { ScrollbarInstance } from "element-plus";
+import type { PopoverInstance, ScrollbarInstance } from "element-plus";
 import { useDebounceFn } from "@vueuse/core";
 import { getNewMallList, getSiteInfoList } from "@/ai/api/mall/mall.api";
 import { errorMessage } from "@/ai/store/modules/zhifu-agent.store";
@@ -130,6 +134,7 @@ const MAX_SHOPS = 20;
 const props = withDefaults(
   defineProps<{
     placement?: "top" | "top-start" | "bottom" | "bottom-start";
+    referenceEl?: HTMLElement;
     /** 为 true 时点击切换选中，并保持列表打开以便连续多选 */
     multiple?: boolean;
     showExecutionOptions?: boolean;
@@ -137,11 +142,16 @@ const props = withDefaults(
   { placement: "top-start", multiple: false }
 );
 
+const emit = defineEmits<{
+  select: [shop: SelectedShop, selected: boolean];
+}>();
+
 const modelValue = defineModel<SelectedShop[]>({ default: () => [] });
 const autoCloseShops = defineModel<boolean>("autoCloseShops", { default: false });
+const visible = defineModel<boolean>("visible", { default: false });
 
 const { t } = useI18n();
-const visible = ref(false);
+const popoverRef = ref<PopoverInstance>();
 const keyword = ref("");
 /** 与店铺列表相同，按平台站点 ID 筛选 */
 const platformIds = ref<Array<number | string>>([]);
@@ -270,12 +280,15 @@ function toggleVisibleShops(checked: boolean | string | number) {
 function choose(shop: SelectedShop) {
   // 创建技能等场景使用单选；聊天执行可通过 multiple=true 保留多店铺选择。
   if (!props.multiple) {
-    modelValue.value = isSelected(shop) ? [] : [shop];
+    const selected = !isSelected(shop);
+    modelValue.value = selected ? [shop] : [];
+    emit("select", shop, selected);
     visible.value = false;
     return;
   }
   if (isSelected(shop)) {
     modelValue.value = modelValue.value.filter((item) => String(item.id) !== String(shop.id));
+    emit("select", shop, false);
     return;
   }
   if (modelValue.value.length >= MAX_SHOPS) {
@@ -283,7 +296,29 @@ function choose(shop: SelectedShop) {
     return;
   }
   modelValue.value = [...modelValue.value, shop];
+  emit("select", shop, true);
 }
+
+function open() {
+  visible.value = true;
+}
+
+function close() {
+  visible.value = false;
+}
+
+function updatePosition() {
+  void nextTick(() => {
+    const popper = popoverRef.value?.popperRef as any;
+    popper?.popperInstanceRef?.update?.();
+    popper?.popperInstanceRef?.value?.update?.();
+  });
+}
+
+watch(modelValue, updatePosition, { deep: true });
+watch(visible, updatePosition);
+
+defineExpose({ close, open, updatePosition });
 </script>
 
 <style lang="scss" scoped>

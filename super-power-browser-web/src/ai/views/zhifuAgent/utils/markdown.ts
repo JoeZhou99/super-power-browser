@@ -60,13 +60,77 @@ const escapeHtml = (value: unknown) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] || char
   );
 
+const EXTERNAL_URL = /https?:\/\/[^\s<>"'`]+/gi;
+
+function externalLinkHtml(value: string) {
+  let output = "";
+  let cursor = 0;
+  for (const match of value.matchAll(EXTERNAL_URL)) {
+    const raw = match[0];
+    const index = match.index ?? 0;
+    output += escapeHtml(value.slice(cursor, index));
+    const trailingMatch = raw.match(/[),.;!?，。；：！？）】》]+$/);
+    const trailing = trailingMatch?.[0] || "";
+    const candidate = trailing ? raw.slice(0, -trailing.length) : raw;
+    try {
+      const url = new URL(candidate);
+      if (!["http:", "https:"].includes(url.protocol)) {
+        output += escapeHtml(raw);
+      } else {
+        const href = escapeHtml(url.href);
+        output += `<a href="${href}" target="_blank" rel="noopener noreferrer">${href}</a>${escapeHtml(trailing)}`;
+      }
+    } catch {
+      output += escapeHtml(raw);
+    }
+    cursor = index + raw.length;
+  }
+  return output + escapeHtml(value.slice(cursor));
+}
+
 const SCHEDULED_RUN_PREFIX = /^\[(?:定时任务自动执行|Scheduled run)\]\s*/;
 
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true });
 
+function technicalErrorHtml(source: string) {
+  const marker = source.search(/(?:^|\n)\s*Call log:/i);
+  if (marker < 0) return null;
+  const prefix = source.slice(0, marker).trimEnd();
+  const details = source.slice(marker).trim();
+  const blocked = /ERR_BLOCKED_BY_CLIENT/i.test(details);
+  const timeout = /Timeout\s+\d+ms\s+exceeded/i.test(details);
+  const title = blocked
+    ? i18n.global.t("zhifuAgent.chat.technicalErrorBlockedTitle")
+    : timeout
+      ? i18n.global.t("zhifuAgent.chat.technicalErrorTimeoutTitle")
+      : i18n.global.t("zhifuAgent.chat.technicalErrorTitle");
+  const description = blocked
+    ? i18n.global.t("zhifuAgent.chat.technicalErrorBlocked")
+    : timeout
+      ? i18n.global.t("zhifuAgent.chat.technicalErrorTimeout")
+      : i18n.global.t("zhifuAgent.chat.technicalErrorGeneric");
+  const detailLabel = i18n.global.t("zhifuAgent.chat.technicalErrorDetails");
+  return {
+    prefix,
+    html: `<div class="agent-technical-error"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(description)}</p><details><summary>${escapeHtml(detailLabel)}</summary><pre>${escapeHtml(details)}</pre></details></div>`,
+  };
+}
+
 md.renderer.rules.code_inline = (tokens, index) => {
   const path = tokens[index].content;
   const escaped = md.utils.escapeHtml(path);
+  if (/^https?:\/\/\S+$/i.test(path)) {
+    try {
+      const url = new URL(path);
+      if (["http:", "https:"].includes(url.protocol)) {
+        const href = escapeHtml(url.href);
+        const copyLabel = escapeHtml(i18n.global.t("zhifuAgent.chat.copyLink"));
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${href}</a><button type="button" class="copy-link" data-copy-link="${href}" title="${copyLabel}">${copyLabel}</button>`;
+      }
+    } catch {
+      // Keep malformed URLs as code.
+    }
+  }
   if (/^(?:[A-Za-z]:[\\/]|\/).+\.(?:xlsx?|csv|pdf|docx|txt|png|jpg)$/i.test(path)) {
     const title = md.utils.escapeHtml(i18n.global.t("zhifuAgent.chat.openResultFile"));
     return `<a href="#" data-result-file="${escaped}" title="${title}">📄 ${escaped}</a>`;
@@ -92,9 +156,38 @@ md.renderer.rules.link_open = (tokens, index, options, _env, renderer) => {
   return renderer.renderToken(tokens, index, options);
 };
 
+md.renderer.rules.link_close = (tokens, index, options, _env, renderer) => {
+  const open = tokens[index - 2];
+  const label = tokens[index - 1];
+  const href = (open as any)?.attrGet?.("href") || "";
+  const isPlainExternalLink =
+    (label as any)?.type === "text" && label.content === href && /^https?:\/\//i.test(href);
+  const closing = renderer.renderToken(tokens, index, options);
+  if (!isPlainExternalLink) return closing;
+  const encoded = escapeHtml(href);
+  const copyLabel = escapeHtml(i18n.global.t("zhifuAgent.chat.copyLink"));
+  return `${closing}<button type="button" class="copy-link" data-copy-link="${encoded}" title="${copyLabel}">${copyLabel}</button>`;
+};
+
 md.renderer.rules.fence = (tokens, index) => {
   const token = tokens[index];
+  const plainText = token.content.trim();
   const requested = token.info.trim().split(/\s+/)[0].toLowerCase();
+  if (
+    ["", "text", "plain", "plaintext"].includes(requested) &&
+    /^https?:\/\/[^\s<>"'`]+$/i.test(plainText)
+  ) {
+    try {
+      const url = new URL(plainText);
+      if (["http:", "https:"].includes(url.protocol)) {
+        const href = escapeHtml(url.href);
+        const copyLabel = escapeHtml(i18n.global.t("zhifuAgent.chat.copyLink"));
+        return `<p class="plain-link"><a href="${href}" target="_blank" rel="noopener noreferrer">${href}</a><button type="button" class="copy-link" data-copy-link="${href}" title="${copyLabel}">${copyLabel}</button></p>`;
+      }
+    } catch {
+      // Keep malformed URLs in the regular code block.
+    }
+  }
   const language = LANGUAGE_ALIASES[requested] || requested;
   const highlighted =
     language && hljs.getLanguage(language)
@@ -110,7 +203,7 @@ md.renderer.rules.fence = (tokens, index) => {
 const PURIFY_OPTIONS = {
   USE_PROFILES: { html: true },
   FORBID_TAGS: ["style", "link", "base", "meta"],
-  ADD_ATTR: ["target", "rel", "title", "data-result-file", "data-reveal-file"],
+  ADD_ATTR: ["target", "rel", "title", "data-result-file", "data-reveal-file", "data-copy-link"],
 };
 
 const markdownCache = new WeakMap<object, { content: string; role?: string; html: string }>();
@@ -145,7 +238,7 @@ function resultHtml(result: ShopExecutionResult, raw: string) {
         .replace(/\s*\|\s*$/, "")
         .trim()
     : summary;
-  return `<section class="shop-result-display"><p>${escapeHtml(readable)}</p>${count ? `<p class="shop-result-summary">找到 ${escapeHtml(count)} 条结果</p>` : ""}${url ? `<p><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">查看结果 ↗</a></p>` : ""}<details class="shop-result-details"><summary>查看详情</summary><p>店铺 ID：${escapeHtml(result.mallId)}</p>${detail ? `<p>${escapeHtml(detail)}</p>` : ""}<pre><code>${escapeHtml(raw)}</code></pre></details></section>`;
+  return `<section class="shop-result-display"><p>${escapeHtml(readable)}</p>${count ? `<p class="shop-result-summary">找到 ${escapeHtml(count)} 条结果</p>` : ""}${url ? `<p><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">查看结果 ↗</a></p>` : ""}<details class="shop-result-details"><summary>查看详情</summary><p>店铺 ID：${escapeHtml(result.mallId)}</p>${detail ? `<p>${escapeHtml(detail)}</p>` : ""}<pre><code>${externalLinkHtml(raw)}</code></pre></details></section>`;
 }
 
 /** 只格式化完整的店铺执行结果，普通回复和未写完的流式内容保持原样 */
@@ -199,7 +292,8 @@ export function renderShopResults(source: string, renderMarkdown: (_text: string
     if (section && section[3].trim() === String(result.mallId)) {
       before = before.replace(
         heading,
-        (_all, newline, name, _id, status) => `${newline}### ${name} · ${String(status).trim()}\n\n`
+        (_all, newline, name, id, status) =>
+          `${newline}## 店铺：${name}（ID：${id}） · ${String(status).trim()}\n\n`
       );
     }
     output += renderMarkdown(before) + resultHtml(result, raw);
@@ -235,6 +329,11 @@ export function renderAgentMarkdown(source: string) {
   const text = linkifyResultPaths(source ?? "");
   if (!text.trim()) return "";
   try {
+    const technicalError = technicalErrorHtml(text);
+    if (technicalError) {
+      const prefixHtml = technicalError.prefix ? md.render(technicalError.prefix) : "";
+      return DOMPurify.sanitize(prefixHtml + technicalError.html, PURIFY_OPTIONS) as string;
+    }
     return DOMPurify.sanitize(md.render(text), PURIFY_OPTIONS) as string;
   } catch {
     return `<pre>${escapeHtml(text)}</pre>`;

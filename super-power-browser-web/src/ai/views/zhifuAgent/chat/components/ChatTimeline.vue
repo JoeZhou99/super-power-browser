@@ -145,6 +145,17 @@ async function handleContentClick(event: MouseEvent) {
     }
     return;
   }
+  const copyLink = target?.closest?.("[data-copy-link]") as HTMLElement | null;
+  if (copyLink?.dataset.copyLink) {
+    event.preventDefault();
+    try {
+      await navigator.clipboard.writeText(copyLink.dataset.copyLink);
+      ElMessage.success(t("zhifuAgent.chat.copied"));
+    } catch (cause: any) {
+      ElMessage.error(cause?.message || t("zhifuAgent.chat.copyFailed"));
+    }
+    return;
+  }
   const link = target?.closest?.(".zhifu-markdown a[href]") as HTMLAnchorElement | null;
   if (link) {
     event.preventDefault();

@@ -1,15 +1,19 @@
 <template>
   <el-popover
+    ref="popoverRef"
     v-model:visible="visible"
     placement="top-start"
+    :reference-el="referenceEl"
+    :offset="12"
     :width="340"
+    :show-arrow="false"
     trigger="click"
     popper-class="zhifu-skill-picker"
     @show="handleShow"
   >
     <template #reference>
       <el-button size="small" text :class="{ active: visible }">
-        <span class="hash">#</span>
+        <span class="slash">/</span>
         {{ t("zhifuAgent.composer.pickSkill") }}
       </el-button>
     </template>
@@ -54,18 +58,21 @@
 
 <script setup lang="ts">
 import { Box, Search } from "@element-plus/icons-vue";
-import type { InputInstance } from "element-plus";
+import type { InputInstance, PopoverInstance } from "element-plus";
 import { errorMessage, useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
 import type { DisplaySkill } from "../../type";
 
 const emit = defineEmits<{ select: [skill: DisplaySkill] }>();
 
+const { referenceEl } = defineProps<{ referenceEl?: HTMLElement }>();
+
 const store = useZhifuAgentStore();
 const { t } = useI18n();
 
-const visible = ref(false);
+const visible = defineModel<boolean>("visible", { default: false });
 const keyword = ref("");
 const searchInput = ref<InputInstance>();
+const popoverRef = ref<PopoverInstance>();
 
 const filtered = computed(() => {
   const query = keyword.value.trim().toLocaleLowerCase();
@@ -89,10 +96,30 @@ function choose(skill: DisplaySkill) {
   emit("select", skill);
   visible.value = false;
 }
+
+function open() {
+  visible.value = true;
+}
+
+function close() {
+  visible.value = false;
+}
+
+function updatePosition() {
+  void nextTick(() => {
+    const popper = popoverRef.value?.popperRef as any;
+    popper?.popperInstanceRef?.update?.();
+    popper?.popperInstanceRef?.value?.update?.();
+  });
+}
+
+watch(visible, updatePosition);
+
+defineExpose({ close, open, updatePosition });
 </script>
 
 <style lang="scss" scoped>
-.hash {
+.slash {
   margin-right: 2px;
   font-weight: 700;
 }
