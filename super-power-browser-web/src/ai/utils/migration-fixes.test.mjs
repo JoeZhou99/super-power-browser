@@ -61,7 +61,7 @@ test('diagnostic IPC receives cloneable plain data from nested Vue state, errors
     return { issueId: 'synthetic', path: 'synthetic.zip', collected: 1, skipped: 0 };
   } } };
   const load = modules(page);
-  const { zhifuExportDiagnostics } = load('utils/electronApi/index.ts');
+  const { superpowerExportDiagnostics } = load('utils/electronApi/index.ts');
   const input = reactive({ description: 'synthetic', conversation: { tools: [{
     input: { filter: { shops: ['e3813-synthetic'] }, count: 123n },
     output: { items: [1, 2] }, error: new Error('Synthetic failure'),
@@ -71,7 +71,7 @@ test('diagnostic IPC receives cloneable plain data from nested Vue state, errors
   input.conversation.tools[0].input.shared = shared;
   input.conversation.tools[0].output.shared = shared;
   assert.throws(() => structuredClone(input), { name: 'DataCloneError' });
-  const result = await zhifuExportDiagnostics(input);
+  const result = await superpowerExportDiagnostics(input);
   assert.equal(result.issueId, 'synthetic');
   assert.deepEqual(received.conversation.tools[0].input, {
     filter: { shops: ['e3813-synthetic'] }, count: '123', shared: { nested: { value: 'same source, both fields retained' } },
@@ -145,7 +145,7 @@ test('a new session never reuses an old pending same-shop open or starts its sta
     emit({ browserId, isopen: true, WebDriverPort: 43210, browserInstanceId: 'new-session' });
   });
   bridge.page.localflow.getBrowserConnection = async () => ++reads === 1 ? oldConnection.promise : null;
-  const { openMallFromPage } = modules(bridge.page)('views/zhifuAgent/chat/utils/shop.ts');
+  const { openMallFromPage } = modules(bridge.page)('views/superpowerAgent/chat/utils/shop.ts');
   const guard = (expected) => () => { if (session !== expected) throw new Error('session changed'); };
   const first = openMallFromPage('e3813-synthetic', bridge.page, guard('A'));
   const firstRejection = assert.rejects(first, /session changed/);
@@ -164,7 +164,7 @@ test('authenticated layout keeps listener across routes and permission refresh, 
   let opens = 0;
   let opening;
   const replies = [];
-  const route = reactive({ fullPath: '/zhifuAgent', path: '/zhifuAgent', meta: { title: 'AI' } });
+  const route = reactive({ fullPath: '/superpowerAgent', path: '/superpowerAgent', meta: { title: 'AI' } });
   const user = { id: 'synthetic-user', tenantId: 'synthetic-tenant', permissions: ['ai.use'] };
   const permissions = reactive({ user: { ...user }, can(key) { return this.user?.permissions.includes(key) || false; } });
   const load = modules({});
@@ -179,10 +179,10 @@ test('authenticated layout keeps listener across routes and permission refresh, 
     '@/store/modules/account.store': { useAccount: () => ({ load: async () => {} }) },
     '@/utils/request': { token: () => 'synthetic-token' },
     '@/ai/utils/electronApi': {
-      zhifuOnOpenScheduledShops: (listener) => { receive = listener; subscriptions++; return () => { unsubscriptions++; }; },
-      zhifuCompleteScheduledShops: async (reply) => { replies.push(reply); },
+      superpowerOnOpenScheduledShops: (listener) => { receive = listener; subscriptions++; return () => { unsubscriptions++; }; },
+      superpowerCompleteScheduledShops: async (reply) => { replies.push(reply); },
     },
-    '@/ai/views/zhifuAgent/chat/utils/shop': {
+    '@/ai/views/superpowerAgent/chat/utils/shop': {
       openMallFromPage: async (id, _page, guard) => {
         opens++;
         guard();
@@ -254,7 +254,7 @@ test('failed status arriving before launch IPC rejection retains the original op
     await new Promise((done) => setImmediate(done));
     throw new Error('Synthetic proxy: ECONNREFUSED');
   });
-  const { openMallFromPage } = modules(bridge.page)('views/zhifuAgent/chat/utils/shop.ts');
+  const { openMallFromPage } = modules(bridge.page)('views/superpowerAgent/chat/utils/shop.ts');
   const first = openMallFromPage('e3813-synthetic', bridge.page);
   const second = openMallFromPage('e3813-synthetic', bridge.page);
   const results = await Promise.allSettled([first, second]);
@@ -269,7 +269,7 @@ test('failure supplied by status survives a fulfilled launch request', async () 
   const bridge = shopBridge(async ({ browserId }, emit) => {
     emit({ browserId, isopen: false, error: 'Synthetic device expired' });
   });
-  const { openMallFromPage } = modules(bridge.page)('views/zhifuAgent/chat/utils/shop.ts');
+  const { openMallFromPage } = modules(bridge.page)('views/superpowerAgent/chat/utils/shop.ts');
   await assert.rejects(openMallFromPage('e3813-synthetic', bridge.page), /Synthetic device expired/);
 });
 
@@ -279,7 +279,7 @@ test('a success status does not hide a later launch rejection; successful launch
     emit({ browserId, isopen: true, WebDriverPort: 43210, browserInstanceId: 'synthetic-instance' });
     if (shouldFail) throw new Error('Synthetic launch finalization failed');
   });
-  const { openMallFromPage } = modules(bridge.page)('views/zhifuAgent/chat/utils/shop.ts');
+  const { openMallFromPage } = modules(bridge.page)('views/superpowerAgent/chat/utils/shop.ts');
   await assert.rejects(openMallFromPage('e3813-synthetic', bridge.page), /finalization failed/);
   shouldFail = false;
   const result = await openMallFromPage('e3813-synthetic', bridge.page);
@@ -297,7 +297,7 @@ test('unsettled launch is bounded even if its status event already settled', asy
     return new Promise(() => {});
   });
   bridge.page.setTimeout = (callback, delay) => setTimeout(callback, delay === 60000 ? 15 : delay);
-  const { openMallFromPage } = modules(bridge.page)('views/zhifuAgent/chat/utils/shop.ts');
+  const { openMallFromPage } = modules(bridge.page)('views/superpowerAgent/chat/utils/shop.ts');
   await assert.rejects(openMallFromPage('e3813-synthetic', bridge.page), /打开超时/);
 });
 
@@ -326,17 +326,17 @@ test('actual chat flow reports every failed shop with name, UUID and unmasked ca
     },
   };
   const load = modules(bridge.page, {
-    '@/ai/store/modules/zhifu-agent.store': {
-      useZhifuAgentStore: () => store, newId: () => String(++nextId), skillIdentity: (value) => value,
-      errorMessage: (cause) => load('views/zhifuAgent/utils/userError.ts').userError(cause),
+    '@/ai/store/modules/superpower-agent.store': {
+      useSuperPowerAgentStore: () => store, newId: () => String(++nextId), skillIdentity: (value) => value,
+      errorMessage: (cause) => load('views/superpowerAgent/utils/userError.ts').userError(cause),
     },
     '@/ai/utils/electronApi': {
-      zhifuBeginShopUsage: async () => ({ 'e3813-synthetic': 'synthetic-token' }),
-      zhifuCancelShopUsage: async () => { cancellations++; },
+      superpowerBeginShopUsage: async () => ({ 'e3813-synthetic': 'synthetic-token' }),
+      superpowerCancelShopUsage: async () => { cancellations++; },
       // Shop opening is owned by the desktop host. The UI still invokes the
       // host boundary, which returns the aggregated opening errors without
       // calling the model.
-      zhifuRunAgent: async () => ({
+      superpowerRunAgent: async () => ({
         status: 'error',
         error: '\u5e97\u94fa\u300c\u5e97\u94fa\u7532\u300d\uff08ID\uff1ae3813-synthetic\uff09\u6253\u5f00\u5931\u8d25\uff1aECONNREFUSED synthetic\\n\u5e97\u94fa\u300c\u5e97\u94fa\u4e59\u300d\uff08ID\uff1ab3813-synthetic\uff09\u6253\u5f00\u5931\u8d25\uff1aETIMEDOUT synthetic',
       }),
@@ -345,7 +345,7 @@ test('actual chat flow reports every failed shop with name, UUID and unmasked ca
       useModelPlanAccess: () => ({ showTrial: { value: false }, refresh: async () => {} }),
     },
   });
-  const { sendPrompt } = load('views/zhifuAgent/chat/composables/useAgentRun.ts').useAgentRun();
+  const { sendPrompt } = load('views/superpowerAgent/chat/composables/useAgentRun.ts').useAgentRun();
   assert.equal(await sendPrompt({ text: '打开店铺', images: [], files: [], skills: [], shops: [
     { id: 'e3813-synthetic', name: '店铺甲' }, { id: 'b3813-synthetic', name: '店铺乙' },
   ] }), true);

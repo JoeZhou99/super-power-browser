@@ -31,7 +31,10 @@ function normalizeCatalog(raw){
   // Accept the chromium_list_v5 response shape with platform availability checks.
   const list=raw?.contents?.win;
   if(!Array.isArray(list))throw new Error('内核版本清单格式不正确');
-  return list.map(item=>({version:String(item.version),platform:'win32',arch:'x64',protocol:'legacy',executable:'zhanfubrowser.exe',downloadUrl:item.link,md5:item.md5,recommended:!!item.isRecommend,disabled:!!item.disableWin,requiresLegacyAuthorization:true}));
+  // Legacy chromium_list_v5 archives have a fixed executable filename inside
+  // the ZIP. Keep that external archive contract while modern descriptors
+  // continue to provide their own executable path through `kernels`.
+  return list.map(item=>({version:String(item.version),platform:'win32',arch:'x64',protocol:'legacy',executable:item.executable||'zhanfubrowser.exe',downloadUrl:item.link,md5:item.md5,recommended:!!item.isRecommend,disabled:!!item.disableWin,requiresLegacyAuthorization:true}));
 }
 function validateDescriptor(entry){
   if(!entry||!versionPattern.test(String(entry.version)))throw new Error('内核版本不合法');

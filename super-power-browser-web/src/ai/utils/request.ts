@@ -5,7 +5,7 @@ type Options = {url: string; method?: string; params?: object; data?: unknown; h
 /** Use the SuperPower Browser server with the AI response contract. */
 export default async function request<T = any, R = any>(options: Options): Promise<R> {
   const relative = options.url.replace(/^\/?api\/v1\//, '');
-  if (!/^(zhifu|model|ai-support)\//.test(relative)) throw new Error('AI 接口不在允许范围内');
+  if (!/^(superpower|model|ai-support)\//.test(relative)) throw new Error('AI 接口不在允许范围内');
   const url = new URL('/api/ai/' + relative, location.origin);
   for (const [key, value] of Object.entries(options.params || {})) {
     if (value !== undefined && value !== null) {

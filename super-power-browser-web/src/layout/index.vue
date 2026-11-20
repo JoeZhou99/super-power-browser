@@ -8,8 +8,8 @@ import WindowControls from '@/components/WindowControls.vue';
 import {usePermissions} from '@/store/modules/permission.store';
 import {useAccount} from '@/store/modules/account.store';
 import {token} from '@/utils/request';
-import {zhifuCompleteScheduledShops,zhifuOnOpenScheduledShops} from '@/ai/utils/electronApi';
-import {openMallFromPage} from '@/ai/views/zhifuAgent/chat/utils/shop';
+import {superpowerCompleteScheduledShops,superpowerOnOpenScheduledShops} from '@/ai/utils/electronApi';
+import {openMallFromPage} from '@/ai/views/superpowerAgent/chat/utils/shop';
 import {listenForScheduledShopOpen} from '@/ai/utils/scheduledShopOpen';
 const route=useRoute(),router=useRouter(),permissions=usePermissions(),account=useAccount();
 const windowControls=Boolean(window.api?.windowControl);
@@ -17,7 +17,7 @@ const MAX_OPEN_TABS=6;
 let tabVisit=0;
 const collapsed=ref(false),viewKey=ref(0),tabs=ref([{path:'/dashboard',title:'首页',lastVisited:0}]);
 const tabsElement=ref<HTMLElement>();
-function tabIcon(path:string){return path.startsWith('/mall')?Shop:path.startsWith('/agentIp')?Monitor:path.startsWith('/proxy')?Connection:path.startsWith('/money')?Wallet:path.startsWith('/companyManage')?User:path.startsWith('/zhifuAgent')?ChatDotRound:path.startsWith('/dashboard')?House:Setting;}
+function tabIcon(path:string){return path.startsWith('/mall')?Shop:path.startsWith('/agentIp')?Monitor:path.startsWith('/proxy')?Connection:path.startsWith('/money')?Wallet:path.startsWith('/companyManage')?User:path.startsWith('/superpowerAgent')?ChatDotRound:path.startsWith('/dashboard')?House:Setting;}
 const groups=computed(()=>[
   {name:'shop',title:'店铺管理',icon:Shop,children:[['店铺管理','/mall/mallManage','shop.view'],['回收站','/mall/recycle','shop.view']]},
   // {name:'device',title:'设备管理',icon:Monitor,children:[['设备列表','/agentIp/all','device.view'],['购买设备','/agentIp/aggregateBuy3','device.buy'],['设备回收站','/agentIp/recycle','device.view']]},
@@ -46,8 +46,8 @@ watch(()=>JSON.stringify([permissions.user?.tenantId,permissions.user?.id,permis
 },{flush:'sync'});
 onMounted(()=>{
   stopScheduledShopOpen=listenForScheduledShopOpen({
-    subscribe:zhifuOnOpenScheduledShops,
-    complete:zhifuCompleteScheduledShops,
+    subscribe:superpowerOnOpenScheduledShops,
+    complete:superpowerCompleteScheduledShops,
     getSessionKey:()=>{
       const user=permissions.user,session=token();
       return user&&session&&permissions.can('ai.use')?JSON.stringify([user.tenantId,user.id,session,sessionGeneration]):'';
@@ -64,7 +64,7 @@ onUnmounted(()=>stopScheduledShopOpen?.());
     <el-menu router :default-active="route.path==='/proxy/recycle'?'/proxy/list':route.path" :default-openeds="['shop','device','proxy','money','company']" :collapse="collapsed" class="navigation">
       <el-menu-item index="/dashboard"><el-icon><House/></el-icon><template #title>首页</template></el-menu-item>
       <el-sub-menu v-for="group in groups" :key="group.name" :index="group.name"><template #title><el-icon><component :is="group.icon"/></el-icon><span>{{group.title}}</span></template><el-menu-item v-for="child in group.children" :key="child[1]" :index="child[1]">{{child[0]}}</el-menu-item></el-sub-menu>
-      <el-menu-item v-if="permissions.can('ai.use')" index="/zhifuAgent"><el-icon><ChatDotRound/></el-icon><template #title>SuperPower AI</template></el-menu-item>
+      <el-menu-item v-if="permissions.can('ai.use')" index="/superpowerAgent"><el-icon><ChatDotRound/></el-icon><template #title>SuperPower AI</template></el-menu-item>
     </el-menu>
     <div class="sidebar-bottom"><router-link to="/set-center"><el-icon><Setting/></el-icon><span v-if="!collapsed">设置中心</span></router-link><small v-if="!collapsed">SuperPower Browser · 0.1.0</small></div>
   </aside>
@@ -73,6 +73,6 @@ onUnmounted(()=>stopScheduledShopOpen?.());
     <div ref="tabsElement" class="workspace-tabs" aria-label="已打开的页面"><div v-for="tab in tabs" :key="tab.path" class="workspace-tab" :class="{active:route.fullPath===tab.path}"><router-link :to="tab.path" :title="tab.title"><el-icon><component :is="tabIcon(tab.path)"/></el-icon><span>{{tab.title}}</span></router-link><button v-if="tab.path!=='/dashboard'" :aria-label="`关闭${tab.title}页签`" :title="`关闭${tab.title}`" @click="closeTab(tab.path)"><el-icon><Close/></el-icon></button></div></div>
     <div class="workspace-actions"><el-button text :icon="Refresh" aria-label="刷新当前页面" title="刷新当前页面" @click="viewKey++;account.load()"/><el-button text :icon="Setting" aria-label="设置中心" title="设置中心" @click="router.push('/set-center')"/><span v-if="windowControls" class="window-actions-divider"/><WindowControls/></div>
   </header>
-    <main class="workspace-main" :class="{'ai-host':route.path==='/zhifuAgent'}"><router-view :key="route.fullPath+viewKey"/></main>
+    <main class="workspace-main" :class="{'ai-host':route.path==='/superpowerAgent'}"><router-view :key="route.fullPath+viewKey"/></main>
   </div></div>
 </template>

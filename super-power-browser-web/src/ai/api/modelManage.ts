@@ -3,10 +3,10 @@ import request from "@/ai/utils/request";
 const desktopApi = "api/v1/model/device";
 
 
-const zhifuModelApi = "api/v1/zhifu/model";
+const superpowerModelApi = "api/v1/superpower/model";
 
 
-/** GET /api/v1/zhifu/model/subscription/list 单条订阅 */
+/** GET /api/v1/superpower/model/subscription/list 单条订阅 */
 export interface ModelSubscriptionItem {
   unlimited?: boolean;
   order_no?: string;
@@ -41,13 +41,13 @@ export interface ModelSubscriptionItem {
  */
 export function getModelSubscriptionList() {
   return request({
-    url: `${zhifuModelApi}/subscription/list`,
+    url: `${superpowerModelApi}/subscription/list`,
     method: "get",
   });
 }
 
 
-/** GET /api/v1/zhifu/model/activity/info 试用活动 */
+/** GET /api/v1/superpower/model/activity/info 试用活动 */
 export interface ModelActivityInfo {
   unlimited?: boolean;
   /** 当前是否有上架且处于领取时间内的活动 */
@@ -79,23 +79,23 @@ export interface ModelActivityInfo {
 
 export function getModelActivityInfo() {
   return request({
-    url: `${zhifuModelApi}/activity/info`,
+    url: `${superpowerModelApi}/activity/info`,
     method: "get",
   });
 }
 
 
-/** POST /api/v1/zhifu/model/activity/claim 领取试用 */
+/** POST /api/v1/superpower/model/activity/claim 领取试用 */
 export function postModelActivityClaim() {
   return request({
-    url: `${zhifuModelApi}/activity/claim`,
+    url: `${superpowerModelApi}/activity/claim`,
     method: "post",
     data: {},
   });
 }
 
 
-/** GET /api/v1/zhifu/model/plan/list 套餐计划 */
+/** GET /api/v1/superpower/model/plan/list 套餐计划 */
 export interface ModelPlanItem {
   unlimited?: boolean;
   id: number;
@@ -118,13 +118,13 @@ export interface ModelPlanItem {
 /** 套餐计划列表。无可用套餐时 data 为 [] */
 export function getModelPlanList() {
   return request({
-    url: `${zhifuModelApi}/plan/list`,
+    url: `${superpowerModelApi}/plan/list`,
     method: "get",
   });
 }
 
 
-/** POST /api/v1/zhifu/model/order/create */
+/** POST /api/v1/superpower/model/order/create */
 export interface ModelOrderCreateBody {
   plan_id: number;
   /** 同一次购买重试保持不变 */
@@ -161,27 +161,27 @@ export interface ModelOrderInfo {
 /** 创建模型套餐购买订单 */
 export function postModelOrderCreate(data: ModelOrderCreateBody) {
   return request({
-    url: `${zhifuModelApi}/order/create`,
+    url: `${superpowerModelApi}/order/create`,
     method: "post",
     data,
   });
 }
 
 
-/** POST /api/v1/zhifu/model/subscription/renew 续费当前订阅 */
+/** POST /api/v1/superpower/model/subscription/renew 续费当前订阅 */
 export function postModelSubscriptionRenew(data: ModelOrderCreateBody) {
   return request({
-    url: `${zhifuModelApi}/subscription/renew`,
+    url: `${superpowerModelApi}/subscription/renew`,
     method: "post",
     data,
   });
 }
 
 
-/** GET /api/v1/zhifu/model/order/info */
+/** GET /api/v1/superpower/model/order/info */
 export function getModelOrderInfo(params: { order_no: string }) {
   return request({
-    url: `${zhifuModelApi}/order/info`,
+    url: `${superpowerModelApi}/order/info`,
     method: "get",
     params,
   });

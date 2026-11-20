@@ -1,7 +1,7 @@
 <template>
-  <div :class="['model-usage', { 'model-usage--detail': detail, 'zhifu-page': detail }]">
+  <div :class="['model-usage', { 'model-usage--detail': detail, 'superpower-page': detail }]">
     <header v-if="detail" class="page-header">
-      <h2>{{ t("zhifuAgent.settings.modelDetailTitle") }}</h2>
+      <h2>{{ t("superpowerAgent.settings.modelDetailTitle") }}</h2>
     </header>
     <header class="usage-header">
       <el-card v-loading="quotaLoading" class="usage-plan-card" shadow="always">
@@ -212,14 +212,14 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import {
-  postZhifuModelConsumeRecords,
-  type ZhifuConsumeRecord,
-  type ZhifuConsumeRecordsBody,
-  type ZhifuConsumeRecordsResp,
-} from "@/ai/api/zhifuAgent";
+  postSuperPowerModelConsumeRecords,
+  type SuperPowerConsumeRecord,
+  type SuperPowerConsumeRecordsBody,
+  type SuperPowerConsumeRecordsResp,
+} from "@/ai/api/superpowerAgent";
 import ModelPlanBuyPanel from "./components/ModelPlanBuyPanel.vue";
 import { useModelPlanAccess } from "./composables/useModelPlanAccess";
-import { useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
+import { useSuperPowerAgentStore } from "@/ai/store/modules/superpower-agent.store";
 import { importBilling } from "@/ai/utils";
 import usageNoDataImg from "@/ai/views/mallManage/assets/nodata.png";
 
@@ -229,7 +229,7 @@ defineProps<{
 }>();
 
 const { t, locale } = useI18n();
-const agentStore = useZhifuAgentStore();
+const agentStore = useSuperPowerAgentStore();
 
 const listLoading = ref(false);
 const quotaLoading = ref(false);
@@ -336,7 +336,7 @@ function formatTokenField(value: number | undefined) {
 }
 
 /** 新记录没有 total_tokens，Tokens 列用输入加输出 */
-function mapConsumeItemToRow(item: ZhifuConsumeRecord): UsageTableRow {
+function mapConsumeItemToRow(item: SuperPowerConsumeRecord): UsageTableRow {
   const input = parseQuotaNum(item.input_tokens);
   const output = parseQuotaNum(item.output_tokens);
   const hasDetail = item.input_tokens != null || item.output_tokens != null;
@@ -353,12 +353,12 @@ function mapConsumeItemToRow(item: ZhifuConsumeRecord): UsageTableRow {
   };
 }
 
-/** POST /api/v1/zhifu/model/consume/records */
+/** POST /api/v1/superpower/model/consume/records */
 async function fetchUsageList() {
-  const res = await postZhifuModelConsumeRecords(
+  const res = await postSuperPowerModelConsumeRecords(
     buildConsumeRecordQuery(listQuery.page, listQuery.limit)
   );
-  const d = res?.data as ZhifuConsumeRecordsResp | undefined;
+  const d = res?.data as SuperPowerConsumeRecordsResp | undefined;
   const items = d?.list ?? [];
   listQuery.total = Number(d?.total ?? 0);
   tableList.value = items.map((it) => mapConsumeItemToRow(it));
@@ -374,8 +374,8 @@ function usageDateToUnix(value: string, endOfDay: boolean) {
   return Math.floor(date.getTime() / 1000);
 }
 
-function buildConsumeRecordQuery(page: number, limit: number): ZhifuConsumeRecordsBody {
-  const body: ZhifuConsumeRecordsBody = {
+function buildConsumeRecordQuery(page: number, limit: number): SuperPowerConsumeRecordsBody {
+  const body: SuperPowerConsumeRecordsBody = {
     page,
     limit,
   };
@@ -487,8 +487,8 @@ async function fetchAllRowsByCondition() {
   let page = 1;
   const allRows: UsageTableRow[] = [];
   while (true) {
-    const res = await postZhifuModelConsumeRecords(buildConsumeRecordQuery(page, limit));
-    const d = res?.data as ZhifuConsumeRecordsResp | undefined;
+    const res = await postSuperPowerModelConsumeRecords(buildConsumeRecordQuery(page, limit));
+    const d = res?.data as SuperPowerConsumeRecordsResp | undefined;
     const items = d?.list ?? [];
     if (!items.length) break;
     allRows.push(...items.map((it) => mapConsumeItemToRow(it)));
@@ -561,7 +561,7 @@ onMounted(() => {
 </script>
 
 <style scoped lang="scss">
-@use "../zhifuAgent/styles/page.scss";
+@use "../superpowerAgent/styles/page.scss";
 
 .model-usage {
   padding: 16px;

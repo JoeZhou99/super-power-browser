@@ -1,7 +1,7 @@
 <template>
-  <div class="model-page zhifu-page">
+  <div class="model-page superpower-page">
     <header class="page-header">
-      <h2>{{ t("zhifuAgent.settings.modelManagement") }}</h2>
+      <h2>{{ t("superpowerAgent.settings.modelManagement") }}</h2>
     </header>
     <div class="toolbar">
       <div class="toolbar-left" v-if="activeTab === 'official'">
@@ -345,17 +345,17 @@ import {
 import copyPng from "@/ai/assets/images/copy.png";
 import ModelPlanBuyPanel from "./components/ModelPlanBuyPanel.vue";
 import { useModelPlanAccess } from "./composables/useModelPlanAccess";
-import { getZhifuMarketModels, type ApiProtocol, type ZhifuMarketModel } from "@/ai/api/zhifuAgent";
-import { errorMessage, useZhifuAgentStore } from "@/ai/store/modules/zhifu-agent.store";
-import { zhifuTestConnection, type ZhifuConnectionResult } from "@/ai/utils/electronApi";
-import { createDefaultSettings } from "@/ai/views/zhifuAgent/constants";
+import { getSuperPowerMarketModels, type ApiProtocol, type SuperPowerMarketModel } from "@/ai/api/superpowerAgent";
+import { errorMessage, useSuperPowerAgentStore } from "@/ai/store/modules/superpower-agent.store";
+import { superpowerTestConnection, type SuperPowerConnectionResult } from "@/ai/utils/electronApi";
+import { createDefaultSettings } from "@/ai/views/superpowerAgent/constants";
 // import lightbulb from "@/ai/assets/icons/lightbulb-fill.svg";
 import { useUserStore } from "@/ai/store";
 import Safety from "@/ai/assets/images/Safety.png";
 import noData from "@/ai/views/mallManage/assets/nodata.png";
 import { hasPerm } from "@/ai/utils/permission";
 const userStore = useUserStore();
-const agentStore = useZhifuAgentStore();
+const agentStore = useSuperPowerAgentStore();
 
 const userInfo = computed(() => {
   return userStore.userInfo;
@@ -383,9 +383,9 @@ const remoteModelNames = ref<string[]>([]);
 const remoteModelLoading = ref(false);
 let remoteModelSeq = 0;
 const testingConnection = ref(false);
-const connectionResult = ref<ZhifuConnectionResult | null>(null);
+const connectionResult = ref<SuperPowerConnectionResult | null>(null);
 
-const marketModelList = ref<ZhifuMarketModel[]>([]);
+const marketModelList = ref<SuperPowerMarketModel[]>([]);
 const mineModelData = ref<any[]>([]);
 const officialPage = ref(1);
 const officialLimit = ref(10);
@@ -531,7 +531,7 @@ async function testModelConnection() {
   testingConnection.value = true;
   connectionResult.value = null;
   try {
-    connectionResult.value = await zhifuTestConnection({
+    connectionResult.value = await superpowerTestConnection({
       ...createDefaultSettings(),
       providerName: modelForm.providerName,
       modelId,
@@ -588,7 +588,7 @@ const submitmodelForm = () => {
 };
 /** 官方模型目录一次返回全量，筛选和分页在本地完成 */
 const getModelsList = () => {
-  getZhifuMarketModels().then((res) => {
+  getSuperPowerMarketModels().then((res) => {
     if (res.errorCode === 0) {
       marketModelList.value = Array.isArray(res.data) ? res.data : [];
     }
@@ -796,7 +796,7 @@ watch(() => route.query.importModel, openImportFromQuery);
 </script>
 
 <style scoped lang="scss">
-@use "../zhifuAgent/styles/page.scss";
+@use "../superpowerAgent/styles/page.scss";
 
 .model-page {
   display: flex;

@@ -84,7 +84,7 @@ export default {
     "zhifubao": "支付宝"
   },
   "router": {
-    "zhifu_agent": "SuperPower AI",
+    "superpower_agent": "SuperPower AI",
     "model_usage": "模型用量"
   },
   "wxwProxy": {
@@ -198,7 +198,7 @@ export default {
       "notImport": "您还未导入自有模型"
     }
   },
-  "zhifuAgent": {
+  "superpowerAgent": {
     "common": {
       "cancel": "取消",
       "confirm": "确定",
@@ -410,7 +410,7 @@ export default {
       "search_codebase": "搜索项目",
       "run_commands": "执行命令",
       "browser_snapshot": "查看页面",
-      "browser_prepare": "准备普通浏览器",
+      "browser_prepare": "准备浏览器",
       "browser_wait_user": "等待人工操作",
       "browser_upload": "上传文件",
       "browser_navigate": "打开网页",
@@ -691,7 +691,7 @@ export default {
       "shareLater": "暂不分享",
       "shareUploadAction": "上传并生成分享链接",
       "shareCodeTitle": "分享口令",
-      "shareCodeText": "技能名称：{name}\n技能口令：{code}\n\n在技能中心点击口令获取，输入技能口令，获取当前技能",
+      "shareCodeText": "技能名称：{name}\n技能口令：{code}\n\n请将此口令发送给需要使用该技能的成员。",
       "shareCodeCopy": "复制口令",
       "resetShareCode": "重置口令",
       "resetShareCodeConfirm": "重置后，原来的口令将不能再使用。确定重置「{name}」的口令吗？",
@@ -704,17 +704,6 @@ export default {
       "cancelShare": "取消分享",
       "cancelShareConfirm": "取消后，已发出的口令将不能再使用。确定取消分享「{name}」吗？",
       "cancelShareSuccess": "已取消分享",
-      "redeem": "口令获取技能",
-      "redeemCode": "输入技能口令：",
-      "redeemCodePlaceholder": "请输入技能口令进行获取",
-      "redeemLookup": "获取技能",
-      "redeemLookupSuccess": "口令获取技能成功",
-      "redeemName": "技能名称：",
-      "redeemAdd": "添加成我的技能",
-      "redeemCodeRequired": "请输入技能口令",
-      "redeemCodeInvalid": "口令格式应为 a1b2-c3d4-e5f6-7890",
-      "redeemLookupFirst": "请先获取技能",
-      "redeemSuccess": "已添加到我的技能",
       "invalidUploadVersion": "请输入有效版本号，例如 1.0.0",
       "invalidPackageMetadata": "技能包的 _meta.json 格式无效，请修正后重试"
     },
@@ -840,11 +829,6 @@ export default {
       "generalShopConcurrencyNote": "当前客户端的会话和定时任务共享店铺执行额度，默认 2，支持 1～8。同一家店铺按顺序执行，等待时间不计入执行超时。",
       "generalExecutionTimeout": "任务超时（分钟）",
       "generalExecutionTimeoutNote": "默认 10 分钟，支持 1～120。每家店铺独立计时，超时后请求停止并显示原因，保留其他店铺的结果。",
-      "generalDisplay": "会话显示",
-      "generalUserName": "你的称呼",
-      "generalUserNamePlaceholder": "你",
-      "generalAgentName": "Agent 称呼",
-      "generalNameNote": "称呼会显示在新消息中，已有会话也会同步使用。",
       "messagingTitle": "IM 渠道连接",
       "messagingDesc": "扫码连接飞书、微信或企业微信机器人。",
       "messagingNotConnectedTip": "扫码连接后可用于接收和发送机器人消息",

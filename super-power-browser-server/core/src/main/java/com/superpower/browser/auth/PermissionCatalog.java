@@ -31,7 +31,7 @@ public final class PermissionCatalog {
             permission("proxy.view", "查看自有代理", 1),
             permission("proxy.edit", "添加、编辑、删除代理", 1, "proxy.view"),
             permission("proxy.export", "导出代理", 2, "proxy.view"))),
-        new Group("ai", "SuperPower AI", "/zhifuAgent", List.of(
+        new Group("ai", "SuperPower AI", "/superpowerAgent", List.of(
             permission("ai.use", "使用 AI", 1),
             permission("ai.purchase", "购买 AI 套餐", 3, "ai.use"))),
         new Group("wallet", "账户充值", "/money/recharge", List.of(

@@ -13,7 +13,7 @@ const router=createRouter({history:createWebHashHistory(),routes:[
   {path:'/register',component:()=>import('@/views/login/index.vue')},
   {path:'/join',component:()=>import('@/views/login/join.vue')},
   ...mall,...devices,...proxies,...money,
-  {path:'/zhifuAgent',component:()=>import('@/ai/views/zhifuAgent/index.vue'),meta:{title:'SuperPower AI'}},
+  {path:'/superpowerAgent',component:()=>import('@/ai/views/superpowerAgent/index.vue'),meta:{title:'SuperPower AI'}},
   {path:'/companyManage/membersMamanger',component:()=>import('@/views/company/index.vue'),meta:{title:'成员与授权'}},
   {path:'/companyManage/roles',component:()=>import('@/views/company/index.vue'),meta:{title:'角色权限'}},
   {path:'/set-center',component:()=>import('@/views/system/setCenter/index.vue'),meta:{title:'设置中心'}}
@@ -28,7 +28,7 @@ router.beforeEach(async to=>{
     const {type,...query}=to.query;
     return {path:path.endsWith('/recycle')?'/proxy/recycle':'/proxy/list',query,replace:true};
   }
-  const required=path==='/zhifuAgent'?['ai.use']:path.startsWith('/mall/')?['shop.view']:path==='/agentIp/aggregateBuy3'?['device.buy']:path==='/agentIp/renew3'||path==='/agentIp/buySpeed'?['device.renew']:path.startsWith('/agentIp/')?['device.view']:path.startsWith('/proxy/')?['proxy.view']:path==='/money/account'?['wallet.view']:path==='/money/recharge'?['wallet.view','wallet.recharge']:path==='/money/order'?['order.view']:path.startsWith('/companyManage/')?['member.manage','role.manage']:[];
+  const required=path==='/superpowerAgent'?['ai.use']:path.startsWith('/mall/')?['shop.view']:path==='/agentIp/aggregateBuy3'?['device.buy']:path==='/agentIp/renew3'||path==='/agentIp/buySpeed'?['device.renew']:path.startsWith('/agentIp/')?['device.view']:path.startsWith('/proxy/')?['proxy.view']:path==='/money/account'?['wallet.view']:path==='/money/recharge'?['wallet.view','wallet.recharge']:path==='/money/order'?['order.view']:path.startsWith('/companyManage/')?['member.manage','role.manage']:[];
   return required.length&&!required.some(p=>permissions.can(p))?'/set-center':true;
 });
 export default router;

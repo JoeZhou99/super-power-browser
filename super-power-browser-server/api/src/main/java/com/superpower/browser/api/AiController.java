@@ -26,27 +26,27 @@ public class AiController {
     @PostMapping("/model/device/config/userImported/update") Object updateModel(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){return ok(Map.of("id",models.save(a,b,true)));}
     @PostMapping("/model/device/config/userImported/delete") Object deleteModel(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){models.delete(a,number(b,"id"));return ok(Map.of());}
     @GetMapping("/model/device/apiProvider/list") Object providers(@AuthenticationPrincipal Actor a){return ok(models.providers(a));}
-    @GetMapping("/zhifu/model/user") Object user(@AuthenticationPrincipal Actor a,@RequestHeader("Authorization")String header){return ok(Map.of("username",a.username(),"api_key",tickets.issue(a,session(header),"gateway",""),"api_url",publicUrl+"/api/ai/gateway/v1"));}
-    @GetMapping("/zhifu/model/market/models") Object market(@AuthenticationPrincipal Actor a){return ok(catalog.models(a));}
-    @GetMapping("/zhifu/model/plan/list") Object plans(@AuthenticationPrincipal Actor a){return ok(subscriptions.plans(a));}
-    @GetMapping("/zhifu/model/subscription/list") Object subscriptions(@AuthenticationPrincipal Actor a){return ok(subscriptions.subscriptions(a));}
-    @GetMapping("/zhifu/model/activity/info") Object trial(@AuthenticationPrincipal Actor a){return ok(subscriptions.trial(a));}
-    @PostMapping("/zhifu/model/activity/claim") Object claim(@AuthenticationPrincipal Actor a){return ok(subscriptions.claim(a));}
-    @PostMapping("/zhifu/model/order/create") Object order(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){return ok(subscriptions.create(a,b,false));}
-    @PostMapping("/zhifu/model/subscription/renew") Object renew(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){return ok(subscriptions.create(a,b,true));}
-    @GetMapping("/zhifu/model/order/info") Object orderInfo(@AuthenticationPrincipal Actor a,@RequestParam String order_no){return ok(subscriptions.info(a,order_no,true));}
-    @PostMapping("/zhifu/model/consume/records") Object usage(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){return ok(subscriptions.usage(a,b));}
-    @GetMapping("/zhifu/skillStore/{type:list|myList|uploadedList}") Object skillList(@AuthenticationPrincipal Actor a,@PathVariable String type,@RequestParam Map<String,String> q,@RequestHeader("Authorization")String header){return ok(skills.list(a,type,q,session(header)));}
-    @GetMapping("/zhifu/skillStore/classfyList") Object categories(@AuthenticationPrincipal Actor a){return ok(skills.categories(a,0));}
-    @GetMapping("/zhifu/skillStore/subClassfyList") Object platforms(@AuthenticationPrincipal Actor a,@RequestParam(defaultValue="2")long parent_id){return ok(skills.categories(a,parent_id));}
-    @PostMapping(value="/zhifu/skillStore/{action:upload|resubmit}",consumes=MediaType.MULTIPART_FORM_DATA_VALUE) Object upload(@AuthenticationPrincipal Actor a,@PathVariable String action,@RequestParam MultipartFile file,@RequestParam Map<String,String> q,@RequestHeader("Authorization")String header)throws IOException{
+    @GetMapping("/superpower/model/user") Object user(@AuthenticationPrincipal Actor a,@RequestHeader("Authorization")String header){return ok(Map.of("username",a.username(),"api_key",tickets.issue(a,session(header),"gateway",""),"api_url",publicUrl+"/api/ai/gateway/v1"));}
+    @GetMapping("/superpower/model/market/models") Object market(@AuthenticationPrincipal Actor a){return ok(catalog.models(a));}
+    @GetMapping("/superpower/model/plan/list") Object plans(@AuthenticationPrincipal Actor a){return ok(subscriptions.plans(a));}
+    @GetMapping("/superpower/model/subscription/list") Object subscriptions(@AuthenticationPrincipal Actor a){return ok(subscriptions.subscriptions(a));}
+    @GetMapping("/superpower/model/activity/info") Object trial(@AuthenticationPrincipal Actor a){return ok(subscriptions.trial(a));}
+    @PostMapping("/superpower/model/activity/claim") Object claim(@AuthenticationPrincipal Actor a){return ok(subscriptions.claim(a));}
+    @PostMapping("/superpower/model/order/create") Object order(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){return ok(subscriptions.create(a,b,false));}
+    @PostMapping("/superpower/model/subscription/renew") Object renew(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){return ok(subscriptions.create(a,b,true));}
+    @GetMapping("/superpower/model/order/info") Object orderInfo(@AuthenticationPrincipal Actor a,@RequestParam String order_no){return ok(subscriptions.info(a,order_no,true));}
+    @PostMapping("/superpower/model/consume/records") Object usage(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){return ok(subscriptions.usage(a,b));}
+    @GetMapping("/superpower/skillStore/{type:list|myList|uploadedList}") Object skillList(@AuthenticationPrincipal Actor a,@PathVariable String type,@RequestParam Map<String,String> q,@RequestHeader("Authorization")String header){return ok(skills.list(a,type,q,session(header)));}
+    @GetMapping("/superpower/skillStore/classfyList") Object categories(@AuthenticationPrincipal Actor a){return ok(skills.categories(a,0));}
+    @GetMapping("/superpower/skillStore/subClassfyList") Object platforms(@AuthenticationPrincipal Actor a,@RequestParam(defaultValue="2")long parent_id){return ok(skills.categories(a,parent_id));}
+    @PostMapping(value="/superpower/skillStore/{action:upload|resubmit}",consumes=MediaType.MULTIPART_FORM_DATA_VALUE) Object upload(@AuthenticationPrincipal Actor a,@PathVariable String action,@RequestParam MultipartFile file,@RequestParam Map<String,String> q,@RequestHeader("Authorization")String header)throws IOException{
         require(file.getSize()<=50*1024*1024,413,"技能包不能超过 50 MB");return ok(skills.upload(a,file.getBytes(),file.getOriginalFilename(),q,session(header),action.equals("resubmit")?Long.valueOf(q.get("skill_store_id")):null));
     }
-    @PostMapping("/zhifu/skillStore/{action:bind|unbind|delete|downloadCount}") Object skillAction(@AuthenticationPrincipal Actor a,@PathVariable String action,@RequestBody Map<String,Object>b){long id=number(b,"skill_store_id");if(action.equals("bind")||action.equals("unbind"))return ok(skills.bind(a,id,action.equals("unbind")));if(action.equals("delete"))skills.delete(a,id);else skills.downloaded(a,id);return ok(Map.of());}
-    @PostMapping("/zhifu/skillStore/share/create") Object share(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){return ok(skills.share(a,number(b,"skill_store_id")));}
-    @PostMapping("/zhifu/skillStore/share/revoke") Object revoke(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){skills.revoke(a,number(b,"id"));return ok(Map.of());}
-    @GetMapping("/zhifu/skillStore/share/info") Object shareInfo(@AuthenticationPrincipal Actor a,@RequestParam String code,@RequestHeader("Authorization")String header){return ok(skills.redeem(a,code,false,session(header)));}
-    @PostMapping("/zhifu/skillStore/share/bind") Object redeem(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b,@RequestHeader("Authorization")String header){return ok(skills.redeem(a,text(b,"code"),true,session(header)));}
+    @PostMapping("/superpower/skillStore/{action:bind|unbind|delete|downloadCount}") Object skillAction(@AuthenticationPrincipal Actor a,@PathVariable String action,@RequestBody Map<String,Object>b){long id=number(b,"skill_store_id");if(action.equals("bind")||action.equals("unbind"))return ok(skills.bind(a,id,action.equals("unbind")));if(action.equals("delete"))skills.delete(a,id);else skills.downloaded(a,id);return ok(Map.of());}
+    @PostMapping("/superpower/skillStore/share/create") Object share(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){return ok(skills.share(a,number(b,"skill_store_id")));}
+    @PostMapping("/superpower/skillStore/share/revoke") Object revoke(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b){skills.revoke(a,number(b,"id"));return ok(Map.of());}
+    @GetMapping("/superpower/skillStore/share/info") Object shareInfo(@AuthenticationPrincipal Actor a,@RequestParam String code,@RequestHeader("Authorization")String header){return ok(skills.redeem(a,code,false,session(header)));}
+    @PostMapping("/superpower/skillStore/share/bind") Object redeem(@AuthenticationPrincipal Actor a,@RequestBody Map<String,Object>b,@RequestHeader("Authorization")String header){return ok(skills.redeem(a,text(b,"code"),true,session(header)));}
     @GetMapping("/skills/files/{id}") ResponseEntity<FileSystemResource> download(@PathVariable long id,@RequestParam String ticket){return ResponseEntity.ok().header("Cache-Control","no-store").contentType(MediaType.parseMediaType("application/zip")).body(new FileSystemResource(skills.download(id,ticket)));}
     @GetMapping("/shops") Object shops(@AuthenticationPrincipal Actor a,@RequestParam(defaultValue="")String query,@RequestParam(defaultValue="")String platforms,@RequestParam(defaultValue="1")int page,@RequestParam(defaultValue="20")int size){a.allow("ai.use");return shops.aiList(a,query,platforms,page,size);}
     @GetMapping("/shops/platforms") Object shopPlatforms(@AuthenticationPrincipal Actor a){a.allow("ai.use");return shops.aiPlatforms(a);}

@@ -1,5 +1,5 @@
-import { mallOpenFailure, MallOpenError, type MallOpenResult } from "../views/zhifuAgent/chat/utils/shop";
-import { readableError } from "../views/zhifuAgent/utils/userError";
+import { mallOpenFailure, MallOpenError, type MallOpenResult } from "../views/superpowerAgent/chat/utils/shop";
+import { readableError } from "../views/superpowerAgent/utils/userError";
 
 interface ScheduledShopRequest {
   requestId: string;

@@ -1,0 +1,1047 @@
+<template>
+  <div class="uploaded-skills" :class="{ 'has-create-tip': showCreateTip }">
+    <div ref="listRef" v-loading="loading" class="store-list" @scroll="onListScroll">
+      <el-empty
+        v-if="!loading && !skills.length"
+        :description="t('superpowerAgent.skills.uploadedEmpty')"
+      />
+      <div v-for="skill in skills" :key="skill.id" class="store-item">
+        <div class="skill-icon">
+          <el-icon><Box /></el-icon>
+        </div>
+        <div class="skill-copy">
+          <div class="skill-name">
+            <strong>{{ skill.name }}</strong>
+            <el-tag v-if="skill.category_name" size="small">{{ skill.category_name }}</el-tag>
+            <el-tag v-if="skill.sub_category_name" size="small">
+              {{ skill.sub_category_name }}
+            </el-tag>
+            <span class="visibility-hint">{{ visibilityLabel(skill.scope) }}</span>
+          </div>
+          <p :title="skill.explain">{{ skill.explain }}</p>
+          <small class="review-line">
+            <span>
+              {{
+                t("superpowerAgent.skills.version", {
+                  version: skill.version?.trim() || "v1.0.0",
+                })
+              }}
+            </span>
+            <span :class="reviewClass(skill.review_status)">
+              {{ reviewLabel(skill.review_status) }}
+            </span>
+            <span
+              v-if="Number(skill.review_status) === 2 && skill.review_reason"
+              class="review-reason"
+              :title="skill.review_reason"
+            >
+              {{ t("superpowerAgent.skills.reviewReason", { reason: skill.review_reason }) }}
+            </span>
+          </small>
+        </div>
+        <div class="skill-actions">
+          <el-button
+            v-if="!isReviewLocked(skill)"
+            type="primary"
+            size="small"
+            plain
+            :icon="Share"
+            :loading="sharingId === skill.id"
+            @click="openShare(skill)"
+          >
+            {{ t("superpowerAgent.skills.share") }}
+          </el-button>
+          <el-button
+            v-if="canReupload(skill)"
+            type="primary"
+            size="small"
+            plain
+            @click="openReupload(skill)"
+          >
+            {{ t("superpowerAgent.skills.reupload") }}
+          </el-button>
+          <el-button
+            v-if="!isInstalled(skill) && !isReviewLocked(skill)"
+            type="primary"
+            size="small"
+            plain
+            :icon="Download"
+            :loading="installingId === skill.id"
+            @click="install(skill)"
+          >
+            {{
+              installingId === skill.id
+                ? t("superpowerAgent.skills.installing")
+                : t("superpowerAgent.skills.install")
+            }}
+          </el-button>
+          <template v-else-if="isInstalled(skill)">
+            <el-button
+              v-if="needsUpdate(skill) && !isReviewLocked(skill)"
+              type="primary"
+              size="small"
+              :icon="Download"
+              plain
+              :loading="updatingSkillId === skill.id"
+              @click="updateInstalled(skill)"
+            >
+              {{
+                updatingSkillId === skill.id
+                  ? t("superpowerAgent.skills.updating")
+                  : t("superpowerAgent.skills.update")
+              }}
+            </el-button>
+            <el-button
+              type="primary"
+              size="small"
+              @click="useInstalledSkillInChat(store, skill.name)"
+            >
+              {{ t("superpowerAgent.skills.goUse") }}
+            </el-button>
+          </template>
+          <el-dropdown
+            trigger="click"
+            popper-class="skill-more-menu"
+            @command="(command: string) => handleMoreCommand(command, skill)"
+          >
+            <el-button
+              class="skill-more-button"
+              type="text"
+              :icon="More"
+              :loading="deletingId === skill.id || revokingId === skill.id"
+            />
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item
+                  v-if="skill.share_id"
+                  :icon="TurnOff"
+                  command="revoke"
+                  :disabled="revokingId === skill.id"
+                >
+                  {{ t("superpowerAgent.skills.cancelShare") }}
+                </el-dropdown-item>
+                <el-dropdown-item
+                  :icon="Delete"
+                  command="delete"
+                  class="danger-item"
+                  :disabled="deletingId === skill.id"
+                >
+                  {{ t("superpowerAgent.common.delete") }}
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
+        </div>
+      </div>
+      <p v-if="loadingMore" class="list-more">{{ t("superpowerAgent.composer.shopLoading") }}</p>
+    </div>
+
+    <el-dialog
+      v-model="uploadVisible"
+      class="upload-dialog"
+      :title="reuploadId ? t('superpowerAgent.skills.reupload') : t('superpowerAgent.skills.uploadSkill')"
+      width="600px"
+      top="5vh"
+      append-to-body
+      @closed="resetUpload"
+    >
+      <el-upload
+        v-if="!localSkill"
+        class="upload-drop"
+        drag
+        accept=".zip,application/zip"
+        :auto-upload="false"
+        :show-file-list="false"
+        :on-change="onUploadFileChange"
+      >
+        <p class="upload-drop-title">
+          <el-icon :size="16"><Upload /></el-icon>
+          {{ t("superpowerAgent.skills.uploadDropHint") }}
+        </p>
+        <p class="upload-drop-tip">{{ t("superpowerAgent.skills.uploadDropTypes") }}</p>
+        <span class="choose-file">
+          <el-icon><Folder /></el-icon>
+          {{ uploadFile?.name || t("superpowerAgent.skills.chooseFile") }}
+        </span>
+      </el-upload>
+      <el-form
+        v-loading="uploadPreviewing"
+        class="upload-form"
+        label-position="left"
+        label-width="108px"
+      >
+        <el-form-item :label="t('superpowerAgent.skills.skillName')">
+          <el-input
+            :model-value="uploadSkillName"
+            disabled
+            :placeholder="t('superpowerAgent.skills.uploadSkillNameEmpty')"
+          />
+        </el-form-item>
+        <el-form-item :label="t('superpowerAgent.skills.skillDescription')">
+          <el-input
+            :model-value="uploadSkillDescription"
+            type="textarea"
+            :rows="3"
+            resize="none"
+            disabled
+            :placeholder="t('superpowerAgent.skills.uploadSkillDescEmpty')"
+          />
+        </el-form-item>
+        <el-form-item :label="t('superpowerAgent.skills.uploadVersion')">
+          <el-input v-model="uploadVersion" maxlength="32" :placeholder="DEFAULT_SKILL_VERSION" />
+        </el-form-item>
+        <el-form-item :label="t('superpowerAgent.skills.sceneCategory')">
+          <el-select
+            v-model="uploadCategoryId"
+            class="upload-category"
+            :placeholder="t('superpowerAgent.skills.selectCategory')"
+          >
+            <el-option
+              v-for="item in categories"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item :label="t('superpowerAgent.skills.platformApplicable')">
+          <el-select
+            v-model="uploadSubCategoryId"
+            class="upload-category"
+            clearable
+            :placeholder="t('superpowerAgent.skills.selectPlatform')"
+          >
+            <el-option
+              v-for="item in platforms"
+              :key="item.id"
+              :label="item.name"
+              :value="item.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item
+          v-if="!reuploadId"
+          :label="t('superpowerAgent.skills.viewRange')"
+          style="margin-bottom: 0"
+        >
+          <el-radio-group v-model="uploadScope" class="scope-group">
+            <el-radio :value="2">
+              <span class="scope-title">{{ t("superpowerAgent.skills.scopePrivateTitle") }}</span>
+              <span class="scope-desc">{{ t("superpowerAgent.skills.scopePrivateDesc") }}</span>
+            </el-radio>
+            <el-radio :value="1">
+              <span class="scope-title">{{ t("superpowerAgent.skills.scopePublicTitle") }}</span>
+              <span class="scope-desc">{{ t("superpowerAgent.skills.scopePublicDesc") }}</span>
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="uploadVisible = false">{{ t("superpowerAgent.common.cancel") }}</el-button>
+        <el-button type="primary" :loading="uploading" @click="submitUpload">
+          {{
+            uploadScope === 1
+              ? t("superpowerAgent.skills.submitReview")
+              : t("superpowerAgent.skills.confirmUpload")
+          }}
+        </el-button>
+      </template>
+    </el-dialog>
+    <SkillShareDialog ref="shareDialogRef" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import {
+  Box,
+  TurnOff,
+  Delete,
+  Download,
+  Folder,
+  More,
+  Share,
+  Upload,
+} from "@element-plus/icons-vue";
+import type { UploadFile } from "element-plus";
+import { useDebounceFn } from "@vueuse/core";
+import {
+  deleteSkillStore,
+  getUploadedSkillStoreList,
+  resubmitSkillStore,
+  revokeSkillShare,
+  unbindSkillStore,
+  uploadSkillStore,
+  type SkillStoreClassifyItem,
+  type SkillStoreItem,
+  type SkillStoreListParams,
+} from "@/ai/api/superpowerAgent";
+import { errorMessage, useSuperPowerAgentStore } from "@/ai/store/modules/superpower-agent.store";
+import { superpowerGetPathForFile, superpowerGetSkill, superpowerPreviewSkillFile } from "@/ai/utils/electronApi";
+import type { DisplaySkill } from "../../type";
+import SkillShareDialog from "./SkillShareDialog.vue";
+import {
+  fileToBase64,
+  findInstalledSkill,
+  installListedSkill,
+  loadSkillClassifyOptions,
+  openSkillShare,
+  pickList,
+  readSkillPage,
+  skillPackageUrl,
+  skillNeedsUpdate,
+  useInstalledSkillInChat,
+} from "../skillListShared";
+
+const emit = defineEmits<{ error: [message: string]; changed: [] }>();
+const props = defineProps<{ showCreateTip?: boolean; reviewStatus?: number }>();
+
+const store = useSuperPowerAgentStore();
+const { t } = useI18n();
+const keyword = defineModel("keyword", { default: "" });
+
+const categories = ref<SkillStoreClassifyItem[]>([]);
+const platforms = ref<SkillStoreClassifyItem[]>([]);
+const skills = ref<SkillStoreItem[]>([]);
+const loading = ref(false);
+const loadingMore = ref(false);
+const uploading = ref(false);
+const uploadVisible = ref(false);
+const uploadCategoryId = ref<number>();
+const uploadSubCategoryId = ref<number>();
+const uploadScope = ref<1 | 2>(2);
+const uploadFile = ref<File | null>(null);
+/** 从本地技能上传时记下原技能，提交时用它打包，不必再选文件 */
+const localSkill = ref<DisplaySkill | null>(null);
+const uploadSkillName = ref("");
+const uploadSkillDescription = ref("");
+/** 上传技能的版本号。优先读技能包 _meta.json，没有则用默认值 */
+const DEFAULT_SKILL_VERSION = "1.0.0";
+const uploadVersion = ref(DEFAULT_SKILL_VERSION);
+const uploadPreviewing = ref(false);
+const reuploadId = ref<number | null>(null);
+const installingId = ref<number | null>(null);
+const updatingSkillId = ref<number | null>(null);
+const deletingId = ref<number | null>(null);
+const revokingId = ref<number | null>(null);
+const sharingId = ref<number | null>(null);
+const shareDialogRef = ref<InstanceType<typeof SkillShareDialog>>();
+const listRef = ref<HTMLElement>();
+const page = ref(1);
+const hasMore = ref(false);
+const PAGE_SIZE = 20;
+
+function listQuery(pageNo = 1): SkillStoreListParams {
+  const text = keyword.value.trim();
+  return {
+    page: pageNo,
+    limit: PAGE_SIZE,
+    keyword: text || undefined,
+    review_status: props.reviewStatus || undefined,
+  };
+}
+
+function findInstalled(skill: SkillStoreItem) {
+  return findInstalledSkill(store.localSkills, skill.name);
+}
+
+const isInstalled = (skill: SkillStoreItem) => Boolean(store.workspace && findInstalled(skill));
+
+/** 上传列表里的版本高于本地已安装版本时，才显示更新 */
+const needsUpdate = (skill: SkillStoreItem) =>
+  skillNeedsUpdate(skill.version, findInstalled(skill)?.version);
+
+function visibilityLabel(scope: number | undefined) {
+  return Number(scope) === 1
+    ? t("superpowerAgent.skills.storeVisible")
+    : t("superpowerAgent.skills.scopePrivate");
+}
+
+function reviewClass(status: number | undefined) {
+  if (status === 1) return "is-passed";
+  if (status === 2) return "is-rejected";
+  if (status === 3) return "is-pending";
+  return "";
+}
+
+function reviewLabel(status: number | undefined) {
+  if (status === 1) return t("superpowerAgent.skills.reviewPassed");
+  if (status === 2) return t("superpowerAgent.skills.reviewRejected");
+  if (status === 3) return t("superpowerAgent.skills.reviewPending");
+  return "";
+}
+
+function isReviewLocked(skill: SkillStoreItem) {
+  const status = Number(skill.review_status);
+  return status === 2 || status === 3;
+}
+
+function canReupload(skill: SkillStoreItem) {
+  return Number(skill.review_status) === 2;
+}
+
+let loadSeq = 0;
+
+async function load() {
+  const seq = ++loadSeq;
+  loading.value = true;
+  loadingMore.value = false;
+  try {
+    const { list, hasNext } = readSkillPage(await getUploadedSkillStoreList(listQuery(1)), 1);
+    if (seq !== loadSeq) return;
+    page.value = 1;
+    skills.value = list;
+    hasMore.value = hasNext;
+    await nextTick();
+    if (listRef.value) listRef.value.scrollTop = 0;
+    void fillList(seq);
+  } catch {
+    // 接口异常已由 request 统一提示
+  } finally {
+    if (seq === loadSeq) loading.value = false;
+  }
+}
+
+function onListScroll(event: Event) {
+  const el = event.target as HTMLElement;
+  if (loading.value || loadingMore.value || !hasMore.value) return;
+  if (el.scrollHeight - el.scrollTop - el.clientHeight <= 80) void loadMore();
+}
+
+async function loadMore() {
+  if (!hasMore.value || loading.value || loadingMore.value) return;
+  const seq = loadSeq;
+  const nextPage = page.value + 1;
+  loadingMore.value = true;
+  try {
+    const { list, hasNext } = readSkillPage(
+      await getUploadedSkillStoreList(listQuery(nextPage)),
+      nextPage
+    );
+    if (seq !== loadSeq) return;
+    const seen = new Set(skills.value.map((item) => Number(item.id)));
+    const appended = list.filter((item) => !seen.has(Number(item.id)));
+    if (!appended.length) {
+      hasMore.value = false;
+      return;
+    }
+    page.value = nextPage;
+    skills.value = skills.value.concat(appended);
+    hasMore.value = hasNext;
+    void fillList(seq);
+  } catch {
+    // 接口异常已由 request 统一提示
+  } finally {
+    if (seq === loadSeq) loadingMore.value = false;
+  }
+}
+
+async function fillList(seq: number) {
+  await nextTick();
+  const el = listRef.value;
+  if (!el || seq !== loadSeq || !hasMore.value || loading.value || loadingMore.value) return;
+  if (el.scrollHeight <= el.clientHeight + 8) await loadMore();
+}
+
+watch(
+  keyword,
+  useDebounceFn(() => load(), 400)
+);
+
+watch(
+  () => props.reviewStatus,
+  () => load()
+);
+
+async function openUpload() {
+  resetUpload();
+  uploadVisible.value = true;
+  void ensureCategories();
+}
+
+/** 本地技能上传云端：打开和上传技能一样的弹窗，并带上当前技能内容 */
+function openFromLocal(skill: DisplaySkill) {
+  resetUpload();
+  localSkill.value = skill;
+  uploadSkillName.value = skill.name || "";
+  uploadSkillDescription.value = skill.description || "";
+  uploadVersion.value = normalizeSkillVersion(skill.version);
+  uploadCategoryId.value = skill.category_id || undefined;
+  uploadSubCategoryId.value = skill.sub_category_id || undefined;
+  uploadVisible.value = true;
+  void ensureCategories();
+}
+
+function openReupload(skill: SkillStoreItem) {
+  resetUpload();
+  reuploadId.value = skill.id;
+  uploadCategoryId.value = skill.category_id || undefined;
+  uploadSubCategoryId.value = skill.sub_category_id || undefined;
+  uploadScope.value = skill.review_status > 0 ? 1 : 2;
+  uploadSkillName.value = skill.name || "";
+  uploadSkillDescription.value = skill.explain || "";
+  uploadVersion.value = skill.version?.trim() || DEFAULT_SKILL_VERSION;
+  uploadVisible.value = true;
+  void ensureCategories();
+}
+
+function openShare(skill: SkillStoreItem) {
+  return openSkillShare(shareDialogRef.value, skill, sharingId).then(() => load());
+}
+
+function handleMoreCommand(command: string, skill: SkillStoreItem) {
+  if (command === "revoke") void revokeShare(skill);
+  if (command === "delete") void deleteSkill(skill);
+}
+
+function resetUpload() {
+  uploadCategoryId.value = undefined;
+  uploadSubCategoryId.value = undefined;
+  uploadScope.value = 2;
+  uploadFile.value = null;
+  localSkill.value = null;
+  uploadSkillName.value = "";
+  uploadSkillDescription.value = "";
+  uploadVersion.value = DEFAULT_SKILL_VERSION;
+  uploadPreviewing.value = false;
+  reuploadId.value = null;
+}
+
+async function onUploadFileChange(file: UploadFile) {
+  const raw = file.raw;
+  if (!raw) return;
+  const filename = raw.name.toLocaleLowerCase();
+  if (!filename.endsWith(".zip") && !filename.endsWith(".md")) {
+    ElMessage.error(t("superpowerAgent.skills.uploadFileInvalid"));
+    return;
+  }
+  if (raw.size > 20 * 1024 * 1024) {
+    ElMessage.error(t("superpowerAgent.skills.zipTooLarge"));
+    return;
+  }
+  const filePath = superpowerGetPathForFile(raw) || (raw as File & { path?: string }).path || "";
+  uploadPreviewing.value = true;
+  try {
+    const preview = filePath
+      ? await superpowerPreviewSkillFile({ filePath })
+      : await superpowerPreviewSkillFile({
+          filename: raw.name,
+          contentBase64: await fileToBase64(raw),
+        });
+    uploadFile.value = raw;
+    uploadSkillName.value = preview?.name || "";
+    uploadSkillDescription.value = preview?.description || "";
+    uploadVersion.value = (await readPackageVersion(raw)) || DEFAULT_SKILL_VERSION;
+  } catch (cause) {
+    uploadFile.value = null;
+    uploadSkillName.value = "";
+    uploadSkillDescription.value = "";
+    uploadVersion.value = DEFAULT_SKILL_VERSION;
+    ElMessage.error(errorMessage(cause, t("superpowerAgent.skills.uploadPreviewFailed")));
+  } finally {
+    uploadPreviewing.value = false;
+  }
+}
+
+/** 从技能包里的 _meta.json 读取 version。包内有多份时用最外层那份 */
+async function readPackageVersion(file: File) {
+  if (!file.name.toLocaleLowerCase().endsWith(".zip")) return "";
+  try {
+    const JSZip = (await import("jszip")).default;
+    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+    const entry = Object.values(zip.files)
+      .filter((item) => !item.dir && /(?:^|[/\\])_meta\.json$/i.test(item.name))
+      .sort((left, right) => left.name.split(/[/\\]/).length - right.name.split(/[/\\]/).length)[0];
+    if (!entry) return "";
+    const meta = JSON.parse(await entry.async("string"));
+    const version = meta?.version;
+    return typeof version === "string" || typeof version === "number" ? String(version).trim() : "";
+  } catch {
+    return "";
+  }
+}
+
+/** 版本号去掉开头的 v，没有时用默认版本 */
+function normalizeSkillVersion(value?: string) {
+  const version = String(value || "")
+    .trim()
+    .replace(/^v(?=\d)/i, "");
+  return version || DEFAULT_SKILL_VERSION;
+}
+
+/** 只把弹窗里改过的版本写进技能包，名称和描述保持原文件 */
+async function withEditedSkillVersion(file: File, version: string) {
+  if (!file.name.toLowerCase().endsWith(".zip")) return file;
+  const JSZip = (await import("jszip")).default;
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  const skillEntry = Object.values(zip.files)
+    .filter(item => !item.dir && /(?:^|[/\\])SKILL\.md$/i.test(item.name))
+    .sort((left, right) => left.name.split(/[/\\]/).length - right.name.split(/[/\\]/).length)[0];
+  if (!skillEntry) throw new Error(t("superpowerAgent.skills.shareContentEmpty"));
+  const expectedMetaPath = skillEntry.name.replace(/SKILL\.md$/i, "_meta.json");
+  const metaEntry = Object.values(zip.files).find(item => !item.dir && item.name.toLowerCase() === expectedMetaPath.toLowerCase());
+  const metaPath = metaEntry?.name || expectedMetaPath;
+  let data: Record<string, unknown> = {};
+  try {
+    const parsed = JSON.parse(metaEntry ? await metaEntry.async("string") : "{}");
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Invalid metadata");
+    data = parsed;
+  } catch {
+    throw new Error(t("superpowerAgent.skills.invalidPackageMetadata"));
+  }
+  data.version = version;
+  zip.file(metaPath, JSON.stringify(data, null, 2));
+  const blob = await zip.generateAsync({ type: "blob" });
+  return new File([blob], file.name, { type: "application/zip" });
+}
+
+/** 把本地技能目录打成上传用的压缩包 */
+async function buildLocalSkillZip(skill: DisplaySkill) {
+  const details = await superpowerGetSkill({
+    id: String(skill.id),
+    scope: skill.scope,
+    workspace: store.workspace,
+    includeFiles: true,
+  });
+  const content = String(details?.content || "");
+  const files = (details?.files || []).filter((item) => {
+    const path = String(item?.path || "")
+      .replace(/\\/g, "/")
+      .replace(/^\/+/, "");
+    return path && path !== ".." && !path.startsWith("../") && !path.split("/").includes("..");
+  });
+  if (!content.trim() && !files.length) throw new Error(t("superpowerAgent.skills.shareContentEmpty"));
+  const JSZip = (await import("jszip")).default;
+  const zip = new JSZip();
+  let hasSkillFile = false;
+  for (const item of files) {
+    const path = String(item.path).replace(/\\/g, "/").replace(/^\/+/, "");
+    if (/(^|\/)skill\.md$/i.test(path)) hasSkillFile = true;
+    zip.file(path, item.data, { base64: true });
+  }
+  if (!hasSkillFile) zip.file("SKILL.md", content);
+  const blob = await zip.generateAsync({ type: "blob" });
+  const base = skill.name.replace(/[\\/:*?"<>|]+/g, "-").trim() || "skill";
+  return new File([blob], `${base}.zip`, { type: "application/zip" });
+}
+
+async function submitUpload() {
+  if (!localSkill.value && !uploadFile.value) {
+    ElMessage.warning(t("superpowerAgent.skills.chooseFile"));
+    return;
+  }
+  if (localSkill.value && !store.workspace) {
+    ElMessage.warning(t("superpowerAgent.chat.noWorkspace"));
+    return;
+  }
+  uploadVersion.value = normalizeSkillVersion(uploadVersion.value);
+  if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(uploadVersion.value)) {
+    ElMessage.warning(t("superpowerAgent.skills.invalidUploadVersion"));
+    return;
+  }
+  uploading.value = true;
+  const updatingId = reuploadId.value;
+  let file = uploadFile.value;
+  try {
+    if (localSkill.value) file = await buildLocalSkillZip(localSkill.value);
+    if (file) {
+      file = await withEditedSkillVersion(
+        file,
+        uploadVersion.value.trim() || DEFAULT_SKILL_VERSION
+      );
+    }
+  } catch (cause) {
+    uploading.value = false;
+    ElMessage.error(
+      cause instanceof Error && cause.message
+        ? cause.message
+        : t("superpowerAgent.skills.shareContentEmpty")
+    );
+    return;
+  }
+  if (!file) {
+    uploading.value = false;
+    ElMessage.warning(t("superpowerAgent.skills.chooseFile"));
+    return;
+  }
+  try {
+    const data = new FormData();
+    data.append("file", file);
+    data.append("version", uploadVersion.value.trim() || DEFAULT_SKILL_VERSION);
+    data.append("category_id", String(uploadCategoryId.value || 0));
+    data.append("sub_category_id", String(uploadSubCategoryId.value || 0));
+    data.append("scope", String(uploadScope.value));
+    if (updatingId) {
+      data.append("skill_store_id", String(updatingId));
+      await resubmitSkillStore(data);
+    } else {
+      const result: any = await uploadSkillStore(data);
+      const skillId = Number(result?.data?.id ?? result?.data?.skill_store_id);
+      if (skillId > 0) await unbindSkillStore(skillId);
+    }
+    uploadVisible.value = false;
+    await load();
+    if (!updatingId) emit("changed");
+    ElMessage.success(
+      updatingId ? t("superpowerAgent.skills.reuploadSuccess") : t("superpowerAgent.skills.uploadSuccess")
+    );
+  } catch {
+    // 接口异常已由 request 统一提示
+  } finally {
+    uploading.value = false;
+  }
+}
+
+async function freshPackageUrl(skill: SkillStoreItem) {
+  const res = await getUploadedSkillStoreList({ page: 1, limit: 20, keyword: skill.name });
+  return skillPackageUrl(
+    pickList<SkillStoreItem>(res).find((item) => Number(item.id) === Number(skill.id))
+  );
+}
+
+async function install(skill: SkillStoreItem) {
+  installingId.value = skill.id;
+  try {
+    const installed = await installListedSkill({
+      skill,
+      getWorkspace: () => store.workspace,
+      selectWorkspace: () => store.selectWorkspace(),
+      onSelectError: (cause) => emit("error", errorMessage(cause)),
+      freshPackageUrl,
+      loadSkills: () => store.loadSkills(),
+      reload: () => load(),
+      onError: (message) => emit("error", message),
+      missingUrlMessage: t("superpowerAgent.skills.missingPackageUrl"),
+    });
+    if (installed) ElMessage.success(t("superpowerAgent.skills.installedToWorkspace"));
+  } catch (cause) {
+    emit("error", errorMessage(cause));
+  } finally {
+    installingId.value = null;
+  }
+}
+
+/** 用新上传的版本覆盖当前工作区已安装的技能 */
+async function updateInstalled(skill: SkillStoreItem) {
+  updatingSkillId.value = skill.id;
+  try {
+    const updated = await installListedSkill({
+      skill,
+      replace: true,
+      getWorkspace: () => store.workspace,
+      selectWorkspace: () => store.selectWorkspace(),
+      onSelectError: (cause) => emit("error", errorMessage(cause)),
+      freshPackageUrl,
+      loadSkills: () => store.loadSkills(),
+      reload: () => load(),
+      onError: (message) => emit("error", message),
+      missingUrlMessage: t("superpowerAgent.skills.missingPackageUrl"),
+    });
+    if (updated) ElMessage.success(t("superpowerAgent.skills.updatedToWorkspace"));
+  } catch (cause) {
+    emit("error", errorMessage(cause));
+  } finally {
+    updatingSkillId.value = null;
+  }
+}
+
+async function revokeShare(skill: SkillStoreItem) {
+  const id = skill.share_id;
+  if (!id || revokingId.value) return;
+  try {
+    await ElMessageBox.confirm(
+      t("superpowerAgent.skills.cancelShareConfirm", { name: skill.name }),
+      t("superpowerAgent.common.tip"),
+      {
+        type: "warning",
+        confirmButtonText: t("superpowerAgent.skills.cancelShare"),
+        cancelButtonText: t("superpowerAgent.common.cancel"),
+      }
+    );
+  } catch {
+    return;
+  }
+  revokingId.value = skill.id;
+  try {
+    await revokeSkillShare(id);
+    await load();
+    ElMessage.success(t("superpowerAgent.skills.cancelShareSuccess"));
+  } catch {
+    // 接口异常已由 request 统一提示
+  } finally {
+    revokingId.value = null;
+  }
+}
+
+async function deleteSkill(skill: SkillStoreItem) {
+  if (deletingId.value) return;
+  try {
+    await ElMessageBox.confirm(
+      t("superpowerAgent.skills.deleteConfirm", { name: skill.name }),
+      t("superpowerAgent.common.tip"),
+      {
+        type: "warning",
+        confirmButtonText: t("superpowerAgent.common.delete"),
+        cancelButtonText: t("superpowerAgent.common.cancel"),
+      }
+    );
+  } catch {
+    return;
+  }
+  deletingId.value = skill.id;
+  try {
+    await unbindSkillStore(skill.id).catch(() => {});
+    await deleteSkillStore(skill.id);
+    await store.loadBoundSkillStore().catch(() => {});
+    await load();
+    emit("changed");
+    ElMessage.success(t("superpowerAgent.skills.deleteSuccess"));
+  } catch {
+    // 接口异常已由 request 统一提示
+  } finally {
+    deletingId.value = null;
+  }
+}
+
+let classifyReady = false;
+
+function ensureCategories() {
+  if (classifyReady) return;
+  classifyReady = true;
+  void loadSkillClassifyOptions().then((result) => {
+    categories.value = result.categories;
+    platforms.value = result.platforms;
+  });
+}
+
+defineExpose({ openUpload, openFromLocal, uploading, reload: load });
+
+onMounted(() => {
+  if (store.workspace) store.loadSkills().catch(() => {});
+  load();
+});
+</script>
+
+<style lang="scss" scoped>
+.store-list {
+  min-height: 160px;
+  max-height: calc(100vh - 256px);
+  overflow-y: auto;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+.has-create-tip .store-list {
+  max-height: calc(100vh - 372px);
+}
+
+.list-more {
+  margin: 4px 0 12px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  text-align: center;
+}
+
+.store-item {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border: 1px solid var(--el-border-color-lighter);
+  border-radius: 8px;
+
+  &:hover {
+    border-color: var(--el-border-color);
+  }
+
+  .el-button {
+    margin-left: 0;
+  }
+
+  .skill-more-button {
+    padding: 4px !important;
+  }
+  .skill-actions {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+}
+
+.skill-icon {
+  display: grid;
+  flex: 0 0 38px;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+  border-radius: 8px;
+}
+
+.skill-copy {
+  flex: 1;
+  min-width: 0;
+
+  p {
+    margin: 4px 0;
+    overflow: hidden;
+    font-size: 12px;
+    color: var(--el-text-color-regular);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  small {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+  }
+}
+
+.review-line {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  min-width: 0;
+}
+
+.review-reason {
+  overflow: hidden;
+  color: var(--el-color-danger);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.is-passed {
+  color: var(--el-color-success);
+}
+
+.is-rejected {
+  color: var(--el-color-danger);
+}
+
+.is-pending {
+  color: var(--el-color-warning);
+}
+
+.visibility-hint {
+  font-size: 12px;
+  line-height: 20px;
+  color: var(--el-text-color-secondary);
+}
+
+.skill-name {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+
+  strong {
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+
+.upload-drop {
+  width: 100%;
+  margin-bottom: 16px;
+
+  :deep(.el-upload),
+  :deep(.el-upload-dragger) {
+    width: 100%;
+  }
+
+  :deep(.el-upload-dragger) {
+    padding: 18px 16px;
+    background: #fafbfc;
+    border: 1px dashed #d7dee3;
+    border-radius: 8px;
+  }
+}
+
+.upload-drop-title {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 14px;
+  color: #262c30;
+
+  .el-icon {
+    color: #3370ff;
+  }
+}
+
+.upload-drop-tip {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: #98a2a8;
+}
+
+.choose-file {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  max-width: 240px;
+  height: 32px;
+  padding: 0 14px;
+  margin-top: 12px;
+  overflow: hidden;
+  font-size: 13px;
+  color: #5f686e;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: #f3f4f6;
+  border-radius: 16px;
+}
+
+.upload-form :deep(.el-form-item__label) {
+  font-weight: 500;
+  color: #262c30;
+}
+
+.upload-category {
+  width: 100%;
+}
+
+.scope-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+
+  :deep(.el-radio) {
+    height: auto;
+    align-items: flex-start;
+    margin-right: 0;
+    white-space: normal;
+  }
+
+  :deep(.el-radio__input) {
+    margin-top: 3px;
+  }
+
+  :deep(.el-radio__label) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.4;
+  }
+}
+
+.scope-title {
+  font-size: 14px;
+  color: #262c30;
+}
+
+.scope-desc {
+  font-size: 12px;
+  color: #8b9499;
+}
+</style>

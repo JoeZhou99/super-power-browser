@@ -84,7 +84,7 @@ export default {
     "zhifubao": "Alipay"
   },
   "router": {
-    "zhifu_agent": "SuperPower AI",
+    "superpower_agent": "SuperPower AI",
     "model_usage": "Model usage"
   },
   "wxwProxy": {
@@ -198,7 +198,7 @@ export default {
       "notImport": "You have not imported your own models yet"
     }
   },
-  "zhifuAgent": {
+  "superpowerAgent": {
     "common": {
       "cancel": "Cancel",
       "confirm": "OK",
@@ -691,7 +691,7 @@ export default {
       "shareLater": "Not now",
       "shareUploadAction": "Upload and create share code",
       "shareCodeTitle": "Share code",
-      "shareCodeText": "Skill: {name}\nCode: {code}\n\nIn Skills, choose Get by code and enter this code to add the skill.",
+      "shareCodeText": "Skill: {name}\nCode: {code}\n\nSend this code to members who need to use the skill.",
       "shareCodeCopy": "Copy code",
       "resetShareCode": "Reset code",
       "resetShareCodeConfirm": "The current code for \"{name}\" will stop working. Reset it?",
@@ -704,17 +704,6 @@ export default {
       "cancelShare": "Cancel share",
       "cancelShareConfirm": "Existing codes for \"{name}\" will stop working. Cancel this share?",
       "cancelShareSuccess": "Share canceled",
-      "redeem": "Get by code",
-      "redeemCode": "Skill code:",
-      "redeemCodePlaceholder": "Enter a skill code",
-      "redeemLookup": "Look up",
-      "redeemLookupSuccess": "Skill found",
-      "redeemName": "Skill name:",
-      "redeemAdd": "Add to my skills",
-      "redeemCodeRequired": "Enter a skill code",
-      "redeemCodeInvalid": "Use a code like a1b2-c3d4-e5f6-7890",
-      "redeemLookupFirst": "Look up the skill first",
-      "redeemSuccess": "Added to my skills",
       "invalidUploadVersion": "Enter a valid version, for example 1.0.0",
       "invalidPackageMetadata": "The skill package has invalid _meta.json. Please correct it and retry."
     },
@@ -840,11 +829,6 @@ export default {
       "generalShopConcurrencyNote": "Chats and scheduled tasks in this client share a shop execution limit. Default 2, range 1–8. Tasks using the same shop run in sequence; queue time is excluded from the execution timeout.",
       "generalExecutionTimeout": "Task timeout (minutes)",
       "generalExecutionTimeoutNote": "Default is 10 minutes, from 1 to 120. Each shop is timed separately. On timeout the request stops and the reason is shown, while results from other shops are kept.",
-      "generalDisplay": "Conversation display",
-      "generalUserName": "Your name",
-      "generalUserNamePlaceholder": "You",
-      "generalAgentName": "Agent name",
-      "generalNameNote": "Names are shown in new messages and applied to existing conversations.",
       "messagingTitle": "IM channels",
       "messagingDesc": "Connect Feishu, WeChat, or WeCom bots by scanning a QR code.",
       "messagingNotConnectedTip": "Scan to connect the bot for receiving and sending messages",

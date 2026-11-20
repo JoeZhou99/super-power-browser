@@ -4,43 +4,43 @@ const localflowApi = (window as any).localflow;
 export const electronApi = (window as any).api;
 export const getAppVersion = async () => (await electronApi?.settings())?.version || '0.0.0';
 export const getSystemPlatform = async () => (await (window as any).localflow?.bootstrap())?.platform || '';
-export type ZhifuAgentMode = "plan" | "act" | "yolo";
-export type ZhifuSkillScope = "global" | "workspace";
-export type ZhifuImProvider = "feishu" | "wechat" | "wecom";
-export type ZhifuApprovalScope = "once" | "turn" | "session" | "all_session";
+export type SuperPowerAgentMode = "plan" | "act" | "yolo";
+export type SuperPowerSkillScope = "global" | "workspace";
+export type SuperPowerImProvider = "feishu" | "wechat" | "wecom";
+export type SuperPowerApprovalScope = "once" | "turn" | "session" | "all_session";
 
-export interface ZhifuImStatus {
-  provider?: ZhifuImProvider;
+export interface SuperPowerImStatus {
+  provider?: SuperPowerImProvider;
   state: "disconnected" | "connecting" | "connected" | "error" | string;
   message: string;
   [key: string]: any;
 }
 
-export interface ZhifuBootstrapResult {
+export interface SuperPowerBootstrapResult {
   settings: Record<string, any>;
   platform: string;
   imStatus: {
-    feishu?: ZhifuImStatus;
-    wechat?: ZhifuImStatus;
-    wecom?: ZhifuImStatus;
+    feishu?: SuperPowerImStatus;
+    wechat?: SuperPowerImStatus;
+    wecom?: SuperPowerImStatus;
   };
 }
 
-export interface ZhifuSelectedFile {
+export interface SuperPowerSelectedFile {
   path: string;
   name: string;
   /** 字节数，客户端可能不返回 */
   size?: number;
 }
 
-export interface ZhifuConnectionResult {
+export interface SuperPowerConnectionResult {
   ok: boolean;
   message: string;
   status?: number;
   modelAvailable?: boolean;
 }
 
-export interface ZhifuRunAgentInput {
+export interface SuperPowerRunAgentInput {
   conversationId: string;
   messageId?: string;
   history?: {
@@ -64,7 +64,7 @@ export interface ZhifuRunAgentInput {
   files: string[];
   skillNames: string[];
   workspace: string;
-  mode: ZhifuAgentMode;
+  mode: SuperPowerAgentMode;
   shops?: { id: string | number; name?: string; platform?: string; account?: string }[];
   shopResults?: {
     ok: boolean;
@@ -80,7 +80,7 @@ export interface ZhifuRunAgentInput {
   shopPrompt?: string;
 }
 
-export type ZhifuAgentEvent = { conversationId?: string; runId?: string } & (
+export type SuperPowerAgentEvent = { conversationId?: string; runId?: string } & (
   | { kind: "approvals-cleared"; sessionId?: string; approvalIds: string[] }
   | { kind: "chunk"; sessionId: string; stream: string; text: string }
   | { kind: "error"; sessionId: string; message: string; errorClass?: string }
@@ -106,7 +106,7 @@ export type ZhifuAgentEvent = { conversationId?: string; runId?: string } & (
   | { kind: "waiting" | "executing"; sessionId?: string; message?: string }
 );
 
-export interface ZhifuApprovalRequest {
+export interface SuperPowerApprovalRequest {
   force?: boolean;
   conversationId?: string;
   runId?: string;
@@ -118,8 +118,8 @@ export interface ZhifuApprovalRequest {
   input: any;
 }
 
-export interface ZhifuImMessage {
-  provider: ZhifuImProvider;
+export interface SuperPowerImMessage {
+  provider: SuperPowerImProvider;
   phase: "user" | "assistant";
   conversationId: string;
   title?: string;
@@ -129,11 +129,11 @@ export interface ZhifuImMessage {
   status?: string;
 }
 
-export interface ZhifuLocalSkill {
+export interface SuperPowerLocalSkill {
   id: string;
   name: string;
   description: string;
-  scope: ZhifuSkillScope;
+  scope: SuperPowerSkillScope;
   path: string;
   file?: string;
   requiresShop?: boolean;
@@ -145,36 +145,36 @@ export interface ZhifuLocalSkill {
   version?: string;
 }
 
-export interface ZhifuInstallSkillResult {
+export interface SuperPowerInstallSkillResult {
   canceled: boolean;
-  installed?: ZhifuLocalSkill;
+  installed?: SuperPowerLocalSkill;
 }
 
-type ZhifuUnsubscribe = () => void;
+type SuperPowerUnsubscribe = () => void;
 
-const zhifuUnavailable = () => Promise.reject(new Error("当前环境不支持，请在客户端中使用"));
+const superpowerUnavailable = () => Promise.reject(new Error("当前环境不支持，请在客户端中使用"));
 
-const zhifuInvoke = <T = any>(method: string, ...args: any[]): Promise<T> => {
+const superpowerInvoke = <T = any>(method: string, ...args: any[]): Promise<T> => {
   const fn = localflowApi?.[method];
-  if (typeof fn !== "function") return zhifuUnavailable();
+  if (typeof fn !== "function") return superpowerUnavailable();
   return Promise.resolve(fn(...args));
 };
 
-const zhifuSubscribe = (method: string, callback: (_payload: any) => void): ZhifuUnsubscribe => {
+const superpowerSubscribe = (method: string, callback: (_payload: any) => void): SuperPowerUnsubscribe => {
   const fn = localflowApi?.[method];
   if (typeof fn !== "function") return () => {};
   const off = fn(callback);
   return typeof off === "function" ? off : () => {};
 };
 
-export const zhifuBootstrap = () => zhifuInvoke<ZhifuBootstrapResult>("bootstrap");
-export const zhifuExportDiagnostics = (input: Record<string, unknown>) =>
-  zhifuInvoke<{ issueId: string; path: string; collected: number; skipped: number } | null>(
+export const superpowerBootstrap = () => superpowerInvoke<SuperPowerBootstrapResult>("bootstrap");
+export const superpowerExportDiagnostics = (input: Record<string, unknown>) =>
+  superpowerInvoke<{ issueId: string; path: string; collected: number; skipped: number } | null>(
     "exportDiagnostics",
     toPlainDiagnosticData(input)
   );
-export const zhifuPreviewResultImage = (path: string) =>
-  zhifuInvoke<string>("previewResultImage", path);
+export const superpowerPreviewResultImage = (path: string) =>
+  superpowerInvoke<string>("previewResultImage", path);
 
 export interface OrdinaryBrowserStatus {
   preference: string;
@@ -184,36 +184,36 @@ export interface OrdinaryBrowserStatus {
   message: string;
   percent?: number;
 }
-export const zhifuOrdinaryBrowserGet = () =>
-  zhifuInvoke<OrdinaryBrowserStatus>("ordinaryBrowserGet");
-export const zhifuOrdinaryBrowserSelect = (value: string) =>
-  zhifuInvoke<OrdinaryBrowserStatus>("ordinaryBrowserSelect", value);
-export const zhifuCloseConversationBrowser = (input: {
+export const superpowerOrdinaryBrowserGet = () =>
+  superpowerInvoke<OrdinaryBrowserStatus>("ordinaryBrowserGet");
+export const superpowerOrdinaryBrowserSelect = (value: string) =>
+  superpowerInvoke<OrdinaryBrowserStatus>("ordinaryBrowserSelect", value);
+export const superpowerCloseConversationBrowser = (input: {
   workspace: string;
   conversationId: string;
-}) => zhifuInvoke<void>("closeConversationBrowser", input);
-export const zhifuOnOrdinaryBrowserStatus = (listener: (_status: OrdinaryBrowserStatus) => void) =>
-  zhifuSubscribe("onOrdinaryBrowserStatus", listener);
+}) => superpowerInvoke<void>("closeConversationBrowser", input);
+export const superpowerOnOrdinaryBrowserStatus = (listener: (_status: OrdinaryBrowserStatus) => void) =>
+  superpowerSubscribe("onOrdinaryBrowserStatus", listener);
 
 /** 选择工作区目录，取消时返回 null */
-export const zhifuSelectWorkspace = () => zhifuInvoke<string | null>("selectWorkspace");
+export const superpowerSelectWorkspace = () => superpowerInvoke<string | null>("selectWorkspace");
 
-export const zhifuSelectFiles = () => zhifuInvoke<ZhifuSelectedFile[]>("selectFiles");
+export const superpowerSelectFiles = () => superpowerInvoke<SuperPowerSelectedFile[]>("selectFiles");
 
-export const zhifuSetWorkspace = (workspace: string) =>
-  zhifuInvoke<string>("setWorkspace", workspace);
+export const superpowerSetWorkspace = (workspace: string) =>
+  superpowerInvoke<string>("setWorkspace", workspace);
 
-export const zhifuTestConnection = (settings: Record<string, any>) =>
-  zhifuInvoke<ZhifuConnectionResult>("testConnection", settings);
+export const superpowerTestConnection = (settings: Record<string, any>) =>
+  superpowerInvoke<SuperPowerConnectionResult>("testConnection", settings);
 
-export const zhifuTestImConnection = (input: {
-  provider: ZhifuImProvider;
+export const superpowerTestImConnection = (input: {
+  provider: SuperPowerImProvider;
   clientId: string;
   clientSecret: string;
-}) => zhifuInvoke<ZhifuConnectionResult>("testImConnection", input);
+}) => superpowerInvoke<SuperPowerConnectionResult>("testImConnection", input);
 
-export const zhifuRunAgent = (input: ZhifuRunAgentInput) =>
-  zhifuInvoke<{
+export const superpowerRunAgent = (input: SuperPowerRunAgentInput) =>
+  superpowerInvoke<{
     sessionId?: string;
     status?: string;
     output?: string;
@@ -222,58 +222,58 @@ export const zhifuRunAgent = (input: ZhifuRunAgentInput) =>
     closeMessage?: string;
   }>("runAgent", input);
 
-export const zhifuBeginShopUsage = (shops: { id: string | number }[]) =>
-  zhifuInvoke<Record<string, string>>("beginShopUsage", shops);
-export const zhifuFinishShopUsage = (input: { token: string; connection: Record<string, any> }) =>
-  zhifuInvoke<string>("finishShopUsage", input);
-export const zhifuCancelShopUsage = (tokens: Record<string, string>) =>
-  zhifuInvoke<void>("cancelShopUsage", tokens);
+export const superpowerBeginShopUsage = (shops: { id: string | number }[]) =>
+  superpowerInvoke<Record<string, string>>("beginShopUsage", shops);
+export const superpowerFinishShopUsage = (input: { token: string; connection: Record<string, any> }) =>
+  superpowerInvoke<string>("finishShopUsage", input);
+export const superpowerCancelShopUsage = (tokens: Record<string, string>) =>
+  superpowerInvoke<void>("cancelShopUsage", tokens);
 
-export const zhifuValidateShopConnection = (connection: Record<string, any>) =>
-  zhifuInvoke<{ ok?: boolean; error?: string }>("validateShopConnection", connection);
+export const superpowerValidateShopConnection = (connection: Record<string, any>) =>
+  superpowerInvoke<{ ok?: boolean; error?: string }>("validateShopConnection", connection);
 
-export const zhifuGetBrowserConnection = (browserId: string | number) =>
-  zhifuInvoke<Record<string, any> | null>("getBrowserConnection", browserId);
+export const superpowerGetBrowserConnection = (browserId: string | number) =>
+  superpowerInvoke<Record<string, any> | null>("getBrowserConnection", browserId);
 
-export const zhifuCompleteScheduledShops = (input: {
+export const superpowerCompleteScheduledShops = (input: {
   requestId: string;
-  results?: ZhifuRunAgentInput["shopResults"];
+  results?: SuperPowerRunAgentInput["shopResults"];
   error?: string;
-}) => zhifuInvoke<unknown>("completeScheduledShops", input);
+}) => superpowerInvoke<unknown>("completeScheduledShops", input);
 
-export const zhifuOnOpenScheduledShops = (
+export const superpowerOnOpenScheduledShops = (
   callback: (_payload: { requestId: string; shops: { id: string | number }[] }) => void
-) => zhifuSubscribe("onOpenScheduledShops", callback);
+) => superpowerSubscribe("onOpenScheduledShops", callback);
 
-export const zhifuStopAgent = (conversationId: string) =>
-  zhifuInvoke<boolean>("stopAgent", conversationId);
+export const superpowerStopAgent = (conversationId: string) =>
+  superpowerInvoke<boolean>("stopAgent", conversationId);
 
-export const zhifuApproveTool = (input: {
+export const superpowerApproveTool = (input: {
   approvalId: string;
   approved: boolean;
-  scope: ZhifuApprovalScope;
-}) => zhifuInvoke<boolean>("approveTool", input);
+  scope: SuperPowerApprovalScope;
+}) => superpowerInvoke<boolean>("approveTool", input);
 
-export const zhifuClearApprovals = (input: { conversationId: string; toolName?: string }) =>
-  zhifuInvoke<boolean>("clearApprovals", input);
+export const superpowerClearApprovals = (input: { conversationId: string; toolName?: string }) =>
+  superpowerInvoke<boolean>("clearApprovals", input);
 
-export const zhifuListSkills = (input: { workspace: string }) =>
-  zhifuInvoke<ZhifuLocalSkill[]>("listSkills", input);
+export const superpowerListSkills = (input: { workspace: string }) =>
+  superpowerInvoke<SuperPowerLocalSkill[]>("listSkills", input);
 
-export const zhifuInstallSkill = (input: {
+export const superpowerInstallSkill = (input: {
   kind: "folder" | "zip";
-  scope: ZhifuSkillScope;
+  scope: SuperPowerSkillScope;
   workspace: string;
-}) => zhifuInvoke<ZhifuInstallSkillResult>("installSkill", input);
+}) => superpowerInvoke<SuperPowerInstallSkillResult>("installSkill", input);
 
 /** 读取本地 .md 或 .zip 里的技能名称和描述。没有本地路径时传文件内容 */
-export const zhifuPreviewSkillFile = (input: {
+export const superpowerPreviewSkillFile = (input: {
   filePath?: string;
   filename?: string;
   contentBase64?: string;
-}) => zhifuInvoke<{ name: string; description: string }>("previewSkillFile", input);
+}) => superpowerInvoke<{ name: string; description: string }>("previewSkillFile", input);
 
-export const zhifuGetPathForFile = (file: File) => {
+export const superpowerGetPathForFile = (file: File) => {
   const getPath = (window as any).localflow?.getPathForFile;
   if (typeof getPath !== "function") return "";
   try {
@@ -283,27 +283,27 @@ export const zhifuGetPathForFile = (file: File) => {
   }
 };
 
-export const zhifuInstallRemoteSkill = (input: {
+export const superpowerInstallRemoteSkill = (input: {
   url: string;
   id: number | string;
   fileMd5?: string;
-  scope: ZhifuSkillScope;
+  scope: SuperPowerSkillScope;
   workspace: string;
   /** 为 true 时覆盖工作区里已有的同名技能 */
   replace?: boolean;
-}) => zhifuInvoke<ZhifuInstallSkillResult>("installRemoteSkill", input);
+}) => superpowerInvoke<SuperPowerInstallSkillResult>("installRemoteSkill", input);
 
-export const zhifuToggleSkill = (input: { id: string; scope: ZhifuSkillScope; enabled: boolean }) =>
-  zhifuInvoke<boolean>("toggleSkill", input);
+export const superpowerToggleSkill = (input: { id: string; scope: SuperPowerSkillScope; enabled: boolean }) =>
+  superpowerInvoke<boolean>("toggleSkill", input);
 
-export const zhifuUninstallSkill = (input: {
+export const superpowerUninstallSkill = (input: {
   id: string;
-  scope: ZhifuSkillScope;
+  scope: SuperPowerSkillScope;
   workspace: string;
-}) => zhifuInvoke<boolean>("uninstallSkill", input);
+}) => superpowerInvoke<boolean>("uninstallSkill", input);
 
-export interface ZhifuSkillDraft {
-  scope: ZhifuSkillScope;
+export interface SuperPowerSkillDraft {
+  scope: SuperPowerSkillScope;
   workspace: string;
   name: string;
   description: string;
@@ -312,16 +312,16 @@ export interface ZhifuSkillDraft {
   permissions: string[];
 }
 
-export interface ZhifuCreatedSkill {
+export interface SuperPowerCreatedSkill {
   id: string;
   name: string;
-  scope: ZhifuSkillScope;
+  scope: SuperPowerSkillScope;
   path: string;
 }
 
-export interface ZhifuSkillDetail {
+export interface SuperPowerSkillDetail {
   id: string;
-  scope: ZhifuSkillScope;
+  scope: SuperPowerSkillScope;
   name: string;
   description: string;
   content: string;
@@ -330,67 +330,67 @@ export interface ZhifuSkillDetail {
   files?: { path: string; data: string }[];
 }
 
-export const zhifuCreateSkill = (input: ZhifuSkillDraft) =>
-  zhifuInvoke<ZhifuCreatedSkill>("createSkill", input);
+export const superpowerCreateSkill = (input: SuperPowerSkillDraft) =>
+  superpowerInvoke<SuperPowerCreatedSkill>("createSkill", input);
 
-export const zhifuGetSkill = (input: {
+export const superpowerGetSkill = (input: {
   id: string;
-  scope: ZhifuSkillScope;
+  scope: SuperPowerSkillScope;
   workspace: string;
   includeFiles?: boolean;
-}) => zhifuInvoke<ZhifuSkillDetail>("getSkill", input);
+}) => superpowerInvoke<SuperPowerSkillDetail>("getSkill", input);
 
-export const zhifuUpdateSkill = (input: {
+export const superpowerUpdateSkill = (input: {
   id: string;
-  scope: ZhifuSkillScope;
+  scope: SuperPowerSkillScope;
   workspace: string;
   name: string;
   description: string;
   content: string;
 }) =>
-  zhifuInvoke<{
+  superpowerInvoke<{
     id: string;
-    scope: ZhifuSkillScope;
+    scope: SuperPowerSkillScope;
     name: string;
     description: string;
     path: string;
   }>("updateSkill", input);
 
-export const zhifuRunScheduledTask = (id: string) => zhifuInvoke<boolean>("runScheduledTask", id);
+export const superpowerRunScheduledTask = (id: string) => superpowerInvoke<boolean>("runScheduledTask", id);
 
-export const zhifuOpenResultFile = (path: string) => zhifuInvoke<void>("openResultFile", path);
-export const zhifuRevealResultFile = (path: string) => zhifuInvoke<void>("revealResultFile", path);
+export const superpowerOpenResultFile = (path: string) => superpowerInvoke<void>("openResultFile", path);
+export const superpowerRevealResultFile = (path: string) => superpowerInvoke<void>("revealResultFile", path);
 
-export const zhifuListLocalScheduledTasks = () =>
-  zhifuInvoke<Record<string, any>[]>("listScheduledTasks");
+export const superpowerListLocalScheduledTasks = () =>
+  superpowerInvoke<Record<string, any>[]>("listScheduledTasks");
 
-export const zhifuSaveLocalScheduledTask = (task: Record<string, any>) =>
-  zhifuInvoke<Record<string, any>>("saveScheduledTask", task);
+export const superpowerSaveLocalScheduledTask = (task: Record<string, any>) =>
+  superpowerInvoke<Record<string, any>>("saveScheduledTask", task);
 
-export const zhifuDeleteLocalScheduledTask = (id: string) =>
-  zhifuInvoke<boolean>("deleteScheduledTask", id);
+export const superpowerDeleteLocalScheduledTask = (id: string) =>
+  superpowerInvoke<boolean>("deleteScheduledTask", id);
 
 /** 保存设置到 Electron 本地安全存储，返回不含明文凭据的设置 */
-export const zhifuSaveSettings = (settings: Record<string, any>) =>
-  zhifuInvoke<Record<string, any>>("saveSettings", settings);
+export const superpowerSaveSettings = (settings: Record<string, any>) =>
+  superpowerInvoke<Record<string, any>>("saveSettings", settings);
 
-export const zhifuOnAgentEvent = (callback: (_event: ZhifuAgentEvent) => void) =>
-  zhifuSubscribe("onAgentEvent", callback);
+export const superpowerOnAgentEvent = (callback: (_event: SuperPowerAgentEvent) => void) =>
+  superpowerSubscribe("onAgentEvent", callback);
 
-export const zhifuOnApprovalRequested = (callback: (_request: ZhifuApprovalRequest) => void) =>
-  zhifuSubscribe("onApprovalRequested", callback);
+export const superpowerOnApprovalRequested = (callback: (_request: SuperPowerApprovalRequest) => void) =>
+  superpowerSubscribe("onApprovalRequested", callback);
 
-export const zhifuOnImMessage = (callback: (_message: ZhifuImMessage) => void) =>
-  zhifuSubscribe("onImMessage", callback);
+export const superpowerOnImMessage = (callback: (_message: SuperPowerImMessage) => void) =>
+  superpowerSubscribe("onImMessage", callback);
 
-export const zhifuOnImStatus = (callback: (_status: ZhifuImStatus) => void) =>
-  zhifuSubscribe("onImStatus", callback);
+export const superpowerOnImStatus = (callback: (_status: SuperPowerImStatus) => void) =>
+  superpowerSubscribe("onImStatus", callback);
 
-export const zhifuOnScheduledTaskUpdated = (callback: (_task: Record<string, any>) => void) =>
-  zhifuSubscribe("onScheduledTaskUpdated", callback);
+export const superpowerOnScheduledTaskUpdated = (callback: (_task: Record<string, any>) => void) =>
+  superpowerSubscribe("onScheduledTaskUpdated", callback);
 
-export const zhifuOnOpenScheduledTaskResult = (callback: (_payload: { id: string }) => void) =>
-  zhifuSubscribe("onOpenScheduledTaskResult", callback);
+export const superpowerOnOpenScheduledTaskResult = (callback: (_payload: { id: string }) => void) =>
+  superpowerSubscribe("onOpenScheduledTaskResult", callback);
 
 /**
  * 比较版本号
@@ -422,7 +422,7 @@ export const compareVersion = (v1 = "5.0.0", v2: string) => {
   }
 };
 
-export const zhifuLoadConversations = (input: {
+export const superpowerLoadConversations = (input: {
   accountId: string;
   sourceId?: string;
   page?: number;
@@ -431,29 +431,29 @@ export const zhifuLoadConversations = (input: {
   conversationId?: string;
   legacy?: unknown[];
 }) =>
-  zhifuInvoke<{
-    conversations: import("@/ai/views/zhifuAgent/type").Conversation[];
+  superpowerInvoke<{
+    conversations: import("@/ai/views/superpowerAgent/type").Conversation[];
     revision: number;
     legacyImported: boolean;
     total?: number;
     hasMore?: boolean;
-    related?: import("@/ai/views/zhifuAgent/type").Conversation[];
+    related?: import("@/ai/views/superpowerAgent/type").Conversation[];
     path: string;
   }>("loadConversations", input);
-export const zhifuSaveConversations = (input: {
+export const superpowerSaveConversations = (input: {
   accountId: string;
   conversations: unknown[];
   expectedRevision: number;
   partial?: boolean;
   deletedIds?: string[];
 }) =>
-  zhifuInvoke<{ revision: number; storage?: ConversationStorageInfo }>("saveConversations", input);
+  superpowerInvoke<{ revision: number; storage?: ConversationStorageInfo }>("saveConversations", input);
 
-export const zhifuExportConversations = (input: { accountId: string; conversations: unknown[] }) =>
-  zhifuInvoke<{ path: string } | null>("exportConversations", input);
-export const zhifuImportConversations = (input: { accountId: string }) =>
-  zhifuInvoke<{
-    conversations: import("@/ai/views/zhifuAgent/type").Conversation[];
+export const superpowerExportConversations = (input: { accountId: string; conversations: unknown[] }) =>
+  superpowerInvoke<{ path: string } | null>("exportConversations", input);
+export const superpowerImportConversations = (input: { accountId: string }) =>
+  superpowerInvoke<{
+    conversations: import("@/ai/views/superpowerAgent/type").Conversation[];
     revision: number;
   } | null>("importConversations", input);
 
@@ -464,7 +464,7 @@ export interface ConversationStorageInfo {
   lowSpace: boolean;
   previousPath?: string;
 }
-export const zhifuConversationStorageInfo = () =>
-  zhifuInvoke<ConversationStorageInfo>("conversationStorageInfo");
-export const zhifuMoveConversationStorage = () =>
-  zhifuInvoke<ConversationStorageInfo | null>("moveConversationStorage");
+export const superpowerConversationStorageInfo = () =>
+  superpowerInvoke<ConversationStorageInfo>("conversationStorageInfo");
+export const superpowerMoveConversationStorage = () =>
+  superpowerInvoke<ConversationStorageInfo | null>("moveConversationStorage");

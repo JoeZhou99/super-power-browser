@@ -13,7 +13,7 @@ import './styles/brand.css';
 import 'virtual:uno.css';
 import './ai/styles/host.css';
 import './styles/scrollbar.css';
-router.afterEach(to=>document.body.classList.toggle('ai-page',to.path==='/zhifuAgent'));
+router.afterEach(to=>document.body.classList.toggle('ai-page',to.path==='/superpowerAgent'));
 const app=createApp(App);
 (window as any).openShop = (params: {browserId: string | number}) => window.api?.openBrowser(String(params.browserId));
 app.config.errorHandler=(error)=>ElMessage.error(error instanceof Error?error.message:'操作失败');
