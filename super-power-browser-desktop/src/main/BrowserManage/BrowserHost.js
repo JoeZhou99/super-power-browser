@@ -6,6 +6,7 @@ const {spawn}=require('node:child_process');
 const {ProxyRuntime,upstream,proxyError}=require('../services/ProxyRuntime');
 const {ProxyRoutes,proxySnapshotId}=require('../services/ProxyRoutes');
 const {ProxyRouteCache}=require('../services/ProxyRouteCache');
+const {withProxyDiagnostics}=require('../services/ProxyDiagnosticsApi');
 const {RelayController}=require('../services/RelayController');
 const {BrowserProxyGate}=require('../services/BrowserProxyGate');
 const {safeProxyMessage}=require('../services/ProxyConfig');
@@ -372,7 +373,7 @@ class BrowserHost {
         else await pause(100,probeSignal);
       }
       environment.preferredCandidateIndex=proxy.candidateIndex;
-      run.bridge=new DesktopBridge({id,proxy:environment.proxy,runtime:proxy,routes,onAction:async(action,args)=>{
+      run.bridge=new DesktopBridge({id,proxy:environment.proxy,runtime:proxy,routes,onAction:withProxyDiagnostics(async(action,args)=>{
         if(action==='GetProxyRoutes')return routes.state();
         if(action==='RefreshProxyRoutes')return refreshRoutes();
         if(['TransferSpeed','TestProxyWebsite','MeasureProxyRoutes','OptimizeProxyRoutes','StartProxy','SetProxyAutomatic'].includes(action)||action==='GetNetworkInfo'&&args.retry===true&&!run.networkState?.pending)await ensureAuthorizationCurrent();
@@ -440,7 +441,7 @@ class BrowserHost {
           }finally{run.manualSelection=false;}
         }
         return this.desktopAction(id,action);
-      }});
+      })});
       const websocketPort=await run.bridge.listen();
       check(signal);
       const plugins=await preparePlugins(this.config.resources,profile,{environment,session:run.session,websocketPort,operations,proxyUrl:browserProxyUrl,resourceProxyUrl,apiUrl:this.config.apiUrl,cookie:saved.cookie,localGeo:local.available?local:null});

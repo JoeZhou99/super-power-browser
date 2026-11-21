@@ -146,11 +146,10 @@ public class ExtensionService {
         documents.put(c.environmentId(),"settings","preferredProxyRoute",Map.of("candidateIndex",index,"candidateKey",candidateKey(proxy,index),"deviceId",text(proxy,"id")));
         return Map.of("saved",true,"candidateIndex",index);
     }
-    @SuppressWarnings("unchecked") private Map<String,Object> publicCandidate(Map<String,Object> proxy,Map<String,Object> connection,int index) {
-        Map<String,Object> entry=connection;
-        if(connection.get("proxyOptions") instanceof Map<?,?> options&&options.get("transit") instanceof Map<?,?> transit)entry=(Map<String,Object>)transit;
+    private Map<String,Object> publicCandidate(Map<String,Object> proxy,int index) {
         var result=new LinkedHashMap<String,Object>();
-        result.put("candidateIndex",index);result.put("id",String.valueOf(index));result.put("ip",text(entry,"host"));result.put("port",number(entry,"port"));result.put("proxy_type",text(entry,"protocol"));
+        // The desktop owns dialing configuration; pages select opaque authorized candidates.
+        result.put("candidateIndex",index);result.put("id",String.valueOf(index));
         if(proxy.get("relayPool") instanceof Map<?,?> pool&&pool.get("candidates") instanceof List<?> candidates&&index<candidates.size()&&candidates.get(index) instanceof Map<?,?> metadata) {
             result.put("relayId",metadata.get("id"));result.put("name",metadata.get("name"));result.put("area_name",metadata.get("region"));result.put("poolName",metadata.containsKey("poolName")?metadata.get("poolName"):pool.get("name"));
             if(metadata.containsKey("poolId"))result.put("poolId",metadata.get("poolId"));
@@ -199,8 +198,9 @@ public class ExtensionService {
         return Map.of("list",list,"total",list.size());
     }
     private Map<String,Object> setting(String env,String key) {
+        // Keep the legacy response shape without publishing detection providers, including old overrides.
+        if(Set.of("ipCheckList","dynamicIpCheckList").contains(key))return Map.of("key",key,"contents","");
         String value=switch(key) {
-            case "ipCheckList","dynamicIpCheckList" -> "https://api.ipify.org,https://ifconfig.me/ip";
             case "switch_cdn" -> "0";
             case "platform_network_site","amazon_passkey_inject_urls" -> "{}";
             default -> "";
@@ -238,8 +238,8 @@ public class ExtensionService {
         device.put("area_name",text(proxy,"region"));device.put("web_type",number(proxy,"webType"));device.put("protocol_family",number(proxy,"protocolFamily"));device.put("equipment_name",text(proxy,"name"));device.put("equipment_code",text(proxy,"id"));device.put("type_name",number(proxy,"ipType")==2?"自有设备":"平台设备");
         device.put("map_ip",text(proxy,"mapIp"));device.put("map_port",number(proxy,"mapPort"));device.put("port",number(proxy,"port"));device.put("proxy_type",text(proxy,"protocol"));
         result.put("has_one_agent_ip",device);
-        var routes=candidates(proxy);var route=new LinkedHashMap<>(device);route.putAll(publicCandidate(proxy,proxy,0));
-        var alternatives=new ArrayList<Map<String,Object>>();for(int i=1;i<routes.size();i++)alternatives.add(publicCandidate(proxy,routes.get(i),i));
+        var routes=candidates(proxy);var route=new LinkedHashMap<>(device);route.putAll(publicCandidate(proxy,0));
+        var alternatives=new ArrayList<Map<String,Object>>();for(int i=1;i<routes.size();i++)alternatives.add(publicCandidate(proxy,i));
         route.put("transfer_proxies",alternatives);route.put("preferredCandidateIndex",preferredCandidate(c,proxy));
         result.put("has_one_agent_ip_v2",route);
         if(proxy.containsKey("relayPool"))result.put("relayPool",proxy.get("relayPool"));

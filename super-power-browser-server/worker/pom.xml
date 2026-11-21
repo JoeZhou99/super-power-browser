@@ -1,5 +1,9 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0">
   <modelVersion>4.0.0</modelVersion><parent><groupId>com.superpower.browser</groupId><artifactId>super-power-browser-server</artifactId><version>0.1.0</version></parent><artifactId>worker</artifactId>
-  <dependencies><dependency><groupId>com.superpower.browser</groupId><artifactId>core</artifactId><version>${project.version}</version></dependency></dependencies>
+  <dependencies>
+    <dependency><groupId>com.superpower.browser</groupId><artifactId>core</artifactId><version>${project.version}</version></dependency>
+    <!-- The shared database also contains AI migrations, which Flyway must validate. -->
+    <dependency><groupId>com.superpower.browser</groupId><artifactId>ai</artifactId><version>${project.version}</version><scope>runtime</scope></dependency>
+  </dependencies>
   <build><plugins><plugin><groupId>org.springframework.boot</groupId><artifactId>spring-boot-maven-plugin</artifactId></plugin></plugins></build>
 </project>

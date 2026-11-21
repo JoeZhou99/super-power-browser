@@ -69,7 +69,9 @@ class ExtensionRoutesTest {
         String publicData=json(envelope);assertFalse(publicData.contains("primary-secret"));assertFalse(publicData.contains("alternate-secret"));assertFalse(publicData.contains("alternate-user"));
         assertEquals(0,extensions.bootstrap(first).get("preferredCandidateIndex"));
         assertEquals(snapshot(first),snapshot(second));
-        assertEquals("relay-0.example.com",candidates.get(0).get("ip"));assertEquals("Route 0",candidates.get(0).get("name"));
+        assertEquals("Route 0",candidates.get(0).get("name"));assertEquals("test",candidates.get(0).get("area_name"));assertEquals("Shared pool",candidates.get(0).get("poolName"));
+        for(var candidate:candidates)assertTrue(Collections.disjoint(candidate.keySet(),Set.of("ip","host","port","proxy_type","protocol","username","password","proxyOptions","transit","alternatives")));
+        assertFalse(publicData.contains("relay-0.example.com"));assertFalse(publicData.contains("relay-1.example.com"));assertFalse(publicData.contains("relay-user"));
         assertFalse(publicData.contains("relay-secret"));
         extensions.call(first,"updateMainTransfer",Map.of("mall_id","first","candidateIndex",2,"snapshotId",snapshot(first),"password","injected-secret","transfer_name","untrusted.example.com"));
         assertEquals(2,extensions.bootstrap(first).get("preferredCandidateIndex"));assertEquals(0,extensions.bootstrap(second).get("preferredCandidateIndex"));
@@ -80,6 +82,32 @@ class ExtensionRoutesTest {
         assertEquals(403,assertThrows(BusinessException.class,()->extensions.call(first,"updateMainTransfer",Map.of("mall_id","second","candidateIndex",0))).status);
         assertEquals(404,assertThrows(BusinessException.class,()->extensions.bootstrap(session("first",stranger))).status);
         assertEquals(2,extensions.bootstrap(first).get("preferredCandidateIndex"));
+    }
+
+    @Test @SuppressWarnings("unchecked") void keepsResidentialDisplayAndSnapshotWhileHidingTcpEntrancesAndOldDetectionProviders() {
+        proxies.save(owner,deviceId,Map.of("region","中国 香港","mapIp","203.0.113.26","webType",2));
+        jdbc.update("UPDATE relay_node SET protocol='tcp',host='private-forward.example.com',port=25135,username='placeholder-user',password='unused-placeholder' WHERE id='node-0'");
+        var first=session("first",owner);String before=snapshot(first);
+        var mall=(Map<String,Object>)((Map<?,?>)extensions.call(first,"getMallInfo",Map.of())).get("data");
+        for(String key:List.of("has_one_agent_ip","has_one_agent_ip_v2")) {
+            var display=(Map<?,?>)mall.get(key);
+            assertEquals("main.example.com",display.get("ip"));assertEquals("203.0.113.26",display.get("map_ip"));assertEquals("中国 香港",display.get("area_name"));
+            assertEquals("proxy",display.get("equipment_name"));assertEquals(deviceId,display.get("equipment_code"));
+        }
+        var candidates=(List<Map<String,Object>>)mall.get("has_many_transfer_ip");
+        assertEquals(2,candidates.size());assertEquals(1,candidates.get(0).get("candidateIndex"));assertEquals("node-0",candidates.get(0).get("relayId"));assertEquals("relay",candidates.get(0).get("kind"));
+        String publicData=json(mall);
+        for(String hidden:List.of("private-forward.example.com","relay-1.example.com","placeholder-user","unused-placeholder","primary-user","primary-secret","relay-secret","proxyOptions","transit"))assertFalse(publicData.contains(hidden),hidden);
+        assertEquals(before,snapshot(first));extensions.call(first,"updateMainTransfer",Map.of("candidateIndex",1,"snapshotId",before));assertEquals(1,extensions.bootstrap(first).get("preferredCandidateIndex"));
+        var documents=new ExtensionDocuments(context.getBean(Db.class),context.getBean(SecretCipher.class));
+        for(String key:List.of("ipCheckList","dynamicIpCheckList")) {
+            documents.put("first","configuration",key,"https://old-provider.example.com/private-check");
+            var result=(Map<?,?>)((Map<?,?>)extensions.call(first,"getInfoByKey",Map.of("key",key))).get("data");
+            assertEquals(Map.of("key",key,"contents",""),result);
+        }
+        var settings=(List<?>)((Map<?,?>)extensions.call(first,"getInfoByKeys",Map.of("keys","ipCheckList,dynamicIpCheckList"))).get("data");
+        assertEquals(2,settings.size());assertFalse(json(settings).contains("https://"));
+        for(Object setting:settings)assertEquals("",((Map<?,?>)((Map<?,?>)setting).get("value")).get("contents"));
     }
 
     @Test void editedOrRemovedCandidatesInvalidateTheSavedPreference() {

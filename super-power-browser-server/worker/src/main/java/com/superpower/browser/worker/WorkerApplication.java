@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.*;
 
-@SpringBootApplication(scanBasePackages={"com.superpower.browser.auth","com.superpower.browser.environment","com.superpower.browser.device","com.superpower.browser.billing","com.superpower.browser.shared","com.superpower.browser.runtime"})
+@SpringBootApplication(scanBasePackages={"com.superpower.browser.auth","com.superpower.browser.environment","com.superpower.browser.device","com.superpower.browser.billing","com.superpower.browser.shared","com.superpower.browser.runtime","com.superpower.browser.config"})
 @MapperScan(basePackages="com.superpower.browser.shared",annotationClass=org.apache.ibatis.annotations.Mapper.class)
 @EnableScheduling
 public class WorkerApplication {

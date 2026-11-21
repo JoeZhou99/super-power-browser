@@ -52,6 +52,7 @@ class DesktopBridge {
     try{
       request=decode(raw,this.secret.wsKey,this.secret.iv,this.secret.mac);
       if(request.browserId!==this.id)throw new Error('通信店铺不匹配');
+      if(request.action==='Ping'&&this.routes)throw new Error('旧版 Ping 接口已停用，请使用统一线路检测接口');
       const args=typeof request.args==='string'?JSON.parse(request.args):request.args||{};
       for(const key of ['mallId','mall_id','browserId','storeId'])if(args[key]&&args[key]!==this.id)throw new Error('禁止跨店铺通信');
       let result={};
@@ -61,8 +62,7 @@ class DesktopBridge {
         if(!Array.isArray(targets)||targets.length>10)throw new Error('线路参数不合法');
         result=await Promise.all(targets.map(async target=>{
           let connection=this.proxy;
-          if(this.routes)connection=this.routes.select({candidateIndex:target?.candidateIndex,snapshotId:args.snapshotId});
-          else if(this.runtime)connection=this.runtime.candidate(target?.candidateIndex);
+          if(this.runtime)connection=this.runtime.candidate(target?.candidateIndex);
           else if((target.ip||target.host)!==this.proxy.host||Number(target.port)!==Number(this.proxy.port))throw new Error('只能检测当前店铺已配置的线路');
           // Measure the configured first hop when the route uses a transit.
           while(connection.proxyOptions?.transit)connection=connection.proxyOptions.transit;

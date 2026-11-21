@@ -90,17 +90,48 @@ public class RelayPoolService {
         metadata.add(Map.of("id","direct","name","直连代理","kind","direct","region",text(proxy,"region")));
         var alternatives=new ArrayList<Map<String,Object>>();
         for(var node:selection.nodes()) {
-            var transit=new LinkedHashMap<String,Object>();
-            for(String key:List.of("protocol","host","port","username"))transit.put(key,node.get(key));
-            transit.put("password",secrets.decrypt(text(node,"password")));transit.put("proxyOptions",object(text(node,"proxyOptions")));
-            var options=new LinkedHashMap<String,Object>(exitOptions);options.put("transit",transit);
             var candidate=new LinkedHashMap<String,Object>();
             for(String key:List.of("protocol","host","port","username","password"))candidate.put(key,proxy.get(key));
+            Map<String,Object> options;
+            if(text(node,"protocol").equals("tcp")) {
+                // A transparent, exit-bound port forward carries the original protocol bytes.
+                // Node credentials/options belong to independent proxy relays only.
+                candidate.put("host",node.get("host"));candidate.put("port",node.get("port"));
+                options=forwardedOptions(proxy,exitOptions);
+            } else {
+                var transit=new LinkedHashMap<String,Object>();
+                for(String key:List.of("protocol","host","port","username"))transit.put(key,node.get(key));
+                transit.put("password",secrets.decrypt(text(node,"password")));transit.put("proxyOptions",object(text(node,"proxyOptions")));
+                options=new LinkedHashMap<String,Object>(exitOptions);options.put("transit",transit);
+            }
             candidate.put("proxyOptions",options);alternatives.add(candidate);
             metadata.add(Map.of("id",text(node,"id"),"name",text(node,"name"),"kind","relay","region",text(node,"region"),"poolId",text(node,"poolId"),"poolName",text(node,"poolName")));
         }
         if(!alternatives.isEmpty())exitOptions.put("alternatives",alternatives);result.put("proxyOptions",exitOptions);
         result.put("relayPool",Map.of("id","bindings","name","已绑定中继","revision",number(device,"relayBindingRevision"),"automatic",true,"probeIntervalMs",60000,"failureThreshold",3,"cooldownMs",120000,"candidates",metadata));
+        return result;
+    }
+    @SuppressWarnings("unchecked")
+    private static Map<String,Object> forwardedOptions(Map<String,Object> proxy,Map<String,Object> exitOptions) {
+        var result=new LinkedHashMap<String,Object>(exitOptions);
+        String protocol=text(proxy,"protocol");
+        var tls=(Map<String,Object>)exitOptions.getOrDefault("tls",Map.of());
+        if(protocol.equals("https")) {
+            var identity=new LinkedHashMap<String,Object>(tls);
+            if(text(identity,"serverName").isBlank())identity.put("serverName",text(proxy,"host"));
+            result.put("tls",identity);
+        } else if(protocol.equals("vmess")||protocol.equals("vless")) {
+            String key=protocol+"User";
+            var user=new LinkedHashMap<String,Object>((Map<String,Object>)exitOptions.getOrDefault(key,Map.of()));
+            String security=text(user,protocol.equals("vmess")?"securityTls":"security");
+            // Desktop defaults VMess to TLS and VLESS to Reality. Explicit Reality SNI stays intact.
+            if((security.equals("tls")||(protocol.equals("vmess")&&security.isBlank()))&&text(user,"serverName").isBlank()) {
+                String name=text(tls,"serverName");
+                if(name.isBlank()&&protocol.equals("vless"))name=text(exitOptions,"obfsParameter");
+                user.put("serverName",name.isBlank()?text(proxy,"host"):name);
+            }
+            result.put(key,user);
+        }
         return result;
     }
     /** Node identities and credentials/config both participate in snapshot invalidation. */

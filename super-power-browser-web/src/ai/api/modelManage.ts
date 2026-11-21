@@ -187,6 +187,23 @@ export function getModelOrderInfo(params: { order_no: string }) {
   });
 }
 
+export interface ModelProviderOption {
+  id: number | string;
+  name: string;
+  code: string;
+  url?: string;
+  defaultApiProtocol?: string;
+}
+
+export interface UserModelImportedInput {
+  providerName: string;
+  modelName: string;
+  apiKey: string;
+  apiProtocol: "chat" | "responses";
+  apiUrl: string;
+  custom_name: string;
+}
+
 //api厂商列表
 export function apiProvider(params?: any) {
   return request({
@@ -216,7 +233,7 @@ export function deleteUserModelImportedApi(data: any) {
 }
 
 //新增自有导入模型
-export function createUserModelImportedApi(data: any) {
+export function createUserModelImportedApi(data: UserModelImportedInput) {
   return request({
     url: `${desktopApi}/config/userImported/create`,
     method: "post",
@@ -225,7 +242,7 @@ export function createUserModelImportedApi(data: any) {
 }
 
 //编辑自由模型
-export function updateUserModelImportedApi(data: any) {
+export function updateUserModelImportedApi(data: UserModelImportedInput & { id: number | string }) {
   return request({
     url: `${desktopApi}/config/userImported/update`,
     method: "post",

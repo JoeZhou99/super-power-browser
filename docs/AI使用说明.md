@@ -17,6 +17,16 @@ AI 使用权限为 `ai.use`，套餐购买权限为 `ai.purchase`。店铺执行
 
 消息通道配置和任务、结果的云端管理不启用。
 
+## 导入自有模型
+
+模型管理和聊天窗口的导入入口使用相同的配置：显示名称用于区分同一模型的不同账号或地址；供应商用于选择预设；模型 ID、API 地址、API Key 和协议用于实际调用。备注和重复的供应商编码不再显示或提交。现有数据库备注列保留以兼容旧版本，接口不再返回或更新备注，无需迁移旧模型。
+
+供应商列表包含 OpenAI、Anthropic Claude、Google Gemini、DeepSeek、阿里云百炼 / 通义千问、火山方舟 / 豆包、智谱 BigModel / GLM、月之暗面 / Kimi、硅基流动和 OpenRouter，另可选择自定义 OpenAI 兼容服务或手填供应商。选择预设会填入基础地址与协议，地址仍可按账号所在地域或专属接入点修改。OpenAI 默认 Responses，其余默认 Chat Completions；可根据所用模型切换协议。
+
+Claude 和 Gemini 使用各自官方的 OpenAI 兼容接口，执行时按所选 `chat` / `responses` 协议连接。支持的参数、模型和工具能力以供应商及具体模型为准。获取模型列表需要供应商支持 `GET {apiUrl}/models`；也可以手填实际模型 ID。
+
+预设地址参考供应商官方文档：[Claude](https://platform.claude.com/docs/en/api/openai-sdk)、[Gemini](https://ai.google.dev/gemini-api/docs/openai)、[DeepSeek](https://api-docs.deepseek.com/)、[百炼](https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope)、[方舟](https://docs.volcengine.com/docs/ark/chat-api?lang=zh)、[智谱](https://docs.bigmodel.cn/cn/guide/develop/openai/introduction)、[Kimi](https://platform.moonshot.cn/docs/guide/start-using-kimi-api)、[硅基流动](https://docs.siliconflow.cn/cn/userguide/quickstart)、[OpenRouter](https://openrouter.ai/docs/quickstart)。
+
 ## 安装和启动
 
 1. `super-power-browser-desktop/resources/ai`：`npm ci --ignore-scripts`。

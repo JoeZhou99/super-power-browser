@@ -269,6 +269,62 @@ class ProxyServiceTest {
         assertEquals("Shared pool",((List<Map<String,Object>>)meta.get("candidates")).get(1).get("poolName"));
     }
 
+    @Test @SuppressWarnings("unchecked") void transparentTcpRelayKeepsExitCredentialsCipherAndValidationWhileNormalRelayStillChains() {
+        createRelayFixture(jdbc,context.getBean(SecretCipher.class));
+        // Placeholder node authentication must never be decrypted or sent for a transparent forward.
+        jdbc.update("UPDATE relay_node SET protocol='tcp',port=25135,username='ignored',password='not-an-encrypted-secret',proxy_options=? WHERE id='node-0'","{\"encryption\":\"aes-256-gcm\"}");
+        var input=proxy("residential-user");input.put("protocol","ss");input.put("webType",2);input.put("mapIp","203.0.113.26");input.put("mapPort",15000);input.put("protocolFamily",1);
+        input.put("proxyOptions",Map.of("encryption","aes-128-gcm","transportProtocol","tcp"));
+        String id=proxies.save(owner,null,input);var direct=devices.launchProxy(owner,id);
+        bind(jdbc,id,"node-0","node-1");
+        var route=devices.launchProxy(owner,id);
+        for(String key:List.of("id","protocol","host","port","username","password","webType","mapIp","mapPort","protocolFamily"))assertEquals(direct.get(key),route.get(key),key);
+        var alternatives=(List<Map<String,Object>>)((Map<?,?>)route.get("proxyOptions")).get("alternatives");assertEquals(2,alternatives.size());
+        var forwarded=alternatives.get(0);
+        assertEquals("relay-0.example.com",forwarded.get("host"));assertEquals(25135L,((Number)forwarded.get("port")).longValue());
+        for(String key:List.of("protocol","username","password"))assertEquals(direct.get(key),forwarded.get(key),key);
+        assertEquals(direct.get("proxyOptions"),forwarded.get("proxyOptions"));
+        assertFalse(((Map<?,?>)forwarded.get("proxyOptions")).containsKey("transit"));
+        var chained=alternatives.get(1);
+        for(String key:List.of("protocol","host","port","username","password"))assertEquals(direct.get(key),chained.get(key),key);
+        var chainedOptions=(Map<String,Object>)chained.get("proxyOptions");assertEquals("aes-128-gcm",chainedOptions.get("encryption"));
+        var transit=(Map<?,?>)chainedOptions.get("transit");assertEquals("socks5",transit.get("protocol"));assertEquals("relay-secret-1",transit.get("password"));
+        var choices=(List<Map<String,Object>>)((Map<?,?>)route.get("relayPool")).get("candidates");
+        assertEquals(List.of("direct","node-0","node-1"),choices.stream().map(node->node.get("id")).toList());
+        assertEquals(direct.get("proxyOptions"),proxies.credentials(owner,id).get("proxyOptions"));
+    }
+
+    @Test @SuppressWarnings("unchecked") void transparentTlsRelayKeepsOriginalServerIdentityAndExplicitTransportOptions() {
+        createRelayFixture(jdbc,context.getBean(SecretCipher.class));
+        jdbc.update("UPDATE relay_node SET protocol='tcp',port=25135 WHERE id='node-0'");
+        for(String protocol:List.of("https","vmess","vless"))for(int identity=0;identity<(protocol.equals("https")?2:3);identity++) {
+            var tls=new HashMap<String,Object>();tls.put("allowInsecure",false);
+            if(identity>0)tls.put("serverName","tls.example.com");
+            var options=new HashMap<String,Object>();options.put("tls",tls);
+            if(!protocol.equals("https")) {
+                var user=new HashMap<String,Object>(Map.of("id","bd090a41-2f4f-48e9-95c5-57b4c684ccfe","network","ws","path","/tunnel","host","transport.example.com"));
+                if(protocol.equals("vless"))user.put("security","tls"); // VMess deliberately uses the desktop's TLS default.
+                if(identity==2)user.put("serverName","user.example.com");
+                options.put(protocol+"User",user);
+            }
+            var input=proxy(protocol+identity);input.put("protocol",protocol);input.put("webType",2);input.put("proxyOptions",options);
+            String id=proxies.save(owner,null,input);var direct=devices.launchProxy(owner,id);bind(jdbc,id,"node-0");
+            var route=devices.launchProxy(owner,id);var root=(Map<String,Object>)route.get("proxyOptions");
+            var forwarded=((List<Map<String,Object>>)root.get("alternatives")).get(0);
+            var forwardedOptions=(Map<String,Object>)forwarded.get("proxyOptions");
+            String expected=identity==0?(String)direct.get("host"):identity==1?"tls.example.com":"user.example.com";
+            String key=protocol.equals("https")?"tls":protocol+"User";
+            assertEquals(expected,((Map<?,?>)forwardedOptions.get(key)).get("serverName"),protocol+identity);
+            assertEquals(false,((Map<?,?>)forwardedOptions.get("tls")).get("allowInsecure"));
+            if(!protocol.equals("https")) {
+                var user=(Map<?,?>)forwardedOptions.get(key);
+                assertEquals("transport.example.com",user.get("host"));assertEquals("/tunnel",user.get("path"));assertEquals("ws",user.get("network"));
+            }
+            assertEquals(direct.get("proxyOptions"),ProxyOptions.protocolOnly(root));
+            assertEquals(direct.get("proxyOptions"),proxies.credentials(owner,id).get("proxyOptions"));
+        }
+    }
+
     @Test void unavailableGrantsFailClosedButExpiredOrAbsentGrantsLeaveTheExitDirect() {
         createRelayFixture(jdbc,context.getBean(SecretCipher.class));
         var config=proxy("fixed-exit");config.put("webType",2);String id=proxies.save(owner,null,config);

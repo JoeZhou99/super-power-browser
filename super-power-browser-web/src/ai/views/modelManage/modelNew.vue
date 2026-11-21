@@ -105,6 +105,11 @@
           min-width="100"
           show-overflow-tooltip
         />
+        <el-table-column :label="t('model.modelTableProvider')" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">
+            {{ modelProviderLabel(row.providerName || '', modelOptions) }}
+          </template>
+        </el-table-column>
         <el-table-column :label="t('model.commonWord.Exclusive')" min-width="140">
           <template #default="{ row }">
             <p class="copyLine">
@@ -123,11 +128,6 @@
           <template #default>{{ t("model.modelSourceImported") }}</template>
         </el-table-column>
         <el-table-column prop="createdAt" :label="t('model.commonWord.creationTime')" width="170" />
-        <el-table-column prop="consume_type" :label="t('commonWord.remark')" width="140">
-          <template #default="{ row }">
-            <span>{{ row.remark }}</span>
-          </template>
-        </el-table-column>
         <el-table-column :label="t('mall.operation')" width="150">
           <template #default="{ row }">
             <span
@@ -243,12 +243,14 @@
 
       <div class="formItem required">
         <label>{{ t("model.modelImportFieldApiKey") }}</label>
-        <el-input v-model="modelForm.apiKey" :placeholder="t('model.modelImportPhApiKey')" />
+        <el-input v-model="modelForm.apiKey" type="password" show-password :placeholder="t('model.modelImportPhApiKey')" />
       </div>
 
       <div class="formItem required">
         <label>{{ t("model.modelImportFieldProtocol") }}</label>
-        <el-input v-model="modelForm.apiProtocol" :placeholder="t('model.modelImportPhProtocol')" />
+        <el-select v-model="modelForm.apiProtocol" class="w-100%">
+          <el-option v-for="item in OWN_MODEL_PROTOCOLS" :key="item.value" :label="item.label" :value="item.value" />
+        </el-select>
       </div>
 
       <div class="formItem required">
@@ -261,16 +263,11 @@
           v-model="modelForm.modelName"
           class="model-name-input"
           :fetch-suggestions="queryRemoteModelSuggestions"
-          :placeholder="t('model.modelImportPhModelName')"
+          :placeholder="t('model.modelImportPhModelId')"
           :trigger-on-focus="true"
           clearable
         />
       </div>
-      <div class="formItem">
-        <label>{{ t("model.modelImportFieldRemark") }}</label>
-        <el-input v-model="modelForm.remark" :placeholder="t('model.modelImportPhRemark')" />
-      </div>
-
       <div class="encryptBlock">
         <div class="encryptHeader">
           <span class="title">{{ t("model.modelImportEncryptBlockTitle") }}</span>
@@ -297,7 +294,7 @@
             <el-icon v-else><CircleCloseFilled /></el-icon>
             {{ connectionResult.message }}
           </span>
-          <el-button type="primary" class="dialogFooter-btn" @click="submitmodelForm">
+          <el-button type="primary" class="dialogFooter-btn" :loading="saving" @click="submitmodelForm">
             {{ isEditMode ? t("globalCommonWord.save") : t("globalCommonWord.add") }}
           </el-button>
           <!-- <span class="footerTip">{{ t("model.modelImportFooterHint") }}</span> -->
@@ -341,14 +338,17 @@ import {
   queryRemoteModelListApi,
   queryUserModelImportedApi,
   updateUserModelImportedApi,
+  type ModelProviderOption,
+  type UserModelImportedInput,
 } from "@/ai/api/modelManage";
 import copyPng from "@/ai/assets/images/copy.png";
 import ModelPlanBuyPanel from "./components/ModelPlanBuyPanel.vue";
 import { useModelPlanAccess } from "./composables/useModelPlanAccess";
-import { getSuperPowerMarketModels, type ApiProtocol, type SuperPowerMarketModel } from "@/ai/api/superpowerAgent";
+import { getSuperPowerMarketModels, type SuperPowerMarketModel } from "@/ai/api/superpowerAgent";
 import { errorMessage, useSuperPowerAgentStore } from "@/ai/store/modules/superpower-agent.store";
 import { superpowerTestConnection, type SuperPowerConnectionResult } from "@/ai/utils/electronApi";
 import { createDefaultSettings } from "@/ai/views/superpowerAgent/constants";
+import { findModelProvider, modelProviderLabel, OWN_MODEL_PROTOCOLS, ownModelPayload, ownModelProtocol } from "@/ai/utils/ownModelImport";
 // import lightbulb from "@/ai/assets/icons/lightbulb-fill.svg";
 import { useUserStore } from "@/ai/store";
 import Safety from "@/ai/assets/images/Safety.png";
@@ -367,20 +367,18 @@ const activeTab = ref<"official" | "mine">("official");
 const searchText = ref("");
 const editDialogVisible = ref(false);
 const isEditMode = ref(false);
-const modelForm = reactive({
+const saving = ref(false);
+const modelForm = reactive<UserModelImportedInput & { id?: number | string }>({
   id: undefined as number | string | undefined,
   providerName: "",
   modelName: "",
   apiKey: "",
-  apiProtocol: "",
+  apiProtocol: "chat",
   apiUrl: "",
-  remark: "",
-  providerCode: "",
   custom_name: "",
 });
-const modelOptions = ref<{id: number | string;name: string;code: string;url?: string;defaultApiProtocol?: string}[]>([]);
+const modelOptions = ref<ModelProviderOption[]>([]);
 const remoteModelNames = ref<string[]>([]);
-const remoteModelLoading = ref(false);
 let remoteModelSeq = 0;
 const testingConnection = ref(false);
 const connectionResult = ref<SuperPowerConnectionResult | null>(null);
@@ -468,13 +466,11 @@ const editModel = async (row: Record<string, any>) => {
   await ensureProviderOptions();
   isEditMode.value = true;
   modelForm.id = row.id;
-  modelForm.providerName = row.providerName;
+  modelForm.providerName = findModelProvider(row.providerName || "", modelOptions.value)?.code || row.providerName || "";
   modelForm.modelName = row.modelName || "";
   modelForm.apiKey = row.apiKey || "";
-  modelForm.apiProtocol = row.apiProtocol || "";
+  modelForm.apiProtocol = ownModelProtocol(row.apiProtocol);
   modelForm.apiUrl = row.apiUrl || "";
-  modelForm.remark = row.remark || "";
-  modelForm.providerCode = row.providerCode || "";
   modelForm.custom_name = row.custom_name || "";
   connectionResult.value = null;
   editDialogVisible.value = true;
@@ -514,11 +510,6 @@ const copyContent = async (value: string) => {
     ElMessage.success(t("model.modelCopySuccess"));
   }
 };
-/** 连接测试只区分 chat 和 responses 两种协议 */
-function toApiProtocol(value: string): ApiProtocol {
-  return value.trim().toLowerCase() === "responses" ? "responses" : "chat";
-}
-
 /** 用当前表单检测自有模型是否能连通 */
 async function testModelConnection() {
   const modelId = modelForm.modelName.trim();
@@ -533,10 +524,11 @@ async function testModelConnection() {
   try {
     connectionResult.value = await superpowerTestConnection({
       ...createDefaultSettings(),
-      providerName: modelForm.providerName,
+      providerName: modelProviderLabel(modelForm.providerName, modelOptions.value),
+      modelSource: "own",
       modelId,
       baseUrl,
-      apiProtocol: toApiProtocol(modelForm.apiProtocol),
+      apiProtocol: modelForm.apiProtocol,
       apiKey,
       hasApiKey: true,
     });
@@ -559,31 +551,29 @@ function hasRequiredImportFields() {
 }
 
 /** 编辑走更新接口，新建走创建接口 */
-const submitmodelForm = () => {
+const submitmodelForm = async () => {
+  if (saving.value) return;
   if (!hasRequiredImportFields()) {
     ElMessage.warning(t("model.modelImportRequired"));
     return;
   }
-  if (isEditMode.value) {
-    updateUserModelImportedApi(modelForm).then((res) => {
-      if (res.errorCode === 0) {
-        ElMessage.success(res.message);
-        editDialogVisible.value = false;
-        queryUserModelImported();
-      } else {
-        ElMessage.error(res.message);
-      }
-    });
-  } else {
-    createUserModelImportedApi(modelForm).then((res) => {
-      if (res.errorCode === 0) {
-        ElMessage.success(res.message);
-        editDialogVisible.value = false;
-        queryUserModelImported();
-      } else {
-        ElMessage.error(res.message);
-      }
-    });
+  saving.value = true;
+  try {
+    const payload = ownModelPayload(modelForm);
+    const res = isEditMode.value && modelForm.id !== undefined
+      ? await updateUserModelImportedApi({ ...payload, id: modelForm.id })
+      : await createUserModelImportedApi(payload);
+    if (res.errorCode === 0) {
+      ElMessage.success(res.message);
+      editDialogVisible.value = false;
+      queryUserModelImported();
+    } else {
+      ElMessage.error(res.message);
+    }
+  } catch (cause) {
+    ElMessage.error(errorMessage(cause));
+  } finally {
+    saving.value = false;
   }
 };
 /** 官方模型目录一次返回全量，筛选和分页在本地完成 */
@@ -601,14 +591,13 @@ const openImportModel = () => {
   modelForm.providerName = "";
   modelForm.modelName = "";
   modelForm.apiKey = "";
-  modelForm.apiProtocol = "";
+  modelForm.apiProtocol = "chat";
   modelForm.apiUrl = "";
-  modelForm.remark = "";
-  modelForm.providerCode = "";
   modelForm.custom_name = "";
   connectionResult.value = null;
   remoteModelNames.value = [];
   editDialogVisible.value = true;
+  void ensureProviderOptions().catch((cause) => ElMessage.error(errorMessage(cause)));
 };
 
 function normalizeBaseUrl(base: string) {
@@ -642,14 +631,13 @@ function parseRemoteModelNames(data: unknown) {
 }
 
 async function loadRemoteModels() {
+  if (!editDialogVisible.value) return;
   const apiUrl = normalizeBaseUrl(modelForm.apiUrl);
   const seq = ++remoteModelSeq;
   if (!apiUrl) {
     remoteModelNames.value = [];
-    remoteModelLoading.value = false;
     return;
   }
-  remoteModelLoading.value = true;
   try {
     const res = await queryRemoteModelListApi({
       apiUrl,
@@ -660,8 +648,6 @@ async function loadRemoteModels() {
   } catch {
     if (seq !== remoteModelSeq) return;
     remoteModelNames.value = [];
-  } finally {
-    if (seq === remoteModelSeq) remoteModelLoading.value = false;
   }
 }
 
@@ -676,6 +662,8 @@ async function queryRemoteModelSuggestions(queryString: string) {
 watch(
   () => [modelForm.apiUrl, modelForm.apiKey, editDialogVisible.value] as const,
   ([url, , visible]) => {
+    ++remoteModelSeq;
+    remoteModelNames.value = [];
     if (!visible) return;
     if (!normalizeBaseUrl(url)) {
       remoteModelNames.value = [];
@@ -684,12 +672,16 @@ watch(
     loadRemoteModelsDebounced();
   }
 );
+watch(modelForm, () => {
+  connectionResult.value = null;
+});
 /** 按所选厂商回填接口地址和协议 */
 const changeProvider = () => {
-  modelForm.apiUrl = modelOptions.value.find((item) => item.code === modelForm.providerName)?.url || "";
-  modelForm.apiProtocol = modelOptions.value.find(
-    (item) => item.code === modelForm.providerName
-  )?.defaultApiProtocol || "chat";
+  const provider = findModelProvider(modelForm.providerName, modelOptions.value);
+  if (!provider) return;
+  modelForm.providerName = provider.code;
+  modelForm.apiUrl = provider.url || "";
+  modelForm.apiProtocol = ownModelProtocol(provider.defaultApiProtocol);
 };
 
 onMounted(() => {
@@ -733,7 +725,7 @@ const searchModels = useDebounceFn(() => {
   }
 }, 300);
 const jumpImportModel = () => {
-  editDialogVisible.value = true;
+  openImportModel();
 };
 // const handlebuymodel = () => {
 //   router.push("/modelManage/modelWalletPackageBuy");

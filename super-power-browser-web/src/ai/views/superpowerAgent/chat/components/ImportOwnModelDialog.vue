@@ -48,12 +48,14 @@
 
     <div class="formItem required">
       <label>{{ t("model.modelImportFieldApiKey") }}</label>
-      <el-input v-model="modelForm.apiKey" :placeholder="t('model.modelImportPhApiKey')" />
+      <el-input v-model="modelForm.apiKey" type="password" show-password :placeholder="t('model.modelImportPhApiKey')" />
     </div>
 
     <div class="formItem required">
       <label>{{ t("model.modelImportFieldProtocol") }}</label>
-      <el-input v-model="modelForm.apiProtocol" :placeholder="t('model.modelImportPhProtocol')" />
+      <el-select v-model="modelForm.apiProtocol" class="w-100%">
+        <el-option v-for="item in OWN_MODEL_PROTOCOLS" :key="item.value" :label="item.label" :value="item.value" />
+      </el-select>
     </div>
 
     <div class="formItem required">
@@ -66,16 +68,11 @@
         v-model="modelForm.modelName"
         class="model-name-input"
         :fetch-suggestions="queryRemoteModelSuggestions"
-        :placeholder="t('model.modelImportPhModelName')"
+        :placeholder="t('model.modelImportPhModelId')"
         :trigger-on-focus="true"
         clearable
       />
     </div>
-    <div class="formItem">
-      <label>{{ t("model.modelImportFieldRemark") }}</label>
-      <el-input v-model="modelForm.remark" :placeholder="t('model.modelImportPhRemark')" />
-    </div>
-
     <div class="encryptBlock">
       <div class="encryptHeader">
         <span class="title">{{ t("model.modelImportEncryptBlockTitle") }}</span>
@@ -117,20 +114,14 @@ import {
   apiProvider,
   createUserModelImportedApi,
   queryRemoteModelListApi,
+  type ModelProviderOption,
+  type UserModelImportedInput,
 } from "@/ai/api/modelManage";
 import Safety from "@/ai/assets/images/Safety.png";
-import type { ApiProtocol } from "@/ai/api/superpowerAgent";
 import { errorMessage } from "@/ai/store/modules/superpower-agent.store";
 import { superpowerTestConnection, type SuperPowerConnectionResult } from "@/ai/utils/electronApi";
 import { createDefaultSettings } from "@/ai/views/superpowerAgent/constants";
-
-interface ProviderOption {
-  id: number | string;
-  name: string;
-  code: string;
-  url?: string;
-  defaultApiProtocol?: string;
-}
+import { findModelProvider, OWN_MODEL_PROTOCOLS, ownModelPayload, ownModelProtocol } from "@/ai/utils/ownModelImport";
 
 const emit = defineEmits<{
   saved: [model: { customName: string; modelName: string }];
@@ -141,18 +132,16 @@ const visible = ref(false);
 const saving = ref(false);
 const testingConnection = ref(false);
 const connectionResult = ref<SuperPowerConnectionResult | null>(null);
-const modelOptions = ref<ProviderOption[]>([]);
+const modelOptions = ref<ModelProviderOption[]>([]);
 const remoteModelNames = ref<string[]>([]);
 let remoteModelSeq = 0;
 
-const modelForm = reactive({
+const modelForm = reactive<UserModelImportedInput>({
   providerName: "",
   modelName: "",
   apiKey: "",
-  apiProtocol: "",
+  apiProtocol: "chat",
   apiUrl: "",
-  remark: "",
-  providerCode: "",
   custom_name: "",
 });
 
@@ -160,10 +149,8 @@ function resetForm() {
   modelForm.providerName = "";
   modelForm.modelName = "";
   modelForm.apiKey = "";
-  modelForm.apiProtocol = "";
+  modelForm.apiProtocol = "chat";
   modelForm.apiUrl = "";
-  modelForm.remark = "";
-  modelForm.providerCode = "";
   modelForm.custom_name = "";
   connectionResult.value = null;
   remoteModelNames.value = [];
@@ -182,10 +169,11 @@ async function openCreate() {
 }
 
 function changeProvider() {
-  const provider = modelOptions.value.find((item) => item.code === modelForm.providerName);
-  modelForm.apiUrl = provider?.url || "";
-  modelForm.apiProtocol = provider?.defaultApiProtocol || "";
-  modelForm.providerCode = provider?.code || "";
+  const provider = findModelProvider(modelForm.providerName, modelOptions.value);
+  if (!provider) return;
+  modelForm.providerName = provider.code;
+  modelForm.apiUrl = provider.url || "";
+  modelForm.apiProtocol = ownModelProtocol(provider.defaultApiProtocol);
 }
 
 function hasRequiredFields() {
@@ -199,10 +187,6 @@ function hasRequiredFields() {
   ].every((value) => String(value ?? "").trim());
 }
 
-function toApiProtocol(value: string): ApiProtocol {
-  return value.trim().toLowerCase() === "responses" ? "responses" : "chat";
-}
-
 async function testModelConnection() {
   if (!hasRequiredFields()) {
     ElMessage.warning(t("model.modelImportRequired"));
@@ -213,10 +197,11 @@ async function testModelConnection() {
   try {
     connectionResult.value = await superpowerTestConnection({
       ...createDefaultSettings(),
-      providerName: modelForm.providerName,
+      providerName: findModelProvider(modelForm.providerName, modelOptions.value)?.name || modelForm.providerName.trim(),
+      modelSource: "own",
       modelId: modelForm.modelName.trim(),
       baseUrl: modelForm.apiUrl.trim(),
-      apiProtocol: toApiProtocol(modelForm.apiProtocol),
+      apiProtocol: modelForm.apiProtocol,
       apiKey: modelForm.apiKey.trim(),
       hasApiKey: true,
     });
@@ -235,7 +220,7 @@ async function submitForm() {
   }
   saving.value = true;
   try {
-    const res: any = await createUserModelImportedApi({ ...modelForm });
+    const res: any = await createUserModelImportedApi(ownModelPayload(modelForm));
     if (res?.errorCode !== 0) {
       ElMessage.error(res?.message || t("model.modelImportRequired"));
       return;
@@ -283,6 +268,7 @@ function parseRemoteModelNames(data: unknown) {
 }
 
 async function loadRemoteModels() {
+  if (!visible.value) return;
   const apiUrl = normalizeBaseUrl(modelForm.apiUrl);
   const seq = ++remoteModelSeq;
   if (!apiUrl) {
@@ -313,6 +299,8 @@ async function queryRemoteModelSuggestions(queryString: string) {
 watch(
   () => [modelForm.apiUrl, modelForm.apiKey, visible.value] as const,
   ([url, , open]) => {
+    ++remoteModelSeq;
+    remoteModelNames.value = [];
     if (!open) return;
     if (!normalizeBaseUrl(url)) {
       remoteModelNames.value = [];
@@ -321,6 +309,10 @@ watch(
     loadRemoteModelsDebounced();
   }
 );
+
+watch(modelForm, () => {
+  connectionResult.value = null;
+});
 
 defineExpose({ openCreate });
 </script>

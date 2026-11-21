@@ -242,6 +242,20 @@ async function verified(setup,value=successfulExit()){
 async function poll(setup){await setup.run.networkInitialization;return setup.run.bridge.onAction('GetNetworkInfo',{});}
 async function monitor(setup,value){const index=setup.probes.length,checking=setup.run.relay.tick();(await setup.waitForProbe(index)).resolve(value);await checking;}
 
+test('the actual shop diagnostics boundary keeps provider details and relay endpoints private',{timeout:5000},async t=>{
+  const setup=await fixture(t,undefined,{}, {proxy:managedProxy({fixed:true})});
+  const raw={...successfulExit(),country_name:'中国香港',source:'https://private-probe.invalid',diagnostics:[{password:'private-probe-credential'}],observations:[{ip:'8.8.8.8'}]};
+  const run=await verified(setup,raw);
+  assert.equal(run.networkState.exit.source,raw.source,'Internal validation retains its full evidence');
+  const network=await run.bridge.onAction('GetNetworkInfo',{}),routes=await run.bridge.onAction('GetProxyRoutes',{});
+  assert.equal(network.exit.ip,'1.1.1.1');assert.equal(network.exit.country_name,'中国香港');assert.equal(routes.candidates.length,2);
+  const encoded=JSON.stringify({network,routes});
+  for(const hidden of ['private-probe','observations','diagnostics','relay-a.test','relay-b.test','fixed-domain.test','startupChecks','proxyOptions'])assert.equal(encoded.includes(hidden),false,hidden);
+  await assert.rejects(run.bridge.onAction('TransferSpeed',{candidateIndex:1,snapshotId:run.routes.snapshotId,url:'https://injected.invalid'}));
+  assert.equal(setup.probes.length,1,'Rejected page arguments cannot start a probe');
+  assert.equal(setup.measurements.length,0);
+});
+
 test('a visible shop and short polling responses do not wait for a slow initial exit probe',{timeout:5000},async t=>{
   const setup=await fixture(t),run=await opened(setup);
   assert.equal(run.status,'running');assert.equal(setup.probes.length,1);assert.equal(setup.probes[0].settled,false);
@@ -368,11 +382,12 @@ test('a delayed completion from an older plugin generation cannot open the gate'
   await run.bridge.onAction('GetNetworkInfo',{});await assert.rejects(run.bridge.onAction('CheckCompleted',{attemptId:999}),/已过期/);
 });
 
-test('manual switching returns only the gated HTTP address and requires real-route verification plus completion',{timeout:5000},async t=>{
+test('manual switching returns a public selection and requires real-route verification plus completion',{timeout:5000},async t=>{
   const setup=await fixture(t,undefined,{}, {proxy:managedProxy({fixed:true})}),run=await verified(setup);
   const switching=run.bridge.onAction('StartProxy',{proxyInfo:{snapshotId:run.routes.snapshotId,candidateIndex:1}});
   const isolated=await setup.waitForProbe(1);assert.equal(setup.gates[0].allowed,false);assert.equal(isolated.timeout,14000);isolated.resolve(successfulExit());
-  const selected=await switching;assert.equal(selected.proxyAddress.length,1);assert.equal(selected.proxyAddress[0].port,setup.gates[0].port);assert.equal(selected.proxyAddress[0].protocol,'http');
+  const selected=await switching;assert.equal(selected.isSuccess,true);assert.equal(selected.candidateIndex,1);assert.equal(selected.snapshotId,run.routes.snapshotId);
+  assert.deepEqual(Object.keys(selected).sort(),['candidateIndex','isSuccess','snapshotId']);
   const actual=await setup.waitForProbe(2);assert.equal(actual.relayHost,'relay-b.test');actual.resolve(successfulExit());
   const result=await poll(setup);assert.equal(result.allowed,true);assert.equal(setup.gates[0].allowed,false);assert.equal(run.relay.automatic,false);
   await completePluginCheck(run);assert.equal(setup.gates[0].allowed,true);
